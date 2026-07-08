@@ -8,7 +8,7 @@ class ExploreCategory {
   final Color accentColor;
   final Color accentBg;
   final String group;
-  final String route; // empty = not built yet, shows "coming soon"
+  final String route;
 
   const ExploreCategory({
     required this.id,
@@ -77,7 +77,7 @@ class ExploreCatalog {
       accentColor: AppColors.duasAccent,
       accentBg: AppColors.duasAccentBg,
       group: 'Knowledge & reflection',
-      route: '',
+      route: '/asma-ul-husna',
     ),
     ExploreCategory(
       id: 'islamic_names',
@@ -104,7 +104,7 @@ class ExploreCatalog {
       accentColor: AppColors.worshipAccent,
       accentBg: AppColors.worshipAccentBg,
       group: 'Worship & time',
-      route: '',
+      route: '/qibla',
     ),
     ExploreCategory(
       id: 'islamic_calendar',
@@ -131,7 +131,7 @@ class ExploreCatalog {
       accentColor: AppColors.toolsAccent,
       accentBg: AppColors.toolsAccentBg,
       group: 'Tools',
-      route: '',
+      route: '/zakat',
     ),
   ];
 

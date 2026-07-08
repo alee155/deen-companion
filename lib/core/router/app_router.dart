@@ -23,6 +23,13 @@ import '../../features/duas/presentation/screens/duas_hub_screen.dart';
 import '../../features/islamic_calendar/presentation/screens/date_converter_screen.dart';
 import '../../features/islamic_calendar/presentation/screens/islamic_calendar_hub_screen.dart';
 import '../../features/islamic_calendar/presentation/screens/islamic_months_screen.dart';
+import '../../features/zakat/presentation/screens/zakat_agriculture_screen.dart';
+import '../../features/zakat/presentation/screens/zakat_calculator_screen.dart';
+import '../../features/zakat/presentation/screens/zakat_hub_screen.dart';
+import '../../features/zakat/presentation/screens/zakat_info_screen.dart';
+import '../../features/qibla/presentation/screens/qibla_screen.dart';
+import '../../features/asma_ul_husna/presentation/screens/asma_hub_screen.dart';
+import '../../features/asma_ul_husna/presentation/screens/asma_search_screen.dart';
 
 class _PlaceholderScreen extends StatelessWidget {
   final String label;
@@ -40,6 +47,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: true,
     routes: [
       // ── Top-level routes — no bottom nav, full-screen drill-downs ──
+      GoRoute(
+        path: '/asma-ul-husna',
+        builder: (context, state) => const AsmaHubScreen(),
+      ),
+      GoRoute(
+        path: '/asma-ul-husna/search',
+        builder: (context, state) => const AsmaSearchScreen(),
+      ),
+      GoRoute(path: '/qibla', builder: (context, state) => const QiblaScreen()),
+      GoRoute(
+        path: '/zakat',
+        builder: (context, state) => const ZakatHubScreen(),
+      ),
+      GoRoute(
+        path: '/zakat/calculator',
+        builder: (context, state) => const ZakatCalculatorScreen(),
+      ),
+      GoRoute(
+        path: '/zakat/agriculture',
+        builder: (context, state) => const ZakatAgricultureScreen(),
+      ),
+      GoRoute(
+        path: '/zakat/info',
+        builder: (context, state) => const ZakatInfoScreen(),
+      ),
       GoRoute(
         path: '/islamic-calendar',
         builder: (context, state) => const IslamicCalendarHubScreen(),
