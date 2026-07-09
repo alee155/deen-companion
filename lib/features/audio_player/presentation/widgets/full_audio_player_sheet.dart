@@ -10,14 +10,15 @@ class FullAudioPlayerSheet extends StatelessWidget {
   final int currentAyah;
   final int totalAyahs;
   final bool isPlaying;
-  final double progress; // 0.0–1.0
+  final bool isLooping;
+  final double progress;
   final String elapsedLabel;
   final String durationLabel;
   final VoidCallback onPlayPause;
   final VoidCallback onSkipNext;
   final VoidCallback onSkipPrevious;
-  final VoidCallback onSleepTimer;
-  final VoidCallback onRepeat;
+  final VoidCallback onToggleLoop;
+  final VoidCallback onPickReciter;
   final VoidCallback onClose;
 
   const FullAudioPlayerSheet({
@@ -28,14 +29,15 @@ class FullAudioPlayerSheet extends StatelessWidget {
     required this.currentAyah,
     required this.totalAyahs,
     required this.isPlaying,
+    required this.isLooping,
     required this.progress,
     required this.elapsedLabel,
     required this.durationLabel,
     required this.onPlayPause,
     required this.onSkipNext,
     required this.onSkipPrevious,
-    required this.onSleepTimer,
-    required this.onRepeat,
+    required this.onToggleLoop,
+    required this.onPickReciter,
     required this.onClose,
   });
 
@@ -67,14 +69,27 @@ class FullAudioPlayerSheet extends StatelessWidget {
                       letterSpacing: 1,
                     ),
                   ),
-                  Icon(
-                    Icons.more_horiz,
-                    color: const Color(0xFFC9D6CF),
-                    size: 20.sp,
+                  GestureDetector(
+                    onTap: onPickReciter,
+                    child: Icon(
+                      Icons.person_outline,
+                      color: const Color(0xFFC9D6CF),
+                      size: 20.sp,
+                    ),
                   ),
                 ],
               ),
-              SizedBox(height: 40.h),
+              SizedBox(height: 6.h),
+              GestureDetector(
+                onTap: onPickReciter,
+                child: Text(
+                  reciterName,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: const Color(0xFF8FA89D),
+                  ),
+                ),
+              ),
+              SizedBox(height: 32.h),
               Container(
                 width: 150.w,
                 height: 150.w,
@@ -112,7 +127,7 @@ class FullAudioPlayerSheet extends StatelessWidget {
               ),
               SizedBox(height: 4.h),
               Text(
-                '$reciterName · Ayah $currentAyah of $totalAyahs',
+                'Ayah $currentAyah of $totalAyahs',
                 style: AppTypography.bodyMedium.copyWith(
                   color: const Color(0xFF8FA89D),
                 ),
@@ -163,10 +178,12 @@ class FullAudioPlayerSheet extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   GestureDetector(
-                    onTap: onRepeat,
+                    onTap: onToggleLoop,
                     child: Icon(
                       Icons.repeat,
-                      color: const Color(0xFF8FA89D),
+                      color: isLooping
+                          ? AppColors.gold
+                          : const Color(0xFF8FA89D),
                       size: 18.sp,
                     ),
                   ),
@@ -203,9 +220,9 @@ class FullAudioPlayerSheet extends StatelessWidget {
                     ),
                   ),
                   GestureDetector(
-                    onTap: onSleepTimer,
+                    onTap: onPickReciter,
                     child: Icon(
-                      Icons.bedtime_outlined,
+                      Icons.person_search_outlined,
                       color: const Color(0xFF8FA89D),
                       size: 18.sp,
                     ),

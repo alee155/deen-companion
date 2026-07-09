@@ -22,7 +22,9 @@ class PrayerTimesRemoteDataSourceImpl implements PrayerTimesRemoteDataSource {
           'method': 2, // ISNA — swap per-region if needed later
         },
       );
-      return PrayerTimesModel.fromJson(response.data as Map<String, dynamic>);
+      return PrayerTimesModel.fromApiJson(
+        response.data as Map<String, dynamic>,
+      );
     } on DioException catch (e) {
       throw ServerException(e.message);
     }

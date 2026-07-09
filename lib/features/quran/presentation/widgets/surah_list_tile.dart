@@ -105,14 +105,14 @@ class SurahListTile extends StatelessWidget {
                 ),
               ),
             ),
-            Text(
-              surah.nameArabic,
-              textDirection: TextDirection.rtl,
-              style: AppTypography.arabicBody.copyWith(
-                fontSize: 19.sp,
-                color: AppColors.inkText,
-              ),
-            ),
+            // Text(
+            //   surah.nameArabic,
+            //   textDirection: TextDirection.rtl,
+            //   style: AppTypography.arabicBody.copyWith(
+            //     fontSize: 19.sp,
+            //     color: AppColors.inkText,
+            //   ),
+            // ),
           ],
         ),
       ),

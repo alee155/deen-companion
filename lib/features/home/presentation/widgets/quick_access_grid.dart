@@ -26,12 +26,12 @@ class QuickAccessGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.count(
-      crossAxisCount: 4,
+      crossAxisCount: 5,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10.h,
-      crossAxisSpacing: 10.w,
-      childAspectRatio: 0.72,
+      mainAxisSpacing: 12.h,
+      crossAxisSpacing: 8.w,
+      childAspectRatio: 0.70,
       children: items.map((item) {
         return GestureDetector(
           onTap: item.onTap,
@@ -39,19 +39,25 @@ class QuickAccessGrid extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 50.w,
-                height: 50.w,
+                width: 46.w,
+                height: 46.w,
                 decoration: BoxDecoration(
                   color: item.accentBg,
-                  borderRadius: BorderRadius.circular(14.r),
+                  borderRadius: BorderRadius.circular(12.r),
                 ),
-                child: Icon(item.icon, color: item.accentColor, size: 19.sp),
+                child: Icon(item.icon, color: item.accentColor, size: 18.sp),
               ),
               SizedBox(height: 6.h),
               Text(
                 item.label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: AppTypography.caption.copyWith(color: AppColors.inkText),
+                style: AppTypography.caption.copyWith(
+                  color: AppColors.inkText,
+                  fontSize: 11.sp,
+                  height: 1.2,
+                ),
               ),
             ],
           ),

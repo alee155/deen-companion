@@ -8,12 +8,14 @@ class AudioPlayerState {
   final bool isPlaying;
   final Duration position;
   final Duration duration;
+  final bool isLooping;
 
   const AudioPlayerState({
     this.track,
     this.isPlaying = false,
     this.position = Duration.zero,
     this.duration = Duration.zero,
+    this.isLooping = false,
   });
 
   bool get hasTrack => track != null;
@@ -23,6 +25,7 @@ class AudioPlayerState {
     bool? isPlaying,
     Duration? position,
     Duration? duration,
+    bool? isLooping,
     bool clearTrack = false,
   }) {
     return AudioPlayerState(
@@ -30,6 +33,7 @@ class AudioPlayerState {
       isPlaying: isPlaying ?? this.isPlaying,
       position: position ?? this.position,
       duration: duration ?? this.duration,
+      isLooping: isLooping ?? this.isLooping,
     );
   }
 }
@@ -55,15 +59,20 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     return const AudioPlayerState();
   }
 
+  Future<void> toggleLoop() async {
+    final looping = !state.isLooping;
+    await _player.setLoopMode(looping ? LoopMode.one : LoopMode.off);
+    state = state.copyWith(isLooping: looping);
+  }
+
   Future<void> playTrack(AudioTrack track) async {
-    // Tapping the same track's play button again just toggles pause/resume
-    // instead of restarting it from zero.
     if (state.track?.id == track.id) {
       await togglePlayPause();
       return;
     }
 
-    state = AudioPlayerState(track: track);
+    final wasLooping = state.isLooping;
+    state = AudioPlayerState(track: track, isLooping: wasLooping);
     await _player.setAudioSource(
       AudioSource.uri(
         Uri.parse(track.url),
@@ -74,6 +83,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
         ),
       ),
     );
+    await _player.setLoopMode(wasLooping ? LoopMode.one : LoopMode.off);
     await _player.play();
   }
 
@@ -90,8 +100,6 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   Future<void> skipBackward() =>
       _player.seek(state.position - const Duration(seconds: 10));
 
-  /// Called by the mini player's close (×) button — stops playback
-  /// completely and removes the mini player from the shell.
   Future<void> stop() async {
     await _player.stop();
     state = const AudioPlayerState();

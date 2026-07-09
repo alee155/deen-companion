@@ -130,7 +130,7 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.gold,
+                        color: Colors.white,
                       ),
                     ),
                     SizedBox(height: 6.h),
@@ -161,11 +161,11 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.gold, width: 2),
+                  border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: Icon(
                   _prayerIcons[next.key],
-                  color: AppColors.gold,
+                  color: Colors.white,
                   size: 22.sp,
                 ),
               ),
@@ -193,7 +193,7 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
                           margin: EdgeInsets.only(bottom: 4.h),
                           decoration: const BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.gold,
+                            color: Colors.white,
                           ),
                         )
                       else
@@ -201,7 +201,7 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
                       Icon(
                         _prayerIcons[entry.key],
                         size: 16.sp,
-                        color: isActive ? AppColors.gold : Colors.white70,
+                        color: isActive ? Colors.white : Colors.white70,
                       ),
                       SizedBox(height: 4.h),
                       Text(
@@ -209,7 +209,7 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTypography.caption.copyWith(
-                          color: isActive ? AppColors.gold : Colors.white70,
+                          color: isActive ? Colors.white : Colors.white70,
                         ),
                       ),
                       SizedBox(height: 2.h),
