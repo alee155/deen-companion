@@ -10,6 +10,7 @@ import '../../features/quran/presentation/screens/juz_list_screen.dart';
 import '../../features/quran/presentation/screens/mushaf_page_screen.dart';
 import '../../features/quran/presentation/screens/quran_search_screen.dart';
 import '../../features/quran/presentation/screens/surah_list_screen.dart';
+import '../../features/splash/presentation/screens/splash_screen.dart';
 import 'app_routes.dart';
 import 'app_shell.dart';
 import '../../features/hadith/domain/entities/hadith.dart';
@@ -46,9 +47,13 @@ class _PlaceholderScreen extends StatelessWidget {
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: AppRoutes.home,
+    initialLocation: AppRoutes.splash,
     debugLogDiagnostics: true,
     routes: [
+      GoRoute(
+        path: AppRoutes.splash,
+        builder: (context, state) => const SplashScreen(),
+      ),
       // ── Top-level routes — no bottom nav, full-screen drill-downs ──
       GoRoute(
         path: '/hadith/read/:collectionKey',

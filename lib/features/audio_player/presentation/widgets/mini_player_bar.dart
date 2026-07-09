@@ -81,7 +81,7 @@ class MiniPlayerBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.bodyMedium.copyWith(
-                            color: const Color(0xFF8FA89D),
+                            color: const Color(0xFFC9B49A),
                             fontSize: 11.sp,
                           ),
                         ),
@@ -101,7 +101,7 @@ class MiniPlayerBar extends StatelessWidget {
                     onTap: onClose,
                     child: Icon(
                       Icons.close,
-                      color: const Color(0xFF8FA89D),
+                      color: const Color(0xFFC9B49A),
                       size: 16.sp,
                     ),
                   ),

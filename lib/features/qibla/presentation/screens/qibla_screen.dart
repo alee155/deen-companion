@@ -33,7 +33,6 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
   @override
   Widget build(BuildContext context) {
     final qiblaAsync = ref.watch(qiblaNotifierProvider);
-    final compassAsync = ref.watch(compassEventProvider);
 
     return Scaffold(
       body: Container(
@@ -75,31 +74,43 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
               ),
               Expanded(
                 child: qiblaAsync.when(
-                  data: (qibla) => compassAsync.when(
-                    data: (event) {
-                      final heading = event?.heading;
-                      if (heading == null) return _waitingState();
+                  // Only this subtree watches the high-frequency compass
+                  // stream, so the header/background above never rebuilds
+                  // on sensor ticks.
+                  data: (qibla) => RepaintBoundary(
+                    child: Consumer(
+                      builder: (context, ref, _) {
+                        final compassAsync = ref.watch(compassEventProvider);
+                        return compassAsync.when(
+                          data: (event) {
+                            final heading = event?.heading;
+                            if (heading == null) return _waitingState();
 
-                      final diff = _shortestAngleDiff(
-                        qibla.qiblaDirection,
-                        heading,
-                      );
-                      final isMatched = diff.abs() <= _matchToleranceDegrees;
+                            final diff = _shortestAngleDiff(
+                              qibla.qiblaDirection,
+                              heading,
+                            );
+                            final isMatched =
+                                diff.abs() <= _matchToleranceDegrees;
 
-                      if (isMatched && !_wasMatched)
-                        HapticFeedback.mediumImpact();
-                      _wasMatched = isMatched;
+                            if (isMatched && !_wasMatched) {
+                              HapticFeedback.mediumImpact();
+                            }
+                            _wasMatched = isMatched;
 
-                      return _compassContent(
-                        qibla.qiblaDirection,
-                        qibla.distanceKm,
-                        heading,
-                        diff,
-                        isMatched,
-                      );
-                    },
-                    loading: _waitingState,
-                    error: (_, __) => _waitingState(),
+                            return _compassContent(
+                              qibla.qiblaDirection,
+                              qibla.distanceKm,
+                              heading,
+                              diff,
+                              isMatched,
+                            );
+                          },
+                          loading: _waitingState,
+                          error: (_, __) => _waitingState(),
+                        );
+                      },
+                    ),
                   ),
                   loading: () => const Center(
                     child: CircularProgressIndicator(color: AppColors.gold),

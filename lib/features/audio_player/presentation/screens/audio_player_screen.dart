@@ -105,7 +105,11 @@ class AudioPlayerScreen extends ConsumerWidget {
         onToggleLoop: () =>
             ref.read(audioPlayerNotifierProvider.notifier).toggleLoop(),
         onPickReciter: () => _showReciterPicker(context, ref),
-        onClose: () => Navigator.of(context).maybePop(),
+        onBack: () async {
+          await ref.read(audioPlayerNotifierProvider.notifier).stop();
+          if (context.mounted) Navigator.of(context).maybePop();
+        },
+        onMinimize: () => Navigator.of(context).maybePop(),
       ),
     );
   }
