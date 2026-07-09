@@ -14,3 +14,8 @@ class NetworkException implements Exception {
   final String? message;
   const NetworkException([this.message]);
 }
+
+class NotFoundException implements Exception {
+  final String? message;
+  const NotFoundException([this.message]);
+}

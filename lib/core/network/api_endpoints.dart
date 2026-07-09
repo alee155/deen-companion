@@ -25,6 +25,18 @@ class ApiEndpoints {
   ).replace(queryParameters: {'q': query}).toString();
   static String asmaUlHusnaDaily(int day) =>
       '$_ummahBase/asma-ul-husna/daily/$day';
+  static const String mutashabihat = '$_ummahBase/quran/mutashabihat';
+  static const String mutashabihatRandom =
+      '$_ummahBase/quran/mutashabihat/random';
+
+  static String mutashabihatBySurah(int surah, {int page = 1, int limit = 20}) {
+    return Uri.parse(
+      '$_ummahBase/quran/mutashabihat/$surah',
+    ).replace(queryParameters: {'page': '$page', 'limit': '$limit'}).toString();
+  }
+
+  static String mutashabihatByAyah(int surah, int ayah) =>
+      '$_ummahBase/quran/mutashabihat/$surah/$ayah';
   // ============================================================
   // Quran
   // ============================================================

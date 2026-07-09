@@ -30,6 +30,7 @@ import '../../features/zakat/presentation/screens/zakat_info_screen.dart';
 import '../../features/qibla/presentation/screens/qibla_screen.dart';
 import '../../features/asma_ul_husna/presentation/screens/asma_hub_screen.dart';
 import '../../features/asma_ul_husna/presentation/screens/asma_search_screen.dart';
+import '../../features/mutashabihat/presentation/screens/mutashabihat_hub_screen.dart';
 
 class _PlaceholderScreen extends StatelessWidget {
   final String label;
@@ -47,6 +48,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: true,
     routes: [
       // ── Top-level routes — no bottom nav, full-screen drill-downs ──
+      GoRoute(
+        path: '/mutashabihat',
+        builder: (context, state) => const MutashabihatHubScreen(),
+      ),
       GoRoute(
         path: '/asma-ul-husna',
         builder: (context, state) => const AsmaHubScreen(),

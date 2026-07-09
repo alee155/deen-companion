@@ -50,7 +50,7 @@ class ExploreCatalog {
       accentColor: AppColors.quranAccent,
       accentBg: AppColors.quranAccentBg,
       group: 'Quran & study',
-      route: '',
+      route: '/mutashabihat',
     ),
     ExploreCategory(
       id: 'hadith',
