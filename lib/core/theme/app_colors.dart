@@ -67,4 +67,8 @@ class AppColors {
   static const Color success = Color(0xFF5C6E42);
   static const Color error = Color(0xFFB0453B);
   static const Color warning = gold;
+  static const Color boyAccent = Color(0xFF5C7A9C);
+  static const Color boyAccentBg = Color(0xFFE6ECF1);
+  static const Color girlAccent = Color(0xFFB8637A);
+  static const Color girlAccentBg = Color(0xFFF5E3E7);
 }

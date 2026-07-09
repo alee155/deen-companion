@@ -1,12 +1,39 @@
 import 'dart:async';
-import 'package:deen_companion/shared/widgets/shimmer_box.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
 import '../../../prayer_times/presentation/providers/prayer_times_provider.dart';
+
+// Gradient mood shifts with the upcoming prayer — dawn tones for Fajr,
+// bright gold at midday, warm amber in the afternoon, a sunset wash for
+// Maghrib, and deep night for Isha. Purely aesthetic, not functional.
+const Map<PrayerName, List<Color>> _prayerGradients = {
+  PrayerName.fajr: [Color(0xFF3B4A6B), Color(0xFF6B5B95)],
+  PrayerName.dhuhr: [Color(0xFFC98A2E), Color(0xFFE8C77A)],
+  PrayerName.asr: [Color(0xFFD9722E), Color(0xFFE8A23C)],
+  PrayerName.maghrib: [Color(0xFFB8637A), Color(0xFFD9722E)],
+  PrayerName.isha: [Color(0xFF241A11), Color(0xFF3D2B1F)],
+};
+
+const Map<PrayerName, IconData> _prayerIcons = {
+  PrayerName.fajr: Icons.wb_twilight,
+  PrayerName.dhuhr: Icons.wb_sunny_outlined,
+  PrayerName.asr: Icons.wb_sunny,
+  PrayerName.maghrib: Icons.wb_twilight_outlined,
+  PrayerName.isha: Icons.nightlight_round,
+};
+
+const Map<PrayerName, String> _prayerLabels = {
+  PrayerName.fajr: 'Fajr',
+  PrayerName.dhuhr: 'Dhuhr',
+  PrayerName.asr: 'Asr',
+  PrayerName.maghrib: 'Maghrib',
+  PrayerName.isha: 'Isha',
+};
 
 class NextPrayerHeroCard extends ConsumerStatefulWidget {
   const NextPrayerHeroCard({super.key});
@@ -16,15 +43,16 @@ class NextPrayerHeroCard extends ConsumerStatefulWidget {
 }
 
 class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
-  late Timer _ticker;
+  late final Timer _ticker;
   DateTime _now = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
-      setState(() => _now = DateTime.now());
-    });
+    _ticker = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => setState(() => _now = DateTime.now()),
+    );
   }
 
   @override
@@ -46,21 +74,14 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
     return '$hour:$minute';
   }
 
-  String _label(PrayerName name) => switch (name) {
-    PrayerName.fajr => 'Fajr',
-    PrayerName.dhuhr => 'Dhuhr',
-    PrayerName.asr => 'Asr',
-    PrayerName.maghrib => 'Maghrib',
-    PrayerName.isha => 'Isha',
-  };
-
   @override
   Widget build(BuildContext context) {
     final prayerTimesAsync = ref.watch(prayerTimesNotifierProvider);
 
     return prayerTimesAsync.when(
-      data: (prayerTimes) => _buildCard(prayerTimes),
-      loading: () => _buildSkeleton(),
+      data: _buildCard,
+      loading: () =>
+          ShimmerBox(width: double.infinity, height: 220.h, borderRadius: 20.r),
       error: (error, _) => _buildError(error),
     );
   }
@@ -70,6 +91,7 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
     final timeLeft = prayerTimes.timeUntilNextPrayer(_now);
     final hours = timeLeft.inHours;
     final minutes = timeLeft.inMinutes.remainder(60);
+    final gradient = _prayerGradients[next.key]!;
 
     final entries = [
       MapEntry(PrayerName.fajr, prayerTimes.fajr),
@@ -80,122 +102,134 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
     ];
 
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        color: AppColors.emeraldInk,
-        borderRadius: BorderRadius.circular(18.r),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradient,
+        ),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Next prayer · ${_label(next.key)}',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.gold,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Next prayer · ${_prayerLabels[next.key]}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.gold,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 6.h),
-                  Text(
-                    _formatTime(next.value),
-                    style: AppTypography.heroSerif.copyWith(
-                      color: AppColors.parchment,
+                    SizedBox(height: 6.h),
+                    Text(
+                      _formatTime(next.value),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.heroSerif.copyWith(
+                        color: Colors.white,
+                        fontSize: 32.sp,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 2.h),
-                  Text(
-                    'in ${hours > 0 ? '$hours hour${hours > 1 ? 's' : ''} ' : ''}$minutes minutes',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: const Color(0xFFC9D6CF),
+                    SizedBox(height: 2.h),
+                    Text(
+                      'in ${hours > 0 ? '$hours hour${hours > 1 ? 's' : ''} ' : ''}$minutes minutes',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: Colors.white70,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Container(
-                width: 56.w,
-                height: 56.w,
+                width: 48.w,
+                height: 48.w,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.gold, width: 2),
                 ),
                 child: Icon(
-                  Icons.explore_outlined,
+                  _prayerIcons[next.key],
                   color: AppColors.gold,
                   size: 22.sp,
                 ),
               ),
             ],
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 18.h),
           Container(
             padding: EdgeInsets.only(top: 14.h),
             decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(color: AppColors.gold.withOpacity(0.25)),
+                top: BorderSide(color: Colors.white.withOpacity(0.2)),
               ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: entries.map((entry) {
                 final isActive = entry.key == next.key;
-                return Column(
-                  children: [
-                    Text(
-                      _label(entry.key),
-                      style: AppTypography.caption.copyWith(
-                        color: isActive
-                            ? AppColors.gold
-                            : const Color(0xFF8FA89D),
+                return Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isActive)
+                        Container(
+                          width: 4.w,
+                          height: 4.w,
+                          margin: EdgeInsets.only(bottom: 4.h),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.gold,
+                          ),
+                        )
+                      else
+                        SizedBox(height: 8.h),
+                      Icon(
+                        _prayerIcons[entry.key],
+                        size: 16.sp,
+                        color: isActive ? AppColors.gold : Colors.white70,
                       ),
-                    ),
-                    SizedBox(height: 2.h),
-                    Text(
-                      _formatShortTime(entry.value),
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: isActive
-                            ? AppColors.parchment
-                            : AppColors.parchment,
-                        fontWeight: isActive
-                            ? FontWeight.w600
-                            : FontWeight.w400,
+                      SizedBox(height: 4.h),
+                      Text(
+                        _prayerLabels[entry.key]!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption.copyWith(
+                          color: isActive ? AppColors.gold : Colors.white70,
+                        ),
                       ),
-                    ),
-                  ],
+                      SizedBox(height: 2.h),
+                      Text(
+                        _formatShortTime(entry.value),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: isActive
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                          fontSize: 11.sp,
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }).toList(),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSkeleton() {
-    return Container(
-      padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(
-        color: AppColors.emeraldInk,
-        borderRadius: BorderRadius.circular(18.r),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ShimmerBoxDark(width: 120.w, height: 12.h, borderRadius: 4.r),
-          SizedBox(height: 14.h),
-          ShimmerBoxDark(width: 150.w, height: 32.h, borderRadius: 6.r),
-          SizedBox(height: 8.h),
-          ShimmerBoxDark(width: 100.w, height: 12.h, borderRadius: 4.r),
-          SizedBox(height: 20.h),
-          ShimmerBoxDark(
-            width: double.infinity,
-            height: 44.h,
-            borderRadius: 10.r,
           ),
         ],
       ),

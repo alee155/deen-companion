@@ -31,6 +31,7 @@ import '../../features/qibla/presentation/screens/qibla_screen.dart';
 import '../../features/asma_ul_husna/presentation/screens/asma_hub_screen.dart';
 import '../../features/asma_ul_husna/presentation/screens/asma_search_screen.dart';
 import '../../features/mutashabihat/presentation/screens/mutashabihat_hub_screen.dart';
+import '../../features/islamic_names/presentation/screens/islamic_names_hub_screen.dart';
 
 class _PlaceholderScreen extends StatelessWidget {
   final String label;
@@ -48,6 +49,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: true,
     routes: [
       // ── Top-level routes — no bottom nav, full-screen drill-downs ──
+      GoRoute(
+        path: '/islamic-names',
+        builder: (context, state) => const IslamicNamesHubScreen(),
+      ),
       GoRoute(
         path: '/mutashabihat',
         builder: (context, state) => const MutashabihatHubScreen(),

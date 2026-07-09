@@ -19,4 +19,5 @@ class AppRoutes {
   static const String hadithDetail = '/hadith/detail';
   static const String duas = '/duas';
   static const String duasSearch = '/duas/search';
+  // static const String duasSearch = '/islamic-names';
 }

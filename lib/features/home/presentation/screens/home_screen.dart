@@ -1,4 +1,6 @@
 import 'package:deen_companion/features/home/presentation/widgets/next_prayer_card.dart';
+import 'package:deen_companion/features/islamic_calendar/presentation/providers/islamic_calendar_providers.dart';
+import 'package:deen_companion/shared/widgets/live_clock.dart';
 import 'package:deen_companion/shared/widgets/warm_gradient_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +22,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final location = ref.watch(userLocationNameProvider);
+    final todayHijriAsync = ref.watch(todayHijriNotifierProvider);
+    final locationAsync = ref.watch(currentLocationNameProvider);
 
     final previewCategories = ExploreCatalog.homePreviewIds
         .map((id) => ExploreCatalog.all.firstWhere((c) => c.id == id))
@@ -46,12 +49,52 @@ class HomeScreen extends ConsumerWidget {
                           color: AppColors.inkText,
                         ),
                       ),
+                      SizedBox(height: 4.h),
+                      Row(
+                        children: [
+                          todayHijriAsync.when(
+                            data: (today) => Text(
+                              today.hijri.formatted,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            loading: () => Text(
+                              '…',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            error: (_, __) => const SizedBox.shrink(),
+                          ),
+                          Text(
+                            '  ·  ',
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          LiveClock(
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                       SizedBox(height: 2.h),
-                      Text(
-                        '14 Muharram 1448 · $location',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                      locationAsync.when(
+                        data: (loc) => Text(
+                          loc,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textMuted,
+                          ),
                         ),
+                        loading: () => Text(
+                          'Locating…',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
                     ],
                   ),

@@ -37,6 +37,8 @@ class ApiEndpoints {
 
   static String mutashabihatByAyah(int surah, int ayah) =>
       '$_ummahBase/quran/mutashabihat/$surah/$ayah';
+
+  static const String islamicNamesAll = '$_ummahBase/names?page=1&limit=210';
   // ============================================================
   // Quran
   // ============================================================

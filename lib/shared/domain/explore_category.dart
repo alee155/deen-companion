@@ -62,6 +62,15 @@ class ExploreCatalog {
       route: '/learn',
     ),
     ExploreCategory(
+      id: 'islamic_names',
+      label: 'Islamic Names',
+      icon: Icons.badge_outlined,
+      accentColor: AppColors.hadithAccent,
+      accentBg: AppColors.hadithAccentBg,
+      group: 'Knowledge & reflection',
+      route: '/islamic-names',
+    ),
+    ExploreCategory(
       id: 'duas',
       label: 'Duas',
       icon: Icons.back_hand_outlined,
@@ -143,5 +152,6 @@ class ExploreCatalog {
     'islamic_calendar',
     'names_of_allah',
     'zakat',
+    'islamic_names',
   ];
 }
