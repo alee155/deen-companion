@@ -42,7 +42,7 @@ class QiblaRepositoryImpl implements QiblaRepository {
     try {
       coordinates = await locationService.getCurrentCoordinates();
     } on LocationServiceException catch (e) {
-      return Error(LocationFailure(e.message));
+      return Error(LocationFailure(e.kind, e.message));
     }
 
     final key = _cacheKey(coordinates.latitude, coordinates.longitude);

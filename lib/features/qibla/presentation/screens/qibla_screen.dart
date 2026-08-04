@@ -5,14 +5,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/failure_view.dart';
 import '../providers/qibla_providers.dart';
 import '../widgets/qibla_compass_painter.dart';
 
 const double _matchToleranceDegrees = 6;
 const _needleTop = Color(0xFFFFD9A0);
-const _needleBottom = Color(0xFFE8823C);
-const _bgTop = Color(0xFFFDF8F0);
-const _bgBottom = Color(0xFFF3E2C8);
+
+// Getters, not constants: these follow the active Light/Dark palette.
+Color get _needleBottom => AppColors.amber;
+Color get _bgTop => AppColors.backgroundGradientStart;
+Color get _bgBottom => AppColors.backgroundGradientEnd;
 
 class QiblaScreen extends ConsumerStatefulWidget {
   const QiblaScreen({super.key});
@@ -115,7 +118,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -239,10 +242,10 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
                       },
                     ),
                   ),
-                  loading: () => const Center(
+                  loading: () => Center(
                     child: CircularProgressIndicator(color: AppColors.gold),
                   ),
-                  error: (error, _) => _errorState(error.toString()),
+                  error: (error, _) => _errorState(error),
                 ),
               ),
             ],
@@ -275,7 +278,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
                 child: CustomPaint(
                   size: Size(260.w, 260.w),
                   painter: QiblaRingPainter(
-                    ringColor: AppColors.gold.withOpacity(0.5),
+                    ringColor: AppColors.gold.withValues(alpha: 0.5),
                     labelColor: AppColors.inkText,
                     dotColor: AppColors.textMuted,
                   ),
@@ -311,8 +314,8 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
             decoration: BoxDecoration(
               color: isMatched
-                  ? AppColors.emeraldInk.withOpacity(0.12)
-                  : Colors.white.withOpacity(0.6),
+                  ? AppColors.emeraldInk.withValues(alpha: 0.12)
+                  : Colors.white.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(30.r),
             ),
             child: Row(
@@ -424,7 +427,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CircularProgressIndicator(color: AppColors.gold),
+            CircularProgressIndicator(color: AppColors.gold),
             SizedBox(height: 16.h),
             Text(
               'Waiting for compass sensor…',
@@ -471,7 +474,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 14.h),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(20.r),
               ),
               child: Column(
@@ -524,21 +527,13 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
     return labels[index];
   }
 
-  Widget _errorState(String message) {
+  Widget _errorState(Object error) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(20.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(message, textAlign: TextAlign.center),
-            SizedBox(height: 16.h),
-            ElevatedButton(
-              onPressed: () =>
-                  ref.read(qiblaNotifierProvider.notifier).refresh(),
-              child: const Text('Try again'),
-            ),
-          ],
+        child: FailureView(
+          failure: failureFrom(error),
+          onRetry: () => ref.read(qiblaNotifierProvider.notifier).refresh(),
         ),
       ),
     );

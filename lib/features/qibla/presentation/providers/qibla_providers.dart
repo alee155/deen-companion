@@ -101,6 +101,7 @@ final compassHeadingProvider = StreamProvider<double?>((ref) {
             !headingMovedEnough) {
           return false;
         }
+        
 
         lastEmittedHeading = heading;
         lastEmittedAt = now;
