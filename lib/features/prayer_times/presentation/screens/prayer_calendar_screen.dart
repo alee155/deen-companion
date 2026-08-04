@@ -7,6 +7,7 @@ import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/prayer_times.dart';
 import '../providers/prayer_times_provider.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class PrayerCalendarScreen extends ConsumerStatefulWidget {
   const PrayerCalendarScreen({super.key});
@@ -42,12 +43,7 @@ class _PrayerCalendarScreenState extends ConsumerState<PrayerCalendarScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Prayer Calendar'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-        elevation: 0,
-      ),
+      appBar: const DeenAppBar(title: 'Prayer Calendar'),
       body: Column(
         children: [
           Padding(
@@ -75,7 +71,7 @@ class _PrayerCalendarScreenState extends ConsumerState<PrayerCalendarScreen> {
           ),
           Expanded(
             child: calendarAsync.when(
-              loading: () => const Center(
+              loading: () => Center(
                 child: CircularProgressIndicator(color: AppColors.gold),
               ),
               error: (error, _) => Center(
@@ -135,7 +131,7 @@ class _DayRow extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: isToday
-            ? AppColors.emeraldInk.withOpacity(0.06)
+            ? AppColors.emeraldInk.withValues(alpha: 0.06)
             : AppColors.surfaceLight,
         borderRadius: BorderRadius.circular(12.r),
         border: Border.all(

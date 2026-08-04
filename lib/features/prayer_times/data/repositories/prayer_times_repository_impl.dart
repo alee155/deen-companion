@@ -41,12 +41,24 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
     required int school,
     bool forceRefresh = false,
   }) async {
+    // Location is resolved *before* the connectivity check on purpose: a
+    // disabled GPS toggle is a different problem from a dead connection, and
+    // checking network first meant a location problem was reported to the
+    // user as "You're offline. Check your connection."
+    final Coordinates coordinates;
+    try {
+      coordinates = await locationService.getCurrentCoordinates();
+    } on LocationServiceException catch (e) {
+      return Error(LocationFailure(e.kind, e.message));
+    }
+
     if (!await networkInfo.isConnected) {
+      final cached = getCachedPrayerTimesForLastKnownLocation();
+      if (cached != null) return Success(cached);
       return const Error(NetworkFailure());
     }
 
     try {
-      final coordinates = await locationService.getCurrentCoordinates();
       final model = await remoteDataSource.getTimings(
         coordinates,
         method: method,
@@ -60,8 +72,6 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
       );
 
       return Success(model.toEntity());
-    } on LocationServiceException catch (e) {
-      return Error(LocationFailure(e.message));
     } on ServerException {
       return const Error(ServerFailure());
     } on NetworkException {
@@ -78,12 +88,18 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
     required int method,
     required int school,
   }) async {
+    final Coordinates coordinates;
+    try {
+      coordinates = await locationService.getCurrentCoordinates();
+    } on LocationServiceException catch (e) {
+      return Error(LocationFailure(e.kind, e.message));
+    }
+
     if (!await networkInfo.isConnected) {
       return const Error(NetworkFailure());
     }
 
     try {
-      final coordinates = await locationService.getCurrentCoordinates();
       final models = await remoteDataSource.getMonthCalendar(
         coordinates,
         year: year,
@@ -92,8 +108,6 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
         school: school,
       );
       return Success(models.map((m) => m.toEntity()).toList());
-    } on LocationServiceException catch (e) {
-      return Error(LocationFailure(e.message));
     } on ServerException {
       return const Error(ServerFailure());
     } on NetworkException {

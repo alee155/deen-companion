@@ -60,7 +60,7 @@ class _NextPrayerHeroCardState extends State<NextPrayerHeroCard> {
     return Container(
       padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
-        color: AppColors.emeraldInk,
+        color: AppColors.heroSurface,
         borderRadius: BorderRadius.circular(18.r),
       ),
       child: Column(
@@ -74,7 +74,7 @@ class _NextPrayerHeroCardState extends State<NextPrayerHeroCard> {
           Text(
             _formatTime(next.value),
             style: AppTypography.heroSerif.copyWith(
-              color: AppColors.parchment,
+              color: AppColors.onHeroSurface,
               fontSize: 34.sp,
             ),
           ),

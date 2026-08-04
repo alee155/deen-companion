@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../shared/widgets/failure_view.dart';
 import '../providers/prayer_times_provider.dart';
 import '../widgets/next_prayer_hero_card.dart';
 import '../widgets/prayer_time_row.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class PrayerTimesScreen extends ConsumerWidget {
   const PrayerTimesScreen({super.key});
@@ -14,8 +16,8 @@ class PrayerTimesScreen extends ConsumerWidget {
     final prayerTimesAsync = ref.watch(prayerTimesNotifierProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Prayer times'),
+      appBar: DeenAppBar(
+        title: 'Prayer times',
         actions: [
           IconButton(
             icon: const Icon(Icons.calendar_month_outlined),
@@ -38,34 +40,12 @@ class PrayerTimesScreen extends ConsumerWidget {
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => ListView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.7,
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.location_off_outlined, size: 40),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          error is Object
-                              ? error.toString()
-                              : 'Something went wrong.',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        ElevatedButton(
-                          onPressed: () => ref
-                              .read(prayerTimesNotifierProvider.notifier)
-                              .refresh(),
-                          child: const Text('Try again'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              FailureView(
+                failure: failureFrom(error),
+                onRetry: () =>
+                    ref.read(prayerTimesNotifierProvider.notifier).refresh(),
               ),
             ],
           ),

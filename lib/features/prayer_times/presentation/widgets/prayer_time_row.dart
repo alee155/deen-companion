@@ -55,7 +55,7 @@ class PrayerTimeRow extends StatelessWidget {
                 width: 4.w,
                 height: 4.w,
                 margin: EdgeInsets.only(bottom: 4.h),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.gold,
                 ),
