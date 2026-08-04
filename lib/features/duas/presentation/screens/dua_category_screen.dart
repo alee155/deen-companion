@@ -30,7 +30,7 @@ class DuaCategoryScreen extends ConsumerWidget {
             itemBuilder: (context, index) => DuaCardTile(dua: duas[index]),
           );
         },
-        loading: () => const Center(
+        loading: () =>  Center(
           child: CircularProgressIndicator(color: AppColors.emeraldInk),
         ),
         error: (error, _) => Center(child: Text(error.toString())),

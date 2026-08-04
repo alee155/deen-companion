@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../providers/dua_providers.dart';
 import '../widgets/dua_card_tile.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class DuaSearchScreen extends ConsumerStatefulWidget {
   const DuaSearchScreen({super.key});
@@ -34,10 +35,8 @@ class _DuaSearchScreenState extends ConsumerState<DuaSearchScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-        title: TextField(
+      appBar: DeenAppBar(
+        titleWidget: TextField(
           controller: _controller,
           autofocus: true,
           textInputAction: TextInputAction.search,
@@ -114,7 +113,7 @@ class _DuaSearchScreenState extends ConsumerState<DuaSearchScreen> {
                             DuaCardTile(dua: duas[index]),
                       );
                     },
-                    loading: () => const Center(
+                    loading: () => Center(
                       child: CircularProgressIndicator(
                         color: AppColors.emeraldInk,
                       ),
@@ -132,7 +131,7 @@ class _DuaSearchScreenState extends ConsumerState<DuaSearchScreen> {
                             DuaCardTile(dua: results[index]),
                       );
                     },
-                    loading: () => const Center(
+                    loading: () => Center(
                       child: CircularProgressIndicator(
                         color: AppColors.emeraldInk,
                       ),
