@@ -23,10 +23,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Future<void> _decideNextRoute() async {
     final started = DateTime.now();
     final storage = ref.read(localStorageServiceProvider);
-    final completed =
+    final onboardingCompleted =
         storage.get<bool>(
           AppConstants.settingsBoxName,
           AppConstants.onboardingCompletedKey,
+        ) ??
+        false;
+    final permissionFlowSeen =
+        storage.get<bool>(
+          AppConstants.settingsBoxName,
+          AppConstants.permissionFlowSeenKey,
         ) ??
         false;
 
@@ -38,13 +44,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     }
 
     if (!mounted) return;
-    context.go(completed ? '/' : '/onboarding');
+    if (!onboardingCompleted) {
+      context.go('/onboarding');
+    } else if (!permissionFlowSeen) {
+      // Permissions are asked before the first real screen, so Home never
+      // has to render a failure state on a cold install.
+      context.go('/permissions');
+    } else {
+      context.go('/');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F1E2),
+      backgroundColor: AppColors.parchment,
       body: Stack(
         children: [
           // Center logo

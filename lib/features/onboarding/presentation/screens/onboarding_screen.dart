@@ -64,7 +64,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       true,
     );
     if (!mounted) return;
-    context.go('/');
+    // Straight into the permission rationale — the first thing after
+    // onboarding is the one thing the app needs from the user.
+    context.go('/permissions');
   }
 
   @override
