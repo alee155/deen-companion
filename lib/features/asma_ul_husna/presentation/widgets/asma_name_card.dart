@@ -66,7 +66,7 @@ class AsmaNameCard extends StatelessWidget {
           Container(
             padding: EdgeInsets.all(18.w),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.75),
+              color: Colors.white.withValues(alpha: 0.75),
               borderRadius: BorderRadius.circular(18.r),
               border: Border.all(color: AppColors.borderWarm),
             ),

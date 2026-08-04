@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../providers/asma_ul_husna_providers.dart';
 import '../screens/asma_detail_screen.dart';
 import '../widgets/asma_name_tile.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class AsmaSearchScreen extends ConsumerStatefulWidget {
   const AsmaSearchScreen({super.key});
@@ -21,10 +22,8 @@ class _AsmaSearchScreenState extends ConsumerState<AsmaSearchScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-        title: TextField(
+      appBar: DeenAppBar(
+        titleWidget: TextField(
           controller: _controller,
           autofocus: true,
           textInputAction: TextInputAction.search,
@@ -72,9 +71,8 @@ class _AsmaSearchScreenState extends ConsumerState<AsmaSearchScreen> {
             ),
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.gold),
-        ),
+        loading: () =>
+            Center(child: CircularProgressIndicator(color: AppColors.gold)),
         error: (error, _) => Center(child: Text(error.toString())),
       ),
     );

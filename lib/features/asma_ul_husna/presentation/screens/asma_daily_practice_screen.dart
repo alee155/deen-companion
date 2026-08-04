@@ -161,7 +161,7 @@ class _AsmaDailyPracticeScreenState
                       ],
                     );
                   },
-                  loading: () => const Center(
+                  loading: () => Center(
                     child: CircularProgressIndicator(color: AppColors.gold),
                   ),
                   error: (error, _) => Center(child: Text(error.toString())),

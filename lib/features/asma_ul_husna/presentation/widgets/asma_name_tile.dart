@@ -28,7 +28,7 @@ class AsmaNameTile extends StatelessWidget {
                 colors: [AppColors.goldLight, Colors.white],
               ),
               border: Border.all(
-                color: AppColors.gold.withOpacity(0.6),
+                color: AppColors.gold.withValues(alpha: 0.6),
                 width: 1.4,
               ),
             ),
