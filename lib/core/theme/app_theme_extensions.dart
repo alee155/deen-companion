@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
+/// Theme-scoped mirror of the palette, for code that would rather read
+/// colours from the widget tree (`context.colors.inkText`) than from the
+/// static [AppColors] accessors. Both resolve to the same values — the
+/// extension is built from whichever palette [AppColors] currently has
+/// installed, so the two can never disagree.
 @immutable
 class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   final Color background;
@@ -49,56 +54,36 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
     required this.toolsAccentBg,
   });
 
-  static const light = AppThemeExtension(
-    background: AppColors.parchment,
-    surface: AppColors.surfaceLight,
-    border: AppColors.borderWarm,
-    inkText: AppColors.inkText,
-    textSecondary: AppColors.textSecondary,
-    textMuted: AppColors.textMuted,
-    heroBackground: AppColors.emeraldInk,
-    heroForeground: AppColors.parchment,
-    gold: AppColors.gold,
-    quranAccent: AppColors.quranAccent,
-    quranAccentBg: AppColors.quranAccentBg,
-    hadithAccent: AppColors.hadithAccent,
-    hadithAccentBg: AppColors.hadithAccentBg,
-    duasAccent: AppColors.duasAccent,
-    duasAccentBg: AppColors.duasAccentBg,
-    hijriAccent: AppColors.hijriAccent,
-    hijriAccentBg: AppColors.hijriAccentBg,
-    worshipAccent: AppColors.worshipAccent,
-    worshipAccentBg: AppColors.worshipAccentBg,
-    toolsAccent: AppColors.toolsAccent,
-    toolsAccentBg: AppColors.toolsAccentBg,
-  );
-
-  static const dark = AppThemeExtension(
-    background: AppColors.backgroundDark,
-    surface: AppColors.surfaceDark,
-    border: AppColors.borderDark,
-    inkText: AppColors.textPrimaryDark,
-    textSecondary: AppColors.textSecondaryDark,
-    textMuted: Color(0xFF8A7C68),
-    heroBackground: AppColors.emeraldInkDark,
-    heroForeground: AppColors.textPrimaryDark,
-    gold: AppColors.gold,
-    quranAccent: Color(0xFF8FA872),
-    quranAccentBg: Color(0xFF2A3020),
-    hadithAccent: Color(0xFFC08A78),
-    hadithAccentBg: Color(0xFF3A2420),
-    duasAccent: AppColors.gold,
-    duasAccentBg: Color(0xFF3A3020),
-    hijriAccent: Color(0xFFB8A88C),
-    hijriAccentBg: Color(0xFF332C22),
-    worshipAccent: Color(0xFFE8A05C),
-    worshipAccentBg: Color(0xFF3A2818),
-    toolsAccent: Color(0xFFC8875C),
-    toolsAccentBg: Color(0xFF382418),
-  );
+  /// Snapshot of the palette for [brightness]. Built eagerly by [AppTheme]
+  /// while that brightness is installed, so it never reads a stale palette.
+  factory AppThemeExtension.forCurrentPalette() {
+    return AppThemeExtension(
+      background: AppColors.parchment,
+      surface: AppColors.surfaceLight,
+      border: AppColors.borderWarm,
+      inkText: AppColors.inkText,
+      textSecondary: AppColors.textSecondary,
+      textMuted: AppColors.textMuted,
+      heroBackground: AppColors.heroSurface,
+      heroForeground: AppColors.onHeroSurface,
+      gold: AppColors.gold,
+      quranAccent: AppColors.quranAccent,
+      quranAccentBg: AppColors.quranAccentBg,
+      hadithAccent: AppColors.hadithAccent,
+      hadithAccentBg: AppColors.hadithAccentBg,
+      duasAccent: AppColors.duasAccent,
+      duasAccentBg: AppColors.duasAccentBg,
+      hijriAccent: AppColors.hijriAccent,
+      hijriAccentBg: AppColors.hijriAccentBg,
+      worshipAccent: AppColors.worshipAccent,
+      worshipAccentBg: AppColors.worshipAccentBg,
+      toolsAccent: AppColors.toolsAccent,
+      toolsAccentBg: AppColors.toolsAccentBg,
+    );
+  }
 
   @override
-  AppThemeExtension copyWith() => this; // fields all replaced together via named consts above
+  AppThemeExtension copyWith() => this; // fields are replaced as a whole set
 
   @override
   AppThemeExtension lerp(ThemeExtension<AppThemeExtension>? other, double t) {
@@ -107,8 +92,8 @@ class AppThemeExtension extends ThemeExtension<AppThemeExtension> {
   }
 }
 
-/// context.colors.inkText instead of AppColors.inkText — this is the
-/// migration every screen needs, one file at a time.
+/// `context.colors.inkText` — equivalent to `AppColors.inkText`, for widgets
+/// that prefer resolving colours through the tree.
 extension AppThemeContextX on BuildContext {
   AppThemeExtension get colors =>
       Theme.of(this).extension<AppThemeExtension>()!;
