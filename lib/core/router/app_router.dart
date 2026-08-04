@@ -4,13 +4,14 @@ import 'package:deen_companion/features/favorites/presentation/screens/favorites
 import 'package:deen_companion/features/profile/presentation/screens/profile_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/settings_screen.dart';
 import 'package:deen_companion/features/recent_activity/presentation/screens/recent_activity_screen.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/prayer_times/presentation/screens/prayer_calendar_screen.dart';
 import '../../features/prayer_times/presentation/screens/prayer_times_screen.dart';
-import '../../features/quran/presentation/screens/juz_detail_screen.dart';
-import '../../features/quran/presentation/screens/juz_list_screen.dart';
+import '../../features/quran/presentation/screens/juz_hub_screen.dart';
+import '../../features/quran/presentation/screens/juz_reading_screen.dart';
 import '../../features/quran/presentation/screens/mushaf_page_screen.dart';
 import '../../features/quran/presentation/screens/quran_search_screen.dart';
 import '../../features/quran/presentation/screens/surah_list_screen.dart';
@@ -39,22 +40,14 @@ import '../../features/mutashabihat/presentation/screens/mutashabihat_hub_screen
 import '../../features/islamic_names/presentation/screens/islamic_names_hub_screen.dart';
 import '../../features/hadith/presentation/screens/hadith_reading_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
+import '../../features/onboarding/presentation/screens/permission_gate_screen.dart';
 import '../../features/onboarding/presentation/screens/splash_screen.dart';
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String label;
-  const _PlaceholderScreen(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Text(label)));
-  }
-}
+import '../../features/prayer_reminders/presentation/screens/reminders_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: kDebugMode,
     routes: [
       // Top-level — no bottom nav (unchanged group, plus new additions below)
       GoRoute(
@@ -64,6 +57,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/permissions',
+        builder: (context, state) => const PermissionGateScreen(),
+      ),
+      GoRoute(
+        path: '/reminders',
+        builder: (context, state) => const RemindersScreen(),
       ),
       GoRoute(
         path: '/player',
@@ -77,6 +78,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/prayer-times',
         builder: (context, state) => const PrayerTimesScreen(),
       ), // moved out of shell
+      GoRoute(
+        // The Prayer times screen has always had a calendar action in its app
+        // bar, but this route was never registered — tapping it did nothing.
+        path: '/prayer-times/calendar',
+        builder: (context, state) => const PrayerCalendarScreen(),
+      ),
       GoRoute(
         path: '/hadith',
         builder: (context, state) => const HadithHubScreen(),
@@ -100,13 +107,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/quran/search',
         builder: (context, state) => const QuranSearchScreen(),
       ),
+      GoRoute(path: '/juz', builder: (context, state) => const JuzHubScreen()),
       GoRoute(
-        path: '/quran/juz',
-        builder: (context, state) => const JuzListScreen(),
-      ),
-      GoRoute(
-        path: '/quran/juz/:number',
-        builder: (context, state) => JuzDetailScreen(
+        path: '/juz/:number',
+        builder: (context, state) => JuzReadingScreen(
           juzNumber: int.parse(state.pathParameters['number']!),
         ),
       ),

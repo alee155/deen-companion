@@ -127,11 +127,13 @@ class ApiEndpoints {
     required int month,
     required int day,
   }) {
-    return Uri.parse('$_ummahBase/hijri-date')
-        .replace(
-          queryParameters: {'year': '$year', 'month': '$month', 'day': '$day'},
-        )
-        .toString();
+    final date =
+        '${year.toString().padLeft(4, '0')}-'
+        '${month.toString().padLeft(2, '0')}-'
+        '${day.toString().padLeft(2, '0')}';
+    return Uri.parse(
+      '$_ummahBase/hijri-date',
+    ).replace(queryParameters: {'date': date}).toString();
   }
 
   static String gregorianDate({

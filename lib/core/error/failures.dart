@@ -1,3 +1,5 @@
+import '../location/location_status.dart';
+
 /// Base failure type returned by the domain layer. Repositories catch
 /// data-layer exceptions and translate them into one of these — the
 /// presentation layer only ever deals with Failure, never raw exceptions.
@@ -33,8 +35,12 @@ class UnexpectedFailure extends Failure {
   const UnexpectedFailure([super.message = 'An unexpected error occurred.']);
 }
 
+/// Carries [kind] so the UI can offer the action that actually fixes the
+/// problem (turn on Location Services / grant permission / open app
+/// settings / retry) instead of a generic "try again".
 class LocationFailure extends Failure {
-  const LocationFailure([
-    super.message = "Enable location access to get accurate prayer times.",
-  ]);
+  final LocationErrorKind kind;
+
+  LocationFailure([this.kind = LocationErrorKind.unavailable, String? message])
+    : super(message ?? kind.userMessage);
 }
