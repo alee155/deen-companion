@@ -15,4 +15,10 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    <!-- Full-screen prayer alarm ring UI: no action bar, shows over the lock screen. -->
+    <style name="AlarmTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/alarmBackground</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
 </resources>

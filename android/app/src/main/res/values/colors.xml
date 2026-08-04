@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches AppColors.emeraldInkDark in the Flutter theme, kept in sync manually. -->
+    <color name="alarmBackground">#FF16302E</color>
+    <color name="alarmAccent">#FFC9A25E</color>
+    <color name="alarmTextPrimary">#FFECE6D6</color>
+    <color name="alarmTextSecondary">#FFB3AD9B</color>
+</resources>

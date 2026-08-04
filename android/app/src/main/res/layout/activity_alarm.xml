@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@color/alarmBackground"
+    android:padding="32dp">
+
+    <TextView
+        android:id="@+id/alarmSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/alarmTextSecondary"
+        android:textSize="16sp"
+        android:letterSpacing="0.05"
+        android:text="Time to pray" />
+
+    <TextView
+        android:id="@+id/alarmPrayerName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textColor="@color/alarmTextPrimary"
+        android:textSize="40sp"
+        android:textStyle="bold"
+        android:text="Fajr" />
+
+    <TextView
+        android:id="@+id/alarmTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/alarmAccent"
+        android:textSize="28sp"
+        android:text="5:12 AM" />
+
+    <TextView
+        android:id="@+id/alarmMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:gravity="center"
+        android:textColor="@color/alarmTextSecondary"
+        android:textSize="16sp"
+        android:text="@string/alarm_motivational_message" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:orientation="horizontal"
+        android:weightSum="2">
+
+        <Button
+            android:id="@+id/alarmSnoozeButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="Snooze"
+            android:backgroundTint="@color/alarmTextSecondary"
+            android:textColor="@color/alarmBackground" />
+
+        <Button
+            android:id="@+id/alarmDismissButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Dismiss"
+            android:backgroundTint="@color/alarmAccent"
+            android:textColor="@color/alarmBackground" />
+
+    </LinearLayout>
+
+</LinearLayout>

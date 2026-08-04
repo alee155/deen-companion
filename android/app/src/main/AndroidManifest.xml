@@ -1,10 +1,27 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- INTERNET must be declared here, in the main manifest. Flutter's
+         template only declares it in src/debug and src/profile (for hot
+         reload), so a release build without this line has no network access
+         at all — every API call fails and the whole app looks "offline". -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Required by connectivity_plus to read the current network state.
+         Declared explicitly rather than relying on the plugin's manifest merge. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <application android:label="deen_companion" android:name="${applicationName}" android:icon="@mipmap/ic_launcher">
+
+    <!-- Prayer alarm reminders -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application android:label="@string/app_name" android:name=".DeenCompanionApplication" android:icon="@mipmap/launcher_icon">
 
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:taskAffinity="" android:theme="@style/LaunchTheme" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:windowSoftInputMode="adjustResize">
 
@@ -33,12 +50,32 @@
             </intent-filter>
         </receiver>
 
+        <!-- Prayer alarm reminders -->
+        <receiver android:name=".alarm.AlarmReceiver" android:exported="false" />
+
+        <receiver android:name=".alarm.BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <service android:name=".alarm.PrayerAlarmService" android:foregroundServiceType="mediaPlayback" android:exported="false" />
+
+        <activity android:name=".alarm.AlarmActivity" android:exported="false" android:launchMode="singleInstance" android:taskAffinity="com.devsouq.deen_companion.app.alarm" android:excludeFromRecents="true" android:showWhenLocked="true" android:turnScreenOn="true" android:theme="@style/AlarmTheme" />
+
     </application>
 
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Required so url_launcher can find a browser on Android 11+
+             (package visibility) to open the Privacy Policy / Terms links. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
         </intent>
     </queries>
 
