@@ -99,49 +99,52 @@ class SurahListScreen extends ConsumerWidget {
                 ),
               ),
               surahListAsync.when(
-                data: (surahs) => SliverList.separated(
-                  itemCount: surahs.length,
-                  separatorBuilder: (_, __) =>
-                      Divider(height: 1, color: AppColors.borderWarm),
-                  itemBuilder: (context, index) {
-                    final surah = surahs[index];
-                    return SurahListTile(
-                      surah: surah,
-                      onTap: () {}, // reader — next feature
-                      onPlayTap: () {
-                        ref
-                            .read(audioPlayerNotifierProvider.notifier)
-                            .playTrack(
-                              AudioTrack(
-                                id: 'surah-${surah.number}',
-                                titleEnglish: surah.nameEnglish,
-                                titleArabic: surah.nameArabic,
-                                reciterName:
-                                    'Mishary Rashid Alafasy', // meta's single reciter for now
-                                url: surah.exampleAudioUrl,
-                              ),
-                            );
-                        ref
-                            .read(recentActivityNotifierProvider.notifier)
-                            .logActivity(
-                              RecentActivityItem(
-                                id: RecentActivityItem.buildId(
-                                  RecentActivityType.surah,
-                                  '${surah.number}',
-                                ),
-                                type: RecentActivityType.surah,
-                                referenceId: '${surah.number}',
-                                title: surah.nameEnglish,
-                                subtitle:
-                                    '${surah.nameTranslation} · ${surah.versesCount} verses',
-                                route: '/quran',
-                                viewedAt: DateTime.now(),
-                              ),
-                            );
-                        context.push('/player');
+                data: (surahs) => SliverPadding(
+                  padding: EdgeInsets.symmetric(vertical: 8.h),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      childCount: surahs.length,
+                      (context, index) {
+                        final surah = surahs[index];
+                        return SurahListTile(
+                          surah: surah,
+                          onTap: () {}, // reader — next feature
+                          onPlayTap: () {
+                            ref
+                                .read(audioPlayerNotifierProvider.notifier)
+                                .playTrack(
+                                  AudioTrack(
+                                    id: 'surah-${surah.number}',
+                                    titleEnglish: surah.nameEnglish,
+                                    titleArabic: surah.nameArabic,
+                                    reciterName:
+                                        'Mishary Rashid Alafasy', // meta's single reciter for now
+                                    url: surah.exampleAudioUrl,
+                                  ),
+                                );
+                            ref
+                                .read(recentActivityNotifierProvider.notifier)
+                                .logActivity(
+                                  RecentActivityItem(
+                                    id: RecentActivityItem.buildId(
+                                      RecentActivityType.surah,
+                                      '${surah.number}',
+                                    ),
+                                    type: RecentActivityType.surah,
+                                    referenceId: '${surah.number}',
+                                    title: surah.nameEnglish,
+                                    subtitle:
+                                        '${surah.nameTranslation} · ${surah.versesCount} verses',
+                                    route: '/quran',
+                                    viewedAt: DateTime.now(),
+                                  ),
+                                );
+                            context.push('/player');
+                          },
+                        ).appearStaggered(index);
                       },
-                    ).appearStaggered(index);
-                  },
+                    ),
+                  ),
                 ),
                 loading: () => SliverFillRemaining(
                   child: Center(
