@@ -32,11 +32,14 @@ dependencies:
   share_plus: ^10.1.2
   flutter_svg: ^2.0.10+1
   flutter_animate: ^4.5.2
+  permission_handler: ^11.3.1
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -58,8 +61,8 @@ flutter:
   fonts:
     - family: Manrope
       fonts:
-        - asset: assets/fonts/Manrope-Medium.ttf
         - asset: assets/fonts/Manrope-Regular.ttf
+        - asset: assets/fonts/Manrope-Medium.ttf
           weight: 500
         - asset: assets/fonts/Manrope-SemiBold.ttf
           weight: 600
@@ -69,3 +72,19 @@ flutter:
   
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# flutter_launcher_icons config — run `dart run flutter_launcher_icons`
+# after changing anything here to regenerate the actual icon files.
+flutter_launcher_icons:
+  image_path: "assets/images/app_logo.png"
+  android: "launcher_icon"
+  min_sdk_android: 21
+  ios: true
+  remove_alpha_ios: true
+  # Not using adaptive_icon_foreground/adaptive_icon_background for now:
+  # those expect a logo-only image on a transparent background with the
+  # artwork kept well inside the edges, since Android masks it into a
+  # circle/squircle/rounded-square depending on the launcher. Using the
+  # full app_logo.png there risks a doubled-up background or clipped
+  # artwork once masked. Add those two keys back once there's a
+  # dedicated foreground-only asset — see the note below this block.
