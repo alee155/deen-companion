@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class LegalSection {
   final String heading;
@@ -29,12 +30,7 @@ class LegalTextScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-        elevation: 0,
-      ),
+      appBar: DeenAppBar(title: title),
       body: ListView(
         padding: EdgeInsets.all(20.w),
         children: [

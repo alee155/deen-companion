@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -9,10 +12,12 @@ import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../shared/widgets/grouped_settings_tile.dart';
+import '../../../islamic_calendar/presentation/providers/hijri_adjustment_provider.dart';
+import '../../../prayer_reminders/debug/prayer_alarm_debug_harness.dart';
+import '../../../prayer_reminders/presentation/providers/reminders_provider.dart';
 import '../../../prayer_times/presentation/providers/prayer_calculation_settings_provider.dart';
 import '../../../prayer_times/presentation/widgets/calculation_settings_sheets.dart';
-import '../widgets/legal_content.dart';
-import 'legal_text_screen.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -81,18 +86,31 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _openLegalUrl(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.hadithAccent,
+          content: Text(
+            'Could not open the link. Please check your connection.',
+            style: TextStyle(color: AppColors.surfaceLight),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeNotifierProvider);
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-        elevation: 0,
-      ),
+      appBar: const DeenAppBar(title: 'Settings'),
       body: ListView(
         padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 32.h),
         children: [
@@ -100,13 +118,12 @@ class SettingsScreen extends ConsumerWidget {
 
           const GroupedSectionLabel(
             'Appearance',
-          ).appear(delay: const Duration(milliseconds: 60)),
+          ).appear(delay: Duration(milliseconds: 60)),
           _ThemeModeSelector(
             selected: mode,
-            onChanged: (m) =>
-                ref.read(themeModeNotifierProvider.notifier).setMode(m),
+            onChanged: (choice) =>
+                ref.read(themeModeNotifierProvider.notifier).setChoice(choice),
           ).appear(delay: const Duration(milliseconds: 90)),
-          SizedBox(height: 24.h),
 
           const GroupedSectionLabel(
             'Prayer Times',
@@ -114,8 +131,17 @@ class SettingsScreen extends ConsumerWidget {
           Builder(
             builder: (context) {
               final calcSettings = ref.watch(prayerCalculationSettingsProvider);
+              final remindersOn = ref.watch(remindersEnabledProvider);
               return GroupedCard(
                 children: [
+                  GroupedTile(
+                    icon: Icons.notifications_active_outlined,
+                    iconColor: AppColors.worshipAccent,
+                    iconBg: AppColors.worshipAccentBg,
+                    title: 'Prayer Reminders',
+                    subtitle: remindersOn ? 'On' : 'Off',
+                    onTap: () => context.push('/reminders'),
+                  ),
                   GroupedTile(
                     icon: Icons.calculate_outlined,
                     iconColor: AppColors.hijriAccent,
@@ -127,7 +153,7 @@ class SettingsScreen extends ConsumerWidget {
                   GroupedTile(
                     icon: Icons.mosque_outlined,
                     iconColor: AppColors.emeraldInk,
-                    iconBg: AppColors.gold.withOpacity(0.15),
+                    iconBg: AppColors.gold.withValues(alpha: 0.15),
                     title: 'Asr Juristic School',
                     subtitle: calcSettings.school.label,
                     onTap: () => showAsrSchoolPicker(context, ref),
@@ -137,6 +163,49 @@ class SettingsScreen extends ConsumerWidget {
             },
           ).appear(delay: const Duration(milliseconds: 118)),
           SizedBox(height: 24.h),
+
+          const GroupedSectionLabel(
+            'Islamic Calendar',
+          ).appear(delay: const Duration(milliseconds: 120)),
+          Builder(
+            builder: (context) {
+              final adjustment = ref.watch(hijriAdjustmentProvider);
+              return _HijriAdjustmentSelector(
+                selected: adjustment,
+                onChanged: (days) async {
+                  final notifier = ref.read(hijriAdjustmentProvider.notifier);
+                  if (days == -1) {
+                    await notifier.setPakistan();
+                  } else {
+                    await notifier.setAutomatic();
+                  }
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: AppColors.emeraldInk,
+                      content: Text(
+                        'Applied',
+                        style: TextStyle(color: AppColors.surfaceLight),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ).appear(delay: const Duration(milliseconds: 128)),
+          Padding(
+            padding: EdgeInsets.only(bottom: 24.h),
+            child: Text(
+              'Automatic shows the Hijri date exactly as calculated. '
+              'Choosing "Pakistan (−1 Day)" always shows one day earlier, '
+              'matching the date observed in Pakistan. Either choice takes '
+              'effect immediately.',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textMuted,
+              ),
+            ),
+          ).appear(delay: const Duration(milliseconds: 132)),
 
           const GroupedSectionLabel(
             'Data & Storage',
@@ -176,32 +245,16 @@ class SettingsScreen extends ConsumerWidget {
                 iconColor: AppColors.hijriAccent,
                 iconBg: AppColors.hijriAccentBg,
                 title: 'Privacy Policy',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => LegalTextScreen(
-                      title: 'Privacy Policy',
-                      updatedLabel:
-                          'A summary of how Deen Companion handles your data.',
-                      sections: LegalContent.privacySections,
-                    ),
-                  ),
-                ),
+                onTap: () =>
+                    _openLegalUrl(context, AppConstants.privacyPolicyUrl),
               ),
               GroupedTile(
                 icon: Icons.description_outlined,
                 iconColor: AppColors.duasAccent,
                 iconBg: AppColors.duasAccentBg,
                 title: 'Terms & Conditions',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const LegalTextScreen(
-                      title: 'Terms & Conditions',
-                      updatedLabel:
-                          'A summary of the terms for using Deen Companion.',
-                      sections: LegalContent.termsSections,
-                    ),
-                  ),
-                ),
+                onTap: () =>
+                    _openLegalUrl(context, AppConstants.termsAndConditionsUrl),
               ),
               GroupedTile(
                 icon: Icons.info_outline,
@@ -221,6 +274,11 @@ class SettingsScreen extends ConsumerWidget {
               style: AppTypography.caption.copyWith(color: AppColors.textMuted),
             ),
           ).appear(delay: const Duration(milliseconds: 240)),
+
+          if (kDebugMode) ...[
+            SizedBox(height: 24.h),
+            const PrayerAlarmDebugHarness(),
+          ],
         ],
       ),
     );
@@ -251,7 +309,7 @@ class _HeaderCard extends StatelessWidget {
             width: 52.w,
             height: 52.w,
             decoration: BoxDecoration(
-              color: AppColors.gold.withOpacity(0.18),
+              color: AppColors.gold.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(16.r),
             ),
             child: Icon(
@@ -287,22 +345,83 @@ class _HeaderCard extends StatelessWidget {
   }
 }
 
+// ── Hijri adjustment selector — same visual language as the theme picker ──
+
+class _HijriAdjustmentSelector extends StatelessWidget {
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  const _HijriAdjustmentSelector({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  static const _options = [
+    (days: 0, label: 'Automatic'),
+    (days: -1, label: 'Pakistan (−1 Day)'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 10.h),
+      padding: EdgeInsets.all(6.w),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: AppColors.borderWarm),
+      ),
+      child: Row(
+        children: _options.map((option) {
+          final isSelected = option.days == selected;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(option.days),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                margin: EdgeInsets.symmetric(horizontal: 3.w),
+                padding: EdgeInsets.symmetric(vertical: 12.h),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.emeraldInk : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Text(
+                  option.label,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: isSelected
+                        ? AppColors.surfaceLight
+                        : AppColors.textSecondary,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
 // ── Theme selector — three tappable cards instead of the stock SegmentedButton ──
 
 class _ThemeModeSelector extends StatelessWidget {
-  final ThemeMode selected;
-  final ValueChanged<ThemeMode> onChanged;
+  final AppThemeChoice selected;
+  final ValueChanged<AppThemeChoice> onChanged;
 
   const _ThemeModeSelector({required this.selected, required this.onChanged});
 
+  // Two choices only — the app no longer follows the system setting, it
+  // opens in Light and remembers whatever the user picks here.
   static const _options = [
     (
-      mode: ThemeMode.system,
-      icon: Icons.brightness_auto_outlined,
-      label: 'System',
+      mode: AppThemeChoice.light,
+      icon: Icons.light_mode_outlined,
+      label: 'Light',
     ),
-    (mode: ThemeMode.light, icon: Icons.light_mode_outlined, label: 'Light'),
-    (mode: ThemeMode.dark, icon: Icons.dark_mode_outlined, label: 'Dark'),
+    (mode: AppThemeChoice.dark, icon: Icons.dark_mode_outlined, label: 'Dark'),
   ];
 
   @override

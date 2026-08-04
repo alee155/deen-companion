@@ -156,14 +156,14 @@ class _ProfileHeaderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Guest',
+                  AppConstants.appName,
                   style: AppTypography.greetingSerif.copyWith(
                     color: AppColors.inkText,
                   ),
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  'Sign-in coming soon',
+                  'No account needed — everything stays on this device',
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
