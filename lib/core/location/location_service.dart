@@ -239,17 +239,21 @@ final locationAvailabilityProvider = FutureProvider<LocationAvailability>((
 
 const _countryCodeCacheKey = 'last_known_country_code';
 
-/// A handful of countries relevant to region-specific display logic (e.g.
-/// the Hijri-date adjustment), keyed by the full country name Android's
-/// geocoder reliably returns. Extend as more regions get their own default.
+/// A handful of countries relevant to region-specific defaults (currently
+/// just the Hijri-date preference), keyed by the full country name
+/// Android's geocoder reliably returns. Extend as more regions get their
+/// own default.
 const _countryNameToCode = {'pakistan': 'PK'};
 
 /// Best-effort ISO 3166-1 alpha-2 country code for where the device
-/// currently is (e.g. 'PK'), used to auto-adjust region-specific display —
-/// such as defaulting the Hijri date offset for Pakistan. Never throws and
-/// never prompts for permission itself: it resolves to null if location
-/// isn't already available, and falls back to the last value it cached
-/// rather than making a fresh network call every time.
+/// currently is (e.g. 'PK').
+///
+/// Used exactly once per install, to pick a sensible *initial default*
+/// for the Hijri-date preference (see HijriAdjustmentNotifier) — not for
+/// any ongoing correction. Never throws and never prompts for permission
+/// itself: resolves to null if location isn't already available, and
+/// falls back to the last cached value rather than making a fresh
+/// network call every time.
 final deviceCountryCodeProvider = FutureProvider<String?>((ref) async {
   final storage = ref.watch(localStorageServiceProvider);
 
@@ -257,12 +261,6 @@ final deviceCountryCodeProvider = FutureProvider<String?>((ref) async {
     final coordinates = await ref
         .watch(locationServiceProvider)
         .getCurrentCoordinates(requestPermission: false);
-
-    AppLogger.i(
-      'Country detect: coordinates '
-      '${coordinates.latitude}, ${coordinates.longitude} '
-      '(stale: ${coordinates.isStale})',
-    );
 
     final placemarks = await placemarkFromCoordinates(
       coordinates.latitude,
@@ -279,11 +277,6 @@ final deviceCountryCodeProvider = FutureProvider<String?>((ref) async {
         ? isoCode
         : _countryNameToCode[place?.country?.trim().toLowerCase()];
 
-    AppLogger.i(
-      'Country detect: placemark country="${place?.country}" '
-      'isoCountryCode="${place?.isoCountryCode}" resolvedCode="$code"',
-    );
-
     if (code != null && code.isNotEmpty) {
       await storage.put(
         AppConstants.settingsBoxName,
@@ -296,10 +289,8 @@ final deviceCountryCodeProvider = FutureProvider<String?>((ref) async {
     AppLogger.e('Device country-code lookup failed', error);
   }
 
-  final cached = storage.get<String>(
+  return storage.get<String>(
     AppConstants.settingsBoxName,
     _countryCodeCacheKey,
   );
-  AppLogger.i('Country detect: falling back to cached value "$cached"');
-  return cached;
 });

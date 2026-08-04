@@ -107,6 +107,7 @@ class HomeScreen extends ConsumerWidget {
                     const RecentActivityCard().appear(
                       delay: const Duration(milliseconds: 200),
                     ),
+                    SizedBox(height: 50.h),
                   ]),
                 ),
               ),

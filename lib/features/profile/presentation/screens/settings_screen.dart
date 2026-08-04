@@ -197,10 +197,12 @@ class SettingsScreen extends ConsumerWidget {
           Padding(
             padding: EdgeInsets.only(bottom: 24.h),
             child: Text(
-              'Automatic shows the Hijri date exactly as calculated. '
-              'Choosing "Pakistan (−1 Day)" always shows one day earlier, '
-              'matching the date observed in Pakistan. Either choice takes '
-              'effect immediately.',
+              'Automatic shows the Hijri date exactly as calculated; '
+              '"Pakistan (−1 Day)" always shows one day earlier, matching '
+              'the date observed in Pakistan. We pick a starting default '
+              'for you based on your region the first time the app needs '
+              'this you can change it here anytime, and it applies '
+              'immediately.',
               style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.textMuted,
               ),

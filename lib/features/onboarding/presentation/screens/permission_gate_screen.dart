@@ -180,7 +180,7 @@ class _PermissionGateScreenState extends ConsumerState<PermissionGateScreen>
                       why:
                           'Prayer times and the Qibla direction are calculated '
                           'from your coordinates. Without it, timings default '
-                          'to nothing at all — we never guess a city for you.',
+                          'to nothing at all  we never guess a city for you.',
                       statusLabel: _locationStatusLabel,
                       isGranted: _locationGranted && _locationServiceEnabled,
                       actionLabel: _locationActionLabel,
@@ -193,7 +193,7 @@ class _PermissionGateScreenState extends ConsumerState<PermissionGateScreen>
                       accentBg: AppColors.worshipAccentBg,
                       title: 'Notifications',
                       why:
-                          'Needed only for prayer reminders — the adhan alert '
+                          'Needed only for prayer reminders  the adhan alert '
                           'at each prayer time. Nothing else sends you a '
                           'notification.',
                       statusLabel: _notificationsGranted

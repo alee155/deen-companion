@@ -8,7 +8,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
-import '../../features/prayer_times/presentation/screens/prayer_calendar_screen.dart';
 import '../../features/prayer_times/presentation/screens/prayer_times_screen.dart';
 import '../../features/quran/presentation/screens/juz_hub_screen.dart';
 import '../../features/quran/presentation/screens/juz_reading_screen.dart';
@@ -78,12 +77,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/prayer-times',
         builder: (context, state) => const PrayerTimesScreen(),
       ), // moved out of shell
-      GoRoute(
-        // The Prayer times screen has always had a calendar action in its app
-        // bar, but this route was never registered — tapping it did nothing.
-        path: '/prayer-times/calendar',
-        builder: (context, state) => const PrayerCalendarScreen(),
-      ),
       GoRoute(
         path: '/hadith',
         builder: (context, state) => const HadithHubScreen(),
