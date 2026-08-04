@@ -11,6 +11,7 @@ import '../providers/islamic_names_providers.dart';
 import '../widgets/islamic_name_list_tile.dart';
 import '../widgets/origin_filter_sheet.dart';
 import 'islamic_name_detail_screen.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class IslamicNamesHubScreen extends ConsumerStatefulWidget {
   const IslamicNamesHubScreen({super.key});
@@ -50,11 +51,7 @@ class _IslamicNamesHubScreenState extends ConsumerState<IslamicNamesHubScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Islamic Names'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Islamic Names'),
       body: namesAsync.when(
         data: (allNames) {
           final origins = IslamicNamesFilter.uniqueOrigins(allNames);

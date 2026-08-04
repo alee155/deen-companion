@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/islamic_name.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class IslamicNameDetailScreen extends StatelessWidget {
   final IslamicName name;
@@ -24,10 +25,7 @@ class IslamicNameDetailScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Name Details'),
       body: ListView(
         padding: EdgeInsets.all(20.w),
         children: [
