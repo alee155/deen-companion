@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../providers/hadith_providers.dart';
 import '../widgets/hadith_card_tile.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class HadithSearchScreen extends ConsumerStatefulWidget {
   final String? currentCollection;
@@ -34,10 +35,8 @@ class _HadithSearchScreenState extends ConsumerState<HadithSearchScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-        title: TextField(
+      appBar: DeenAppBar(
+        titleWidget: TextField(
           controller: _controller,
           autofocus: true,
           textInputAction: TextInputAction.search,

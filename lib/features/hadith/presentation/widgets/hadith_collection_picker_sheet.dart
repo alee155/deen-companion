@@ -4,8 +4,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/hadith_collection.dart';
 
-/// A modal bottom sheet acting as the collection "dropdown" — tapping
-/// the pill in the hub screen opens this to switch collections.
+/// Switches the book being read, without a trip back to the library.
+/// Returns the chosen collection key, or null if dismissed.
 Future<String?> showHadithCollectionPicker(
   BuildContext context, {
   required List<HadithCollection> collections,
@@ -13,13 +13,14 @@ Future<String?> showHadithCollectionPicker(
 }) {
   return showModalBottomSheet<String>(
     context: context,
+    isScrollControlled: true,
     backgroundColor: AppColors.surfaceLight,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
     ),
     builder: (context) {
       return SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: EdgeInsets.symmetric(vertical: 12.h),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -44,11 +45,16 @@ Future<String?> showHadithCollectionPicker(
                 final isSelected = c.key == selectedKey;
                 return ListTile(
                   onTap: () => Navigator.of(context).pop(c.key),
-                  leading: Radio<String>(
-                    value: c.key,
-                    groupValue: selectedKey,
-                    activeColor: AppColors.emeraldInk,
-                    onChanged: (_) => Navigator.of(context).pop(c.key),
+                  // A check mark rather than a radio: this is a navigation
+                  // choice that closes the sheet, not a form field.
+                  leading: Icon(
+                    isSelected
+                        ? Icons.check_circle_rounded
+                        : Icons.circle_outlined,
+                    color: isSelected
+                        ? AppColors.emeraldInk
+                        : AppColors.borderWarm,
+                    size: 22.sp,
                   ),
                   title: Text(
                     c.name,

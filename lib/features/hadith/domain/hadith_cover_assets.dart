@@ -1,6 +1,10 @@
-/// Maps a collection key to its asset cover. Add your image files under
-/// assets/images/hadith_covers/{key}.png using these exact keys, then
-/// register the folder in pubspec.yaml assets.
+/// Maps a collection key to its cover artwork.
+///
+/// Returns null when a collection has no artwork of its own — the card then
+/// draws a designed fallback cover instead. The previous version pointed every
+/// unmapped key at `default.png`, a file that isn't in the bundle, so the
+/// three 40-hadith collections (Nawawi, Qudsi, Dehlawi) rendered a broken
+/// image box.
 class HadithCoverAssets {
   HadithCoverAssets._();
 
@@ -16,8 +20,9 @@ class HadithCoverAssets {
     'malik': '$_basePath/muwatta_malik.jpg',
   };
 
-  static const String _fallback = '$_basePath/default.png';
+  /// Null when there is no artwork for [collectionKey].
+  static String? forKey(String collectionKey) => _covers[collectionKey];
 
-  static String forKey(String collectionKey) =>
-      _covers[collectionKey] ?? _fallback;
+  static bool hasCover(String collectionKey) =>
+      _covers.containsKey(collectionKey);
 }

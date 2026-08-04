@@ -40,6 +40,21 @@ final hadithCollectionsNotifierProvider =
       HadithCollectionsNotifier.new,
     );
 
+/// The metadata for one collection, or null while the list is still loading.
+///
+/// Screens reached by collection *key* alone (the reader, opened from a route
+/// parameter or a deep link) use this to show the real book identity — proper
+/// name, Arabic title, compiler — instead of a generic "Hadith" header.
+final hadithCollectionByKeyProvider =
+    Provider.family<HadithCollection?, String>((ref, key) {
+      final collections = ref.watch(hadithCollectionsNotifierProvider).value;
+      if (collections == null) return null;
+      for (final collection in collections) {
+        if (collection.key == key) return collection;
+      }
+      return null;
+    });
+
 // ── Paginated hadith list, family by collection key ──
 
 class HadithListState {
