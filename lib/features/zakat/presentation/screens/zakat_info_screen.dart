@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../providers/zakat_providers.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class ZakatInfoScreen extends ConsumerWidget {
   const ZakatInfoScreen({super.key});
@@ -14,11 +15,7 @@ class ZakatInfoScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('About Zakat'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'About Zakat'),
       body: infoAsync.when(
         data: (info) => ListView(
           padding: EdgeInsets.all(20.w),
@@ -48,7 +45,7 @@ class ZakatInfoScreen extends ConsumerWidget {
             ),
           ],
         ),
-        loading: () => const Center(
+        loading: () => Center(
           child: CircularProgressIndicator(color: AppColors.emeraldInk),
         ),
         error: (error, _) => Center(child: Text(error.toString())),

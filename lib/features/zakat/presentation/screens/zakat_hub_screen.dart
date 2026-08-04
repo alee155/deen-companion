@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class ZakatHubScreen extends StatelessWidget {
   const ZakatHubScreen({super.key});
@@ -12,11 +13,7 @@ class ZakatHubScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Zakat'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Zakat'),
       body: ListView(
         padding: EdgeInsets.all(20.w),
         children: [

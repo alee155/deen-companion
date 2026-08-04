@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/zakat_calculation.dart';
 import '../providers/zakat_providers.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class ZakatAgricultureScreen extends ConsumerStatefulWidget {
   const ZakatAgricultureScreen({super.key});
@@ -25,11 +26,7 @@ class _ZakatAgricultureScreenState
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Agricultural Zakat'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Agricultural Zakat'),
       body: Padding(
         padding: EdgeInsets.all(20.w),
         child: Column(

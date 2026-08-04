@@ -7,6 +7,7 @@ import '../../domain/entities/zakat_calculation.dart';
 import '../providers/zakat_providers.dart';
 import '../widgets/zakat_asset_input_section.dart';
 import '../widgets/zakat_result_card.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class ZakatCalculatorScreen extends ConsumerStatefulWidget {
   const ZakatCalculatorScreen({super.key});
@@ -120,11 +121,7 @@ class _ZakatCalculatorScreenState extends ConsumerState<ZakatCalculatorScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Zakat Calculator'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Zakat Calculator'),
       body: ListView(
         padding: EdgeInsets.all(20.w),
         children: [
@@ -270,7 +267,7 @@ class _ZakatCalculatorScreenState extends ConsumerState<ZakatCalculatorScreen> {
             data: (result) => result == null
                 ? const SizedBox.shrink()
                 : ZakatResultCard(result: result),
-            loading: () => const Center(
+            loading: () => Center(
               child: CircularProgressIndicator(color: AppColors.emeraldInk),
             ),
             error: (error, _) => Text(
