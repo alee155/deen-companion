@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../quran/presentation/providers/quran_providers.dart';
 import '../../domain/audio_track.dart';
@@ -10,8 +11,12 @@ class AudioPlayerScreen extends ConsumerWidget {
   const AudioPlayerScreen({super.key});
 
   String _formatDuration(Duration d) {
+    final hours = d.inHours;
     final minutes = d.inMinutes.remainder(60).toString();
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (hours > 0) {
+      return '$hours:${minutes.padLeft(2, '0')}:$seconds';
+    }
     return '$minutes:$seconds';
   }
 
@@ -75,9 +80,10 @@ class AudioPlayerScreen extends ConsumerWidget {
     final track = audioState.track;
 
     if (track == null) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => Navigator.of(context).maybePop(),
-      );
+      // No self-navigation here — onBack/onMinimize are the only places
+      // that pop. This used to also pop itself, but stop() clears the
+      // track (triggering this exact rebuild) *before* onBack's own pop
+      // runs, so both fired almost together and overshot by one screen.
       return const Scaffold(body: SizedBox.shrink());
     }
 
@@ -91,25 +97,32 @@ class AudioPlayerScreen extends ConsumerWidget {
         surahNameArabic: track.titleArabic,
         surahNameEnglish: track.titleEnglish,
         reciterName: track.reciterName,
-        currentAyah: 1,
-        totalAyahs: 1,
         isPlaying: audioState.isPlaying,
         isLooping: audioState.isLooping,
         progress: progress,
+        duration: audioState.duration,
         elapsedLabel: _formatDuration(audioState.position),
         durationLabel: _formatDuration(audioState.duration),
+        sleepTimerRemaining: audioState.sleepTimerRemaining,
         onPlayPause: () =>
             ref.read(audioPlayerNotifierProvider.notifier).togglePlayPause(),
         onSkipNext: () => _switchSurahReal(ref, track, delta: 1),
         onSkipPrevious: () => _switchSurahReal(ref, track, delta: -1),
         onToggleLoop: () =>
             ref.read(audioPlayerNotifierProvider.notifier).toggleLoop(),
-        onPickReciter: () => _showReciterPicker(context, ref),
-        onBack: () async {
-          await ref.read(audioPlayerNotifierProvider.notifier).stop();
-          if (context.mounted) Navigator.of(context).maybePop();
+        // onPickReciter: () => _showReciterPicker(context, ref),
+        onSeek: (position) =>
+            ref.read(audioPlayerNotifierProvider.notifier).seek(position),
+        onSetSleepTimer: (duration) => ref
+            .read(audioPlayerNotifierProvider.notifier)
+            .setSleepTimer(duration),
+        onCancelSleepTimer: () =>
+            ref.read(audioPlayerNotifierProvider.notifier).cancelSleepTimer(),
+        onBack: () {
+          context.pop();
+          ref.read(audioPlayerNotifierProvider.notifier).stop();
         },
-        onMinimize: () => Navigator.of(context).maybePop(),
+        onMinimize: () => context.pop(),
       ),
     );
   }

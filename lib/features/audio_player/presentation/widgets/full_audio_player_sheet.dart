@@ -13,18 +13,21 @@ class FullAudioPlayerSheet extends StatelessWidget {
   final String surahNameArabic;
   final String surahNameEnglish;
   final String reciterName;
-  final int currentAyah;
-  final int totalAyahs;
   final bool isPlaying;
   final bool isLooping;
   final double progress;
+  final Duration duration;
   final String elapsedLabel;
   final String durationLabel;
+  final Duration? sleepTimerRemaining;
   final VoidCallback onPlayPause;
   final VoidCallback onSkipNext;
   final VoidCallback onSkipPrevious;
   final VoidCallback onToggleLoop;
-  final VoidCallback onPickReciter;
+
+  final ValueChanged<Duration> onSeek;
+  final void Function(Duration duration) onSetSleepTimer;
+  final VoidCallback onCancelSleepTimer;
 
   /// Stops playback entirely and returns to the previous screen.
   final VoidCallback onBack;
@@ -38,21 +41,45 @@ class FullAudioPlayerSheet extends StatelessWidget {
     required this.surahNameArabic,
     required this.surahNameEnglish,
     required this.reciterName,
-    required this.currentAyah,
-    required this.totalAyahs,
     required this.isPlaying,
     required this.isLooping,
     required this.progress,
+    required this.duration,
     required this.elapsedLabel,
     required this.durationLabel,
+    required this.sleepTimerRemaining,
     required this.onPlayPause,
     required this.onSkipNext,
     required this.onSkipPrevious,
     required this.onToggleLoop,
-    required this.onPickReciter,
+
+    required this.onSeek,
+    required this.onSetSleepTimer,
+    required this.onCancelSleepTimer,
     required this.onBack,
     required this.onMinimize,
   });
+
+  void _openSleepTimerSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surfaceLight,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (sheetContext) => _SleepTimerSheet(
+        activeRemaining: sleepTimerRemaining,
+        onSelect: (d) {
+          Navigator.of(sheetContext).pop();
+          onSetSleepTimer(d);
+        },
+        onTurnOff: () {
+          Navigator.of(sheetContext).pop();
+          onCancelSleepTimer();
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,41 +130,46 @@ class FullAudioPlayerSheet extends StatelessWidget {
               child: Column(
                 children: [
                   SizedBox(height: 8.h),
-                  _TopBar(onBack: onBack, onMinimize: onMinimize),
-                  SizedBox(height: 6.h),
-                  GestureDetector(
-                    onTap: onPickReciter,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 5.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(20.r),
-                        border: Border.all(
-                          color: AppColors.gold.withValues(alpha: 0.25),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.graphic_eq,
-                            size: 12.sp,
-                            color: AppColors.gold,
-                          ),
-                          SizedBox(width: 6.w),
-                          Text(
-                            reciterName,
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: _mutedOnDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  _TopBar(
+                    onBack: onBack,
+                    onMinimize: onMinimize,
+                    sleepTimerRemaining: sleepTimerRemaining,
+                    onTapSleepTimer: () => _openSleepTimerSheet(context),
                   ),
+                  SizedBox(height: 6.h),
+                  // GestureDetector(
+                  //   onTap: {},
+                  //   child: Container(
+                  //     padding: EdgeInsets.symmetric(
+                  //       horizontal: 12.w,
+                  //       vertical: 5.h,
+                  //     ),
+                  //     decoration: BoxDecoration(
+                  //       color: Colors.white.withValues(alpha: 0.06),
+                  //       borderRadius: BorderRadius.circular(20.r),
+                  //       border: Border.all(
+                  //         color: AppColors.gold.withValues(alpha: 0.25),
+                  //       ),
+                  //     ),
+                  //     child: Row(
+                  //       mainAxisSize: MainAxisSize.min,
+                  //       children: [
+                  //         Icon(
+                  //           Icons.graphic_eq,
+                  //           size: 12.sp,
+                  //           color: AppColors.gold,
+                  //         ),
+                  //         SizedBox(width: 6.w),
+                  //         Text(
+                  //           reciterName,
+                  //           style: AppTypography.bodyMedium.copyWith(
+                  //             color: _mutedOnDark,
+                  //           ),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ),
                   SizedBox(height: 28.h),
                   _ArtworkDisc(
                     surahNameArabic: surahNameArabic,
@@ -152,18 +184,13 @@ class FullAudioPlayerSheet extends StatelessWidget {
                       fontSize: 26.sp,
                     ),
                   ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    'Ayah $currentAyah of $totalAyahs',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: _faintOnDark,
-                    ),
-                  ),
                   const Spacer(),
                   _ProgressBar(
                     progress: progress,
+                    duration: duration,
                     elapsedLabel: elapsedLabel,
                     durationLabel: durationLabel,
+                    onSeek: onSeek,
                   ),
                   SizedBox(height: 22.h),
                   _Controls(
@@ -173,7 +200,7 @@ class FullAudioPlayerSheet extends StatelessWidget {
                     onSkipNext: onSkipNext,
                     onSkipPrevious: onSkipPrevious,
                     onToggleLoop: onToggleLoop,
-                    onPickReciter: onPickReciter,
+                    // onPickReciter: onPickReciter,
                   ),
                   SizedBox(height: 28.h),
                 ],
@@ -189,8 +216,15 @@ class FullAudioPlayerSheet extends StatelessWidget {
 class _TopBar extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onMinimize;
+  final Duration? sleepTimerRemaining;
+  final VoidCallback onTapSleepTimer;
 
-  const _TopBar({required this.onBack, required this.onMinimize});
+  const _TopBar({
+    required this.onBack,
+    required this.onMinimize,
+    required this.sleepTimerRemaining,
+    required this.onTapSleepTimer,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -209,12 +243,160 @@ class _TopBar extends StatelessWidget {
             letterSpacing: 2,
           ),
         ),
-        _RoundIconButton(
-          icon: Icons.keyboard_arrow_down_rounded,
-          tooltip: 'Minimize — keep playing',
-          onTap: onMinimize,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SleepTimerButton(
+              remaining: sleepTimerRemaining,
+              onTap: onTapSleepTimer,
+            ),
+            SizedBox(width: 8.w),
+            _RoundIconButton(
+              icon: Icons.keyboard_arrow_down_rounded,
+              tooltip: 'Minimize — keep playing',
+              onTap: onMinimize,
+            ),
+          ],
         ),
       ],
+    );
+  }
+}
+
+class _SleepTimerButton extends StatelessWidget {
+  final Duration? remaining;
+  final VoidCallback onTap;
+
+  const _SleepTimerButton({required this.remaining, required this.onTap});
+
+  String _format(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inHours > 0) {
+      return '${d.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final active = remaining != null;
+    return Tooltip(
+      message: active ? 'Sleep timer running' : 'Sleep timer',
+      child: Material(
+        color: active
+            ? AppColors.gold.withValues(alpha: 0.14)
+            : Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(16.r),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16.r),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  active ? Icons.bedtime_rounded : Icons.bedtime_outlined,
+                  color: active ? AppColors.gold : AppColors.onHeroSurface,
+                  size: 16.sp,
+                ),
+                if (active) ...[
+                  SizedBox(width: 6.w),
+                  Text(
+                    _format(remaining!),
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.gold,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SleepTimerSheet extends StatelessWidget {
+  final Duration? activeRemaining;
+  final ValueChanged<Duration> onSelect;
+  final VoidCallback onTurnOff;
+
+  const _SleepTimerSheet({
+    required this.activeRemaining,
+    required this.onSelect,
+    required this.onTurnOff,
+  });
+
+  static const _options = [
+    Duration(minutes: 5),
+    Duration(minutes: 15),
+    Duration(minutes: 30),
+    Duration(minutes: 45),
+    Duration(minutes: 60),
+    Duration(minutes: 90),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(bottom: 8.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 4.h),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.bedtime_outlined,
+                    size: 18.sp,
+                    color: AppColors.gold,
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    'Sleep timer',
+                    style: AppTypography.titleMedium.copyWith(
+                      color: AppColors.inkText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 8.h),
+              child: Text(
+                'Recitation stops automatically once the time is up.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            if (activeRemaining != null)
+              ListTile(
+                leading: Icon(Icons.timer_off_outlined, color: AppColors.error),
+                title: const Text('Turn off'),
+                onTap: onTurnOff,
+              ),
+            ..._options.map(
+              (d) => ListTile(
+                leading: Icon(
+                  Icons.nightlight_round,
+                  size: 18.sp,
+                  color: AppColors.textSecondary,
+                ),
+                title: Text('${d.inMinutes} minutes'),
+                onTap: () => onSelect(d),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -356,82 +538,151 @@ class _ArtworkDiscState extends State<_ArtworkDisc>
   }
 }
 
-class _ProgressBar extends StatelessWidget {
+/// Draggable seek bar. While the thumb is being dragged, the visual
+/// position follows the finger directly instead of the live playback
+/// stream — otherwise the position updates just as [progress] would
+/// arrive from the audio engine and fight visually with the drag.
+class _ProgressBar extends StatefulWidget {
   final double progress;
+  final Duration duration;
   final String elapsedLabel;
   final String durationLabel;
+  final ValueChanged<Duration> onSeek;
 
   const _ProgressBar({
     required this.progress,
+    required this.duration,
     required this.elapsedLabel,
     required this.durationLabel,
+    required this.onSeek,
   });
 
   @override
+  State<_ProgressBar> createState() => _ProgressBarState();
+}
+
+class _ProgressBarState extends State<_ProgressBar> {
+  double? _dragValue;
+
+  double get _displayValue => (_dragValue ?? widget.progress).clamp(0.0, 1.0);
+
+  String _formatDragPosition(double value) {
+    final target = widget.duration * value;
+    final hours = target.inHours;
+    final minutes = target.inMinutes.remainder(60).toString();
+    final seconds = target.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (hours > 0) {
+      return '$hours:${minutes.padLeft(2, '0')}:$seconds';
+    }
+    return '$minutes:$seconds';
+  }
+
+  void _updateFromLocalPosition(double dx, double trackWidth) {
+    if (trackWidth <= 0) return;
+    final value = (dx / trackWidth).clamp(0.0, 1.0);
+    setState(() => _dragValue = value);
+  }
+
+  void _commitDrag() {
+    final value = _dragValue;
+    if (value == null) return;
+    widget.onSeek(widget.duration * value);
+    setState(() => _dragValue = null);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final clamped = progress.clamp(0.0, 1.0);
+    final clamped = _displayValue;
+    final isDragging = _dragValue != null;
+
     return Column(
       children: [
         LayoutBuilder(
           builder: (context, constraints) {
             final trackWidth = constraints.maxWidth;
             final thumbX = trackWidth * clamped;
-            return SizedBox(
-              height: 16.h,
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.centerLeft,
-                children: [
-                  Container(
-                    height: 4.h,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(3.r),
-                    ),
-                  ),
-                  Container(
-                    width: thumbX,
-                    height: 4.h,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.amber, AppColors.gold],
-                      ),
-                      borderRadius: BorderRadius.circular(3.r),
-                    ),
-                  ),
-                  Positioned(
-                    left: (thumbX - 6.w).clamp(0.0, trackWidth - 12.w),
-                    child: Container(
-                      width: 12.w,
-                      height: 12.w,
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (details) => _updateFromLocalPosition(
+                details.localPosition.dx,
+                trackWidth,
+              ),
+              onTapUp: (_) => _commitDrag(),
+              onHorizontalDragStart: (details) => _updateFromLocalPosition(
+                details.localPosition.dx,
+                trackWidth,
+              ),
+              onHorizontalDragUpdate: (details) => _updateFromLocalPosition(
+                details.localPosition.dx,
+                trackWidth,
+              ),
+              onHorizontalDragEnd: (_) => _commitDrag(),
+              // A slightly taller hit area than the visible 4dp track —
+              // a hairline is very easy to miss with a finger otherwise.
+              child: SizedBox(
+                height: 28.h,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    Container(
+                      height: isDragging ? 6.h : 4.h,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.gold,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.gold.withValues(alpha: 0.6),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(3.r),
                       ),
                     ),
-                  ),
-                ],
+                    Container(
+                      width: thumbX,
+                      height: isDragging ? 6.h : 4.h,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.amber, AppColors.gold],
+                        ),
+                        borderRadius: BorderRadius.circular(3.r),
+                      ),
+                    ),
+                    Positioned(
+                      left: (thumbX - (isDragging ? 9.w : 6.w)).clamp(
+                        0.0,
+                        trackWidth - (isDragging ? 18.w : 12.w),
+                      ),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 120),
+                        width: isDragging ? 18.w : 12.w,
+                        height: isDragging ? 18.w : 12.w,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.gold,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.gold.withValues(alpha: 0.6),
+                              blurRadius: isDragging ? 12 : 8,
+                              spreadRadius: isDragging ? 2 : 1,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
         ),
-        SizedBox(height: 6.h),
+        SizedBox(height: 2.h),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              elapsedLabel,
-              style: AppTypography.caption.copyWith(color: _faintOnDark),
+              isDragging ? _formatDragPosition(clamped) : widget.elapsedLabel,
+              style: AppTypography.caption.copyWith(
+                color: isDragging ? AppColors.gold : _faintOnDark,
+                fontWeight: isDragging ? FontWeight.w700 : FontWeight.w400,
+              ),
             ),
             Text(
-              durationLabel,
+              widget.durationLabel,
               style: AppTypography.caption.copyWith(color: _faintOnDark),
             ),
           ],
@@ -448,7 +699,7 @@ class _Controls extends StatelessWidget {
   final VoidCallback onSkipNext;
   final VoidCallback onSkipPrevious;
   final VoidCallback onToggleLoop;
-  final VoidCallback onPickReciter;
+  // final VoidCallback onPickReciter;
 
   const _Controls({
     required this.isPlaying,
@@ -457,27 +708,26 @@ class _Controls extends StatelessWidget {
     required this.onSkipNext,
     required this.onSkipPrevious,
     required this.onToggleLoop,
-    required this.onPickReciter,
+    // required this.onPickReciter,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _SecondaryIcon(
           icon: Icons.repeat_rounded,
           isActive: isLooping,
           onTap: onToggleLoop,
         ),
+        Spacer(),
         _SkipIcon(icon: Icons.skip_previous_rounded, onTap: onSkipPrevious),
+        10.w.horizontalSpace,
         _PlayButton(isPlaying: isPlaying, onTap: onPlayPause),
+        10.w.horizontalSpace,
         _SkipIcon(icon: Icons.skip_next_rounded, onTap: onSkipNext),
-        _SecondaryIcon(
-          icon: Icons.person_search_rounded,
-          isActive: false,
-          onTap: onPickReciter,
-        ),
+        Spacer(),
       ],
     );
   }
