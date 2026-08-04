@@ -40,7 +40,6 @@ class AudioPlayerState {
 
 class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   late final AudioPlayer _player;
-  bool _backgroundServiceReady = false;
 
   @override
   AudioPlayerState build() {
@@ -56,16 +55,6 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     return const AudioPlayerState();
   }
 
-  Future<void> _ensureBackgroundServiceReady() async {
-    if (_backgroundServiceReady) return;
-    await JustAudioBackground.init(
-      androidNotificationChannelId: 'com.example.deen_companion.audio',
-      androidNotificationChannelName: 'Quran audio playback',
-      androidNotificationOngoing: true,
-    );
-    _backgroundServiceReady = true;
-  }
-
   Future<void> toggleLoop() async {
     final looping = !state.isLooping;
     await _player.setLoopMode(looping ? LoopMode.one : LoopMode.off);
@@ -73,8 +62,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   }
 
   Future<void> playTrack(AudioTrack track) async {
-    await _ensureBackgroundServiceReady();
-
+    // Background playback is initialised once in bootstrap(), before this
+    // player exists — nothing to set up per track.
     if (state.track?.id == track.id) {
       await togglePlayPause();
       return;

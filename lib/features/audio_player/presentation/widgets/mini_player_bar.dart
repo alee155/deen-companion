@@ -33,7 +33,7 @@ class MiniPlayerBar extends StatelessWidget {
         margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: AppColors.emeraldInk,
+          color: AppColors.heroSurface,
           borderRadius: BorderRadius.circular(16.r),
         ),
         child: Stack(
@@ -53,7 +53,7 @@ class MiniPlayerBar extends StatelessWidget {
                     width: 38.w,
                     height: 38.w,
                     decoration: BoxDecoration(
-                      color: AppColors.gold.withOpacity(0.18),
+                      color: AppColors.gold.withValues(alpha: 0.18),
                       borderRadius: BorderRadius.circular(10.r),
                     ),
                     child: Icon(
@@ -72,7 +72,7 @@ class MiniPlayerBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.titleMedium.copyWith(
-                            color: AppColors.parchment,
+                            color: AppColors.onHeroSurface,
                             fontSize: 13.sp,
                           ),
                         ),
@@ -81,7 +81,7 @@ class MiniPlayerBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.bodyMedium.copyWith(
-                            color: const Color(0xFFC9B49A),
+                            color: const Color(0xFFB3AD9B),
                             fontSize: 11.sp,
                           ),
                         ),
@@ -92,7 +92,7 @@ class MiniPlayerBar extends StatelessWidget {
                     onTap: onPlayPause,
                     child: Icon(
                       isPlaying ? Icons.pause : Icons.play_arrow,
-                      color: AppColors.parchment,
+                      color: AppColors.onHeroSurface,
                       size: 22.sp,
                     ),
                   ),
@@ -101,7 +101,7 @@ class MiniPlayerBar extends StatelessWidget {
                     onTap: onClose,
                     child: Icon(
                       Icons.close,
-                      color: const Color(0xFFC9B49A),
+                      color: const Color(0xFFB3AD9B),
                       size: 16.sp,
                     ),
                   ),

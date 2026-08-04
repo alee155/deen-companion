@@ -5,11 +5,9 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 
-// Warm, on-brand tones for text/icons that sit on the dark espresso
-// background — replaces the old cool blue-green greys that didn't match
-// the rest of the app's warm gold/espresso palette.
-const _mutedOnDark = Color(0xFFC9B49A);
-const _faintOnDark = Color(0xFF8A7860);
+// On-brand tones for text/icons that sit on the dark teal-ink background.
+const _mutedOnDark = Color(0xFFB3AD9B);
+const _faintOnDark = Color(0xFF7C8580);
 
 class FullAudioPlayerSheet extends StatelessWidget {
   final String surahNameArabic;
@@ -59,11 +57,11 @@ class FullAudioPlayerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [AppColors.emeraldInk, AppColors.emeraldInkDark],
+          colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
         ),
       ),
       child: Stack(
@@ -91,8 +89,8 @@ class FullAudioPlayerSheet extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.gold.withOpacity(0.28),
-                      AppColors.gold.withOpacity(0),
+                      AppColors.gold.withValues(alpha: 0.28),
+                      AppColors.gold.withValues(alpha: 0),
                     ],
                   ),
                 ),
@@ -115,10 +113,10 @@ class FullAudioPlayerSheet extends StatelessWidget {
                         vertical: 5.h,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.06),
+                        color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(20.r),
                         border: Border.all(
-                          color: AppColors.gold.withOpacity(0.25),
+                          color: AppColors.gold.withValues(alpha: 0.25),
                         ),
                       ),
                       child: Row(
@@ -150,7 +148,7 @@ class FullAudioPlayerSheet extends StatelessWidget {
                     surahNameEnglish,
                     textAlign: TextAlign.center,
                     style: AppTypography.heroSerif.copyWith(
-                      color: AppColors.parchment,
+                      color: AppColors.onHeroSurface,
                       fontSize: 26.sp,
                     ),
                   ),
@@ -237,14 +235,14 @@ class _RoundIconButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
         shape: const CircleBorder(),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onTap,
           child: Padding(
             padding: EdgeInsets.all(9.w),
-            child: Icon(icon, color: AppColors.parchment, size: 18.sp),
+            child: Icon(icon, color: AppColors.onHeroSurface, size: 18.sp),
           ),
         ),
       ),
@@ -309,17 +307,17 @@ class _ArtworkDiscState extends State<_ArtworkDisc>
                 shape: BoxShape.circle,
                 gradient: SweepGradient(
                   colors: [
-                    AppColors.gold.withOpacity(0.05),
+                    AppColors.gold.withValues(alpha: 0.05),
                     AppColors.gold,
-                    AppColors.gold.withOpacity(0.05),
+                    AppColors.gold.withValues(alpha: 0.05),
                   ],
                 ),
               ),
               padding: EdgeInsets.all(3.w),
-              child: const DecoratedBox(
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.emeraldInk,
+                  color: AppColors.heroSurface,
                 ),
               ),
             ),
@@ -331,11 +329,11 @@ class _ArtworkDiscState extends State<_ArtworkDisc>
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  AppColors.gold.withOpacity(0.16),
-                  AppColors.gold.withOpacity(0.03),
+                  AppColors.gold.withValues(alpha: 0.16),
+                  AppColors.gold.withValues(alpha: 0.03),
                 ],
               ),
-              border: Border.all(color: AppColors.gold.withOpacity(0.35)),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
             ),
             child: Center(
               child: Padding(
@@ -387,7 +385,7 @@ class _ProgressBar extends StatelessWidget {
                   Container(
                     height: 4.h,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.12),
+                      color: Colors.white.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(3.r),
                     ),
                   ),
@@ -395,7 +393,7 @@ class _ProgressBar extends StatelessWidget {
                     width: thumbX,
                     height: 4.h,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         colors: [AppColors.amber, AppColors.gold],
                       ),
                       borderRadius: BorderRadius.circular(3.r),
@@ -411,7 +409,7 @@ class _ProgressBar extends StatelessWidget {
                         color: AppColors.gold,
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.gold.withOpacity(0.6),
+                            color: AppColors.gold.withValues(alpha: 0.6),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
@@ -499,7 +497,9 @@ class _SecondaryIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isActive ? AppColors.gold.withOpacity(0.16) : Colors.transparent,
+      color: isActive
+          ? AppColors.gold.withValues(alpha: 0.16)
+          : Colors.transparent,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -533,7 +533,7 @@ class _SkipIcon extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: EdgeInsets.all(8.w),
-          child: Icon(icon, color: AppColors.parchment, size: 30.sp),
+          child: Icon(icon, color: AppColors.onHeroSurface, size: 30.sp),
         ),
       ),
     );
@@ -569,14 +569,14 @@ class _PlayButtonState extends State<_PlayButton> {
           height: 66.w,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [AppColors.gold, AppColors.amberDeep],
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.gold.withOpacity(0.45),
+                color: AppColors.gold.withValues(alpha: 0.45),
                 blurRadius: 20,
                 spreadRadius: 1,
                 offset: const Offset(0, 6),
