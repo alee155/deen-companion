@@ -70,15 +70,6 @@ class SurahListScreen extends ConsumerWidget {
                                   size: 18.sp,
                                 ),
                               ),
-                              SizedBox(width: 14.w),
-                              GestureDetector(
-                                onTap: () => context.push('/quran/juz'),
-                                child: Icon(
-                                  Icons.grid_view_outlined,
-                                  color: AppColors.inkText,
-                                  size: 18.sp,
-                                ),
-                              ),
                             ],
                           ),
                         ],

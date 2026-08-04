@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../providers/quran_providers.dart';
 import '../widgets/search_result_tile.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class QuranSearchScreen extends ConsumerStatefulWidget {
   const QuranSearchScreen({super.key});
@@ -25,8 +26,8 @@ class _QuranSearchScreenState extends ConsumerState<QuranSearchScreen> {
     final searchState = ref.watch(quranSearchNotifierProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
+      appBar: DeenAppBar(
+        titleWidget: TextField(
           controller: _controller,
           autofocus: true,
           textInputAction: TextInputAction.search,

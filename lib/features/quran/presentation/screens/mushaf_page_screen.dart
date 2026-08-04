@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../providers/quran_providers.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class MushafPageScreen extends ConsumerStatefulWidget {
   final int initialPage;
@@ -25,8 +26,8 @@ class _MushafPageScreenState extends ConsumerState<MushafPageScreen> {
     final pageAsync = ref.watch(mushafPageNotifierProvider(_currentPage));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Page $_currentPage'),
+      appBar: DeenAppBar(
+        title: 'Page $_currentPage',
         actions: [
           IconButton(
             icon: const Icon(Icons.chevron_left),
