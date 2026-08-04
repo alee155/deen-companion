@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/failure_view.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
 import '../../../prayer_times/presentation/providers/prayer_times_provider.dart';
@@ -16,7 +16,7 @@ const Map<PrayerName, List<Color>> _prayerGradients = {
   PrayerName.dhuhr: [Color(0xFFC98A2E), Color(0xFFE8C77A)],
   PrayerName.asr: [Color(0xFFD9722E), Color(0xFFE8A23C)],
   PrayerName.maghrib: [Color(0xFFB8637A), Color(0xFFD9722E)],
-  PrayerName.isha: [Color(0xFF241A11), Color(0xFF3D2B1F)],
+  PrayerName.isha: [Color(0xFF101B19), Color(0xFF1F4A45)],
 };
 
 const Map<PrayerName, IconData> _prayerIcons = {
@@ -82,7 +82,11 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
       data: _buildCard,
       loading: () =>
           ShimmerBox(width: double.infinity, height: 220.h, borderRadius: 20.r),
-      error: (error, _) => _buildError(error),
+      error: (error, _) => FailureView(
+        failure: failureFrom(error),
+        compact: true,
+        onRetry: () => ref.read(prayerTimesNotifierProvider.notifier).refresh(),
+      ),
     );
   }
 
@@ -176,7 +180,7 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
             padding: EdgeInsets.only(top: 14.h),
             decoration: BoxDecoration(
               border: Border(
-                top: BorderSide(color: Colors.white.withOpacity(0.2)),
+                top: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
               ),
             ),
             child: Row(
@@ -230,37 +234,6 @@ class _NextPrayerHeroCardState extends ConsumerState<NextPrayerHeroCard> {
                 );
               }).toList(),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildError(Object error) {
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
-        color: AppColors.hadithAccentBg,
-        borderRadius: BorderRadius.circular(16.r),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            Icons.location_off_outlined,
-            color: AppColors.hadithAccent,
-            size: 22.sp,
-          ),
-          SizedBox(height: 8.h),
-          Text(
-            error.toString(),
-            textAlign: TextAlign.center,
-            style: AppTypography.bodyMedium.copyWith(color: AppColors.inkText),
-          ),
-          SizedBox(height: 10.h),
-          ElevatedButton(
-            onPressed: () =>
-                ref.read(prayerTimesNotifierProvider.notifier).refresh(),
-            child: const Text('Try again'),
           ),
         ],
       ),

@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/location/location_service.dart';
+import '../../../../core/location/location_status.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../prayer_times/presentation/providers/prayer_times_provider.dart';
 import '../../../../shared/domain/explore_category.dart';
 import '../../../../shared/widgets/coming_soon.dart';
 import '../../../../shared/widgets/live_clock.dart';
@@ -13,7 +16,7 @@ import '../../../../shared/widgets/warm_gradient_scaffold.dart';
 import '../../../hadith/presentation/widgets/hadith_of_day_card.dart';
 import '../../../islamic_calendar/presentation/providers/islamic_calendar_providers.dart';
 import '../providers/home_provider.dart';
-import '../widgets/continue_reading_card.dart';
+import '../widgets/recent_activity_card.dart';
 
 import '../widgets/quick_access_grid.dart';
 import '../widgets/verse_of_day_card.dart';
@@ -49,27 +52,26 @@ class HomeScreen extends ConsumerWidget {
                     const NextPrayerHeroCard().appear(),
                     SizedBox(height: 20.h),
                     Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Explore',
-                              style: AppTypography.titleMedium.copyWith(
-                                color: AppColors.inkText,
-                              ),
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Explore',
+                          style: AppTypography.titleMedium.copyWith(
+                            color: AppColors.inkText,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.push('/explore'),
+                          child: Text(
+                            'See all',
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.emeraldInk,
+                              fontWeight: FontWeight.w600,
                             ),
-                            GestureDetector(
-                              onTap: () => context.push('/explore'),
-                              child: Text(
-                                'See all',
-                                style: AppTypography.bodyMedium.copyWith(
-                                  color: AppColors.emeraldInk,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                        .appear(delay: const Duration(milliseconds: 60)),
+                          ),
+                        ),
+                      ],
+                    ).appear(delay: const Duration(milliseconds: 60)),
                     SizedBox(height: 10.h),
                     QuickAccessGrid(
                       items: [
@@ -102,9 +104,9 @@ class HomeScreen extends ConsumerWidget {
                       delay: const Duration(milliseconds: 160),
                     ),
                     SizedBox(height: 20.h),
-                    ContinueReadingCard(
-                      onTap: () {},
-                    ).appear(delay: const Duration(milliseconds: 200)),
+                    const RecentActivityCard().appear(
+                      delay: const Duration(milliseconds: 200),
+                    ),
                   ]),
                 ),
               ),
@@ -145,22 +147,40 @@ class _GreetingContent extends ConsumerWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: todayHijriAsync.when(
-                        data: (today) => Text(
-                          today.hijri.formatted,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
+                      child: GestureDetector(
+                        onTap: () => context.push('/profile/settings'),
+                        child: todayHijriAsync.when(
+                          data: (today) => Text(
+                            '${today.hijri.formatted} ⓘ',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          loading: () => Text(
+                            'Loading date…',
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          // The Hijri date comes from the network and has
+                          // nothing to do with location — when it fails it
+                          // gets its own quiet retry affordance instead of
+                          // vanishing and leaving the header half-empty.
+                          error: (_, __) => GestureDetector(
+                            onTap: () =>
+                                ref.invalidate(todayHijriNotifierProvider),
+                            child: Text(
+                              'Date unavailable · Retry',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                           ),
                         ),
-                        loading: () => Text(
-                          '…',
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        error: (_, __) => const SizedBox.shrink(),
                       ),
                     ),
                     Text(
@@ -177,23 +197,7 @@ class _GreetingContent extends ConsumerWidget {
                   ],
                 ),
                 SizedBox(height: 2.h),
-                locationAsync.when(
-                  data: (loc) => Text(
-                    loc,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  loading: () => Text(
-                    'Locating…',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
+                _LocationLine(locationAsync: locationAsync),
               ],
             ),
           ),
@@ -212,6 +216,110 @@ class _GreetingContent extends ConsumerWidget {
           //   ),
           // ),
         ],
+      ),
+    );
+  }
+}
+
+/// The city line under the greeting.
+///
+/// Three distinct outcomes, three distinct labels: still resolving, resolved
+/// (optionally flagged as approximate), or unavailable with a tap target that
+/// applies the actual fix. It can no longer sit on "Locating…" forever —
+/// the provider behind it always settles.
+class _LocationLine extends ConsumerWidget {
+  final AsyncValue<LocationLabel> locationAsync;
+
+  const _LocationLine({required this.locationAsync});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mutedStyle = AppTypography.bodyMedium.copyWith(
+      color: AppColors.textMuted,
+    );
+
+    return locationAsync.when(
+      loading: () => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 10.w,
+            height: 10.w,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: AppColors.textMuted,
+            ),
+          ),
+          SizedBox(width: 6.w),
+          Text('Locating…', style: mutedStyle),
+        ],
+      ),
+      error: (_, _) => _ActionableLine(
+        label: 'Location unavailable · Retry',
+        style: mutedStyle,
+        onTap: () => ref.invalidate(currentLocationNameProvider),
+      ),
+      data: (label) => switch (label) {
+        LocationLabelResolved(:final name, :final isApproximate) => Text(
+          isApproximate ? '$name · approximate' : name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: mutedStyle,
+        ),
+        LocationLabelUnavailable(:final kind) => _ActionableLine(
+          label: kind.needsSystemSettings
+              ? 'Location off · Enable'
+              : 'Location unavailable · Fix',
+          style: mutedStyle.copyWith(color: AppColors.worshipAccent),
+          onTap: () => _resolveLocation(context, ref, kind),
+        ),
+      },
+    );
+  }
+
+  Future<void> _resolveLocation(
+    BuildContext context,
+    WidgetRef ref,
+    LocationErrorKind kind,
+  ) async {
+    final service = ref.read(locationServiceProvider);
+    switch (kind) {
+      case LocationErrorKind.serviceDisabled:
+        await service.openLocationSettings();
+      case LocationErrorKind.permissionDeniedForever:
+        await service.openAppSettings();
+      case LocationErrorKind.permissionDenied:
+        await service.requestPermission();
+      case LocationErrorKind.timeout:
+      case LocationErrorKind.unavailable:
+        break;
+    }
+    ref.invalidate(locationAvailabilityProvider);
+    ref.invalidate(currentLocationNameProvider);
+    ref.invalidate(prayerTimesNotifierProvider);
+  }
+}
+
+class _ActionableLine extends StatelessWidget {
+  final String label;
+  final TextStyle style;
+  final VoidCallback onTap;
+
+  const _ActionableLine({
+    required this.label,
+    required this.style,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
