@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/mutashabihat_entry.dart';
 import '../widgets/mutashabihat_base_verse_card.dart';
 import '../widgets/mutashabihat_similar_verse_card.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class MutashabihatComparisonScreen extends StatefulWidget {
   final MutashabihatEntry entry;
@@ -28,11 +29,7 @@ class _MutashabihatComparisonScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Compare Verses'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Compare Verses'),
       body: ListView(
         padding: EdgeInsets.all(20.w),
         children: [

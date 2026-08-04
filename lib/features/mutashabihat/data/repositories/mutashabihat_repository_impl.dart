@@ -110,10 +110,6 @@ class MutashabihatRepositoryImpl implements MutashabihatRepository {
   Future<Result<MutashabihatEntry>> fetchByAyah(int surah, int ayah) async {
     final key = _ayahCacheKey(surah, ayah);
 
-    final cached = cacheStore.read(key, (json) => json);
-    // Reuse the entry model's fromJson through the generic cache path below
-    // rather than duplicating — see the try block for the real read.
-
     if (!await networkInfo.isConnected) {
       final cachedEntry = cacheStore.read(key, _entryFromJson);
       if (cachedEntry != null) return Success(cachedEntry.data);

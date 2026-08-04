@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/mutashabihat_providers.dart';
 import 'mutashabihat_comparison_screen.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class MutashabihatSurahListScreen extends ConsumerStatefulWidget {
   final int surah;
@@ -45,11 +46,7 @@ class _MutashabihatSurahListScreenState
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Confused Verses'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Confused Verses'),
       body: pageAsync.when(
         data: (page) {
           if (page.entries.isEmpty) {

@@ -86,7 +86,7 @@ class _MutashabihatSimilarVerseCardState
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                   child: Container(
-                    color: AppColors.surfaceLight.withOpacity(0.55),
+                    color: AppColors.surfaceLight.withValues(alpha: 0.55),
                     alignment: Alignment.center,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,

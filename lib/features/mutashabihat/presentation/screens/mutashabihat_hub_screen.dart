@@ -7,6 +7,7 @@ import '../providers/mutashabihat_providers.dart';
 import '../widgets/surah_picker_sheet.dart';
 import 'mutashabihat_comparison_screen.dart';
 import 'mutashabihat_surah_list_screen.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class MutashabihatHubScreen extends ConsumerWidget {
   const MutashabihatHubScreen({super.key});
@@ -100,11 +101,7 @@ class MutashabihatHubScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Mutashabihat'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Mutashabihat'),
       body: ListView(
         padding: EdgeInsets.all(20.w),
         children: [
