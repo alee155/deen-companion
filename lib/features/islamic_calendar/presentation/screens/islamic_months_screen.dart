@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../providers/islamic_calendar_providers.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class IslamicMonthsScreen extends ConsumerWidget {
   const IslamicMonthsScreen({super.key});
@@ -14,11 +15,7 @@ class IslamicMonthsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Islamic Months'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Islamic Months'),
       body: monthsAsync.when(
         data: (months) => ListView.separated(
           padding: EdgeInsets.all(20.w),

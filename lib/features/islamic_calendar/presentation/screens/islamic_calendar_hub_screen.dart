@@ -8,6 +8,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../providers/islamic_calendar_providers.dart';
 import '../widgets/islamic_event_tile.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 class IslamicCalendarHubScreen extends ConsumerWidget {
   const IslamicCalendarHubScreen({super.key});
@@ -20,11 +21,7 @@ class IslamicCalendarHubScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Islamic Calendar'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Islamic Calendar'),
       body: ListView(
         padding: EdgeInsets.all(20.w),
         children: [
@@ -76,26 +73,19 @@ class IslamicCalendarHubScreen extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child:
-                    _ActionCard(
-                      icon: Icons.swap_horiz,
-                      label: 'Date Converter',
-                      onTap: () =>
-                          context.push('/islamic-calendar/converter'),
-                    ).appearStaggered(
-                      0,
-                    ),
+                child: _ActionCard(
+                  icon: Icons.swap_horiz,
+                  label: 'Date Converter',
+                  onTap: () => context.push('/islamic-calendar/converter'),
+                ).appearStaggered(0),
               ),
               SizedBox(width: 10.w),
               Expanded(
-                child:
-                    _ActionCard(
-                      icon: Icons.calendar_month_outlined,
-                      label: 'Islamic Months',
-                      onTap: () => context.push('/islamic-calendar/months'),
-                    ).appearStaggered(
-                      1,
-                    ),
+                child: _ActionCard(
+                  icon: Icons.calendar_month_outlined,
+                  label: 'Islamic Months',
+                  onTap: () => context.push('/islamic-calendar/months'),
+                ).appearStaggered(1),
               ),
             ],
           ),

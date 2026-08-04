@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../providers/islamic_calendar_providers.dart';
 import '../widgets/hijri_date_picker_sheet.dart';
+import '../../../../shared/widgets/deen_app_bar.dart';
 
 enum _Direction { gregorianToHijri, hijriToGregorian }
 
@@ -52,11 +53,7 @@ class _DateConverterScreenState extends ConsumerState<DateConverterScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: AppBar(
-        title: const Text('Date Converter'),
-        backgroundColor: AppColors.surfaceLight,
-        foregroundColor: AppColors.inkText,
-      ),
+      appBar: const DeenAppBar(title: 'Date Converter'),
       body: Padding(
         padding: EdgeInsets.all(20.w),
         child: Column(

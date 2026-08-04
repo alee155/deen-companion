@@ -4,6 +4,7 @@ import 'package:deen_companion/core/cache/hive_cache_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/cache/cache_first_stream_notifier.dart';
 import '../../../../core/di/providers.dart';
+import '../../../../core/utils/logger.dart';
 import '../../data/datasources/islamic_calendar_remote_datasource.dart';
 import '../../data/repositories/islamic_calendar_repository_impl.dart';
 import '../../domain/entities/hijri_conversion.dart';
@@ -11,6 +12,7 @@ import '../../domain/entities/islamic_event.dart';
 import '../../domain/entities/islamic_month.dart';
 import '../../domain/repositories/islamic_calendar_repository.dart';
 import '../../../../core/usecase/usecase.dart';
+import 'hijri_adjustment_provider.dart';
 
 final islamicCalendarRemoteDataSourceProvider =
     Provider<IslamicCalendarRemoteDataSource>((ref) {
@@ -27,14 +29,60 @@ final islamicCalendarRepositoryProvider = Provider<IslamicCalendarRepository>((
   );
 });
 
-class TodayHijriNotifier extends CacheFirstStreamNotifier<HijriConversion> {
+/// Powers both the Home screen greeting and the Islamic Calendar hub.
+///
+/// Deliberately uncached: always fetches live from the network, for both
+/// today's date and any offset-adjusted date. A cached "today" is only ever
+/// wrong for a few hours at worst, but a cached offset-adjusted conversion
+/// was cached for up to a year and had already caused one real bug — not
+/// worth the minor perf win of an instant-paint cache when this is a single
+/// small request the user makes at most a few times per day.
+class TodayHijriNotifier extends StreamNotifier<HijriConversion> {
   @override
-  HijriConversion? readCache() =>
-      ref.read(islamicCalendarRepositoryProvider).getCachedTodayHijri();
+  Stream<HijriConversion> build() async* {
+    final offset = ref.watch(hijriAdjustmentProvider);
+    final repo = ref.read(islamicCalendarRepositoryProvider);
+    AppLogger.i('TodayHijri: fetching live with offset=$offset (no cache)');
 
-  @override
-  Future<Result<HijriConversion>> fetchFresh() =>
-      ref.read(islamicCalendarRepositoryProvider).fetchTodayHijri();
+    final result = offset == 0
+        ? await repo.fetchTodayHijri(forceRefresh: true)
+        : await _fetchShifted(repo, offset);
+
+    yield result.when(
+      success: (d) {
+        AppLogger.i(
+          'TodayHijri: offset=$offset result -> '
+          '${d.hijri.day} ${d.hijri.monthName} ${d.hijri.year}',
+        );
+        return d;
+      },
+      failure: (f) {
+        AppLogger.i('TodayHijri: offset=$offset failed -> $f');
+        throw f;
+      },
+    );
+  }
+
+  // No local calendar arithmetic is done here — shifting the *Gregorian*
+  // input date and asking the same remote conversion to resolve it keeps
+  // month/year rollovers correct without us having to know Hijri month
+  // lengths ourselves.
+  Future<Result<HijriConversion>> _fetchShifted(
+    IslamicCalendarRepository repo,
+    int offset,
+  ) {
+    final shifted = DateTime.now().add(Duration(days: offset));
+    AppLogger.i(
+      'TodayHijri: shifted Gregorian date -> '
+      '${shifted.year}-${shifted.month}-${shifted.day}',
+    );
+    return repo.convertGregorianToHijri(
+      shifted.year,
+      shifted.month,
+      shifted.day,
+      forceRefresh: true,
+    );
+  }
 }
 
 final todayHijriNotifierProvider =
