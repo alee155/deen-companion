@@ -3,6 +3,7 @@ import 'package:deen_companion/core/location/location_service.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/providers.dart';
+import '../../data/datasources/qibla_native_channel.dart';
 import '../../data/datasources/qibla_remote_datasource.dart';
 import '../../data/repositories/qibla_repository_impl.dart';
 import '../../domain/entities/qibla_info.dart';
@@ -40,8 +41,46 @@ final qiblaNotifierProvider = AsyncNotifierProvider<QiblaNotifier, QiblaInfo>(
   QiblaNotifier.new,
 );
 
-// Live device compass heading in degrees from magnetic north, smoothed —
-// null if unavailable (unsupported hardware) or not yet resolved.
+/// Real magnetic declination (degrees) for wherever the current Qibla
+/// result was calculated — the correction needed to turn the device's
+/// magnetic-north heading into a true-north heading.
+///
+/// This exists because of a real, confirmed mismatch: the Qibla bearing
+/// from the API is degrees from *true* north, but flutter_compass's
+/// `heading` is *magnetic* north on every platform (its maintainers
+/// deliberately reverted an earlier true-heading attempt because it
+/// "caused deviations" — so magnetic-only is the honest, current behavior
+/// of the plugin, not a bug in it). Comparing a true bearing against a
+/// magnetic heading with no correction is off by exactly this amount,
+/// and that amount is location-dependent — it can be several degrees or
+/// more depending on where in the world the phone is.
+///
+/// Defaults to 0.0 (i.e. behaves like before this fix existed) if the
+/// coordinates aren't resolved yet or the native call fails for any
+/// reason — never blocks the compass from showing *a* reading while this
+/// resolves, which in practice is near-instant since it's a local
+/// computation, not a network call.
+final magneticDeclinationProvider = FutureProvider<double>((ref) async {
+  final qibla = await ref.watch(qiblaNotifierProvider.future);
+  final declination = await QiblaNativeChannel.getMagneticDeclination(
+    latitude: qibla.latitude,
+    longitude: qibla.longitude,
+  );
+  return declination ?? 0.0;
+});
+
+/// A single throttled, smoothed compass reading: the heading itself, plus
+/// the sensor's own confidence in that heading (lower = more reliable;
+/// null on devices/OS versions that don't report it at all).
+class CompassReading {
+  final double? heading;
+  final double? accuracy;
+  const CompassReading({required this.heading, required this.accuracy});
+}
+
+// Live device compass heading (magnetic north) plus sensor accuracy,
+// smoothed and throttled — heading is null if unavailable (unsupported
+// hardware) or not yet resolved.
 //
 // IMPORTANT: the raw platform stream fires very frequently (commonly
 // 20–50+ events/sec depending on the device's sensor sampling rate).
@@ -59,11 +98,15 @@ final qiblaNotifierProvider = AsyncNotifierProvider<QiblaNotifier, QiblaInfo>(
 // otherwise twitch a few degrees back and forth even when the phone is
 // held still. A light exponential moving average (each new reading only
 // nudges the displayed heading part-way towards it) removes that jitter
-// without adding perceptible lag. Exposed as a plain double (rather than
-// re-wrapping into a CompassEvent) since we only ever need the heading.
-final compassHeadingProvider = StreamProvider<double?>((ref) {
+// without adding perceptible lag.
+//
+// Accuracy is passed through as-is (not smoothed) — it's a discrete
+// quality signal from the sensor, not a continuous value to average.
+final compassHeadingProvider = StreamProvider<CompassReading>((ref) {
   final events = FlutterCompass.events;
-  if (events == null) return const Stream.empty();
+  if (events == null) {
+    return Stream.value(const CompassReading(heading: null, accuracy: null));
+  }
 
   double? lastEmittedHeading;
   double? smoothedHeading;
@@ -72,7 +115,9 @@ final compassHeadingProvider = StreamProvider<double?>((ref) {
   return events
       .map((event) {
         final raw = event.heading;
-        if (raw == null) return null;
+        if (raw == null) {
+          return CompassReading(heading: null, accuracy: event.accuracy);
+        }
 
         if (smoothedHeading == null) {
           smoothedHeading = raw;
@@ -86,11 +131,15 @@ final compassHeadingProvider = StreamProvider<double?>((ref) {
           smoothedHeading = (smoothedHeading! + delta * smoothingFactor) % 360;
           if (smoothedHeading! < 0) smoothedHeading = smoothedHeading! + 360;
         }
-        return smoothedHeading;
+        return CompassReading(
+          heading: smoothedHeading,
+          accuracy: event.accuracy,
+        );
       })
-      .where((heading) {
+      .where((reading) {
         final now = DateTime.now();
         final elapsedSinceLastEmit = now.difference(lastEmittedAt);
+        final heading = reading.heading;
 
         final headingMovedEnough =
             lastEmittedHeading == null ||
@@ -101,7 +150,6 @@ final compassHeadingProvider = StreamProvider<double?>((ref) {
             !headingMovedEnough) {
           return false;
         }
-        
 
         lastEmittedHeading = heading;
         lastEmittedAt = now;

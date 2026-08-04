@@ -64,8 +64,12 @@ class QiblaRepositoryImpl implements QiblaRepository {
         coordinates.latitude,
         coordinates.longitude,
       );
-      await cacheStore.save(key, model, (m) => m.toJson());
-      return Success(model.toEntity());
+      final located = model.withCoordinates(
+        coordinates.latitude,
+        coordinates.longitude,
+      );
+      await cacheStore.save(key, located, (m) => m.toJson());
+      return Success(located.toEntity());
     } on ServerException catch (e) {
       final cached = cacheStore.read(key, QiblaInfoModel.fromJson);
       if (cached != null) return Success(cached.data.toEntity());

@@ -12,6 +12,15 @@ import '../widgets/qibla_compass_painter.dart';
 const double _matchToleranceDegrees = 6;
 const _needleTop = Color(0xFFFFD9A0);
 
+// Sensor accuracy is in degrees, lower is better. Some platforms signal
+// "unreliable" as a negative value rather than a large positive one, so
+// both are treated as "needs calibration." Null (no signal reported at
+// all) is deliberately not flagged — that's "unknown," not "bad."
+bool _isLowAccuracy(double? accuracy) {
+  if (accuracy == null) return false;
+  return accuracy < 0 || accuracy > 25;
+}
+
 // Getters, not constants: these follow the active Light/Dark palette.
 Color get _needleBottom => AppColors.amber;
 Color get _bgTop => AppColors.backgroundGradientStart;
@@ -38,20 +47,20 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
   bool _isLocked = false;
   double? _lockedQiblaDirection;
   double? _lockedDistanceKm;
-  double? _lockedHeading;
+  double? _lockedTrueHeading;
   double? _lockedDiff;
 
   void _lockOnto({
     required double qiblaDirection,
     required double distanceKm,
-    required double heading,
+    required double trueHeading,
     required double diff,
   }) {
     setState(() {
       _isLocked = true;
       _lockedQiblaDirection = qiblaDirection;
       _lockedDistanceKm = distanceKm;
-      _lockedHeading = heading;
+      _lockedTrueHeading = trueHeading;
       _lockedDiff = diff;
     });
     HapticFeedback.heavyImpact();
@@ -174,24 +183,37 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
                   data: (qibla) => RepaintBoundary(
                     child: Consumer(
                       builder: (context, ref, _) {
+                        // Best-effort correction from magnetic to true
+                        // north — read as a plain .value rather than
+                        // .when()'d, so the compass shows *a* reading
+                        // immediately using the safe 0.0 fallback while
+                        // this resolves, rather than blocking on it. In
+                        // practice it resolves within a frame or two,
+                        // since it's a local computation, not a network
+                        // call.
+                        final declination =
+                            ref.watch(magneticDeclinationProvider).value ?? 0.0;
+
                         // Locked — show the frozen snapshot, completely
                         // ignoring whatever the live compass is doing.
                         if (_isLocked) {
                           return _compassContent(
                             _lockedQiblaDirection!,
                             _lockedDistanceKm!,
-                            _lockedHeading!,
+                            _lockedTrueHeading!,
                             _lockedDiff!,
                             true,
                             isLocked: true,
                             onUnlock: _unlock,
+                            showCalibrationBanner: false,
                           );
                         }
 
-                        final headingAsync = ref.watch(compassHeadingProvider);
-                        return headingAsync.when(
-                          data: (heading) {
-                            if (heading == null) {
+                        final readingAsync = ref.watch(compassHeadingProvider);
+                        return readingAsync.when(
+                          data: (reading) {
+                            final magneticHeading = reading.heading;
+                            if (magneticHeading == null) {
                               return _timedOutWaitingForCompass
                                   ? _compassUnavailableState(
                                       qibla.qiblaDirection,
@@ -204,9 +226,21 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
                             // don't flash the fallback UI afterwards.
                             _waitTimer?.cancel();
 
+                            // The correction that actually matters: the
+                            // Qibla bearing is true-north-based, the raw
+                            // sensor heading is magnetic-north-based.
+                            // Without this line the needle is off by
+                            // whatever the local declination is —
+                            // sometimes negligible, sometimes several
+                            // degrees or more, depending on where in the
+                            // world the phone is.
+                            var trueHeading =
+                                (magneticHeading + declination) % 360;
+                            if (trueHeading < 0) trueHeading += 360;
+
                             final diff = _shortestAngleDiff(
                               qibla.qiblaDirection,
-                              heading,
+                              trueHeading,
                             );
                             final isMatched =
                                 diff.abs() <= _matchToleranceDegrees;
@@ -220,7 +254,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
                                 _lockOnto(
                                   qiblaDirection: qibla.qiblaDirection,
                                   distanceKm: qibla.distanceKm,
-                                  heading: heading,
+                                  trueHeading: trueHeading,
                                   diff: diff,
                                 );
                               });
@@ -229,11 +263,14 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
                             return _compassContent(
                               qibla.qiblaDirection,
                               qibla.distanceKm,
-                              heading,
+                              trueHeading,
                               diff,
                               isMatched,
                               isLocked: false,
                               onUnlock: _unlock,
+                              showCalibrationBanner: _isLowAccuracy(
+                                reading.accuracy,
+                              ),
                             );
                           },
                           loading: _waitingState,
@@ -258,23 +295,28 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
   Widget _compassContent(
     double qiblaDirection,
     double distanceKm,
-    double heading,
+    double trueHeading,
     double diff,
     bool isMatched, {
     required bool isLocked,
     required VoidCallback onUnlock,
+    required bool showCalibrationBanner,
   }) {
     return Column(
       children: [
+        if (showCalibrationBanner) _calibrationBanner(),
         SizedBox(height: 12.h),
         SizedBox(
           height: 300.h,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Rotating ring — real compass card behavior.
+              // Rotating ring — real compass card behavior. Rotated by
+              // the *corrected* heading, since the ring's N/E/S/W labels
+              // are meant to mark true geographic directions, matching
+              // the same reference frame the Qibla bearing itself uses.
               Transform.rotate(
-                angle: -heading * math.pi / 180,
+                angle: -trueHeading * math.pi / 180,
                 child: CustomPaint(
                   size: Size(260.w, 260.w),
                   painter: QiblaRingPainter(
@@ -355,6 +397,39 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
         ),
         const Spacer(),
       ],
+    );
+  }
+
+  Widget _calibrationBanner() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 0),
+      child: GestureDetector(
+        onTap: () => _showCalibrationTip(context),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+          decoration: BoxDecoration(
+            color: AppColors.gold.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.explore_off_outlined,
+                size: 16.sp,
+                color: AppColors.gold,
+              ),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  'Your compass sensor looks uncalibrated — tap for a quick fix',
+                  style: TextStyle(fontSize: 12.sp, color: AppColors.inkText),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

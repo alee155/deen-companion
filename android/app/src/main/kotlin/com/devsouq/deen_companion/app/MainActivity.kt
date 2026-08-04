@@ -2,6 +2,7 @@ package com.devsouq.deen_companion.app
 
 import android.content.Intent
 import com.devsouq.deen_companion.app.alarm.AlarmMethodChannelHandler
+import com.devsouq.deen_companion.app.qibla.QiblaMethodChannelHandler
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 
@@ -9,6 +10,7 @@ class MainActivity : AudioServiceActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         AlarmMethodChannelHandler.configure(flutterEngine, this)
+        QiblaMethodChannelHandler.configure(flutterEngine)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
