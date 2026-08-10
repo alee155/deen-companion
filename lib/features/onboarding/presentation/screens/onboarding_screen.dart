@@ -23,7 +23,7 @@ const _pages = [
     image: 'assets/images/one.png',
     title: 'The Quran, beautifully presented',
     description:
-        'Read, listen, and search the full Quran with translations, tafsir, and recitation from 13 reciters — all in one place.',
+        'Read, listen, and search the full Quran with translations, tafsir, and recitation from 13 reciters all in one place.',
   ),
   _OnboardingPage(
     image: 'assets/images/four.png',
@@ -35,13 +35,13 @@ const _pages = [
     image: 'assets/images/two.png',
     title: 'Hadith, Duas, and daily reflection',
     description:
-        'Explore thousands of authentic hadith, daily duas, the 99 Names of Allah, and more — built for everyday use.',
+        'Explore thousands of authentic hadith, daily duas, the 99 Names of Allah, and more built for everyday use.',
   ),
   _OnboardingPage(
     image: 'assets/images/three.png',
     title: 'Made for your daily journey',
     description:
-        'Save your favorites, track recent reading, and calculate your Zakat — all designed to feel calm and unhurried.',
+        'Save your favorites, track recent reading, and calculate your Zakat all designed to feel calm and unhurried.',
   ),
 ];
 
