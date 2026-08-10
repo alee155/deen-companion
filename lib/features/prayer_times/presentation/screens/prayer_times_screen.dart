@@ -1,7 +1,7 @@
 import 'package:deen_companion/features/profile/presentation/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/failure_view.dart';
 import '../providers/prayer_times_provider.dart';
