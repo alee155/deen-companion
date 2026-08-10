@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -37,6 +38,8 @@ class ZakatHubScreen extends StatelessWidget {
             subtitle: 'Conditions, recipients, and rulings',
             onTap: () => context.push('/zakat/info'),
           ).appearStaggered(2),
+          SizedBox(height: 10.h),
+          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
         ],
       ),
     );
