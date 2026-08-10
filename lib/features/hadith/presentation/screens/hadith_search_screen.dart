@@ -83,8 +83,9 @@ class _HadithSearchScreenState extends ConsumerState<HadithSearchScreen> {
                     ),
                   );
                 }
-                if (results.isEmpty)
-                  return const Center(child: Text('No hadith found.'));
+                if (results.isEmpty) {
+                  return Center(child: Text('No hadith found.'));
+                }
                 return ListView.builder(
                   padding: EdgeInsets.symmetric(vertical: 8.h),
                   itemCount: results.length,

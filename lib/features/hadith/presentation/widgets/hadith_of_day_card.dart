@@ -57,7 +57,7 @@ class HadithOfDayCard extends ConsumerWidget {
       ),
       loading: () =>
           ShimmerBox(width: double.infinity, height: 110.h, borderRadius: 16.r),
-      error: (_, __) =>
+      error: (_, _) =>
           const SizedBox.shrink(), // fail quietly on home — not worth an error card here
     );
   }
