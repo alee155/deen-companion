@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -190,11 +191,12 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
             title: 'Needs a couple of Android permissions',
             body:
                 'Notifications, permission to show full-screen alerts, and an '
-                'exemption from battery optimisation — otherwise Android may '
+                'exemption from battery optimisation otherwise Android may '
                 'delay or drop an alarm.',
           ),
 
           SizedBox(height: 20.h),
+          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
             decoration: BoxDecoration(
