@@ -42,7 +42,7 @@ class _MutashabihatComparisonScreenState
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
             title: const Text(
-              'Quiz mode — hide similar verses until I reveal them',
+              'Quiz mode hide similar verses until I reveal them',
             ),
           ),
           Text(

@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -177,6 +178,8 @@ class MutashabihatHubScreen extends ConsumerWidget {
             subtitle: 'Check if a specific ayah has known lookalikes',
             onTap: () => _lookUpVerse(context, ref),
           ).appearStaggered(2),
+          SizedBox(height: 10.h),
+          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
         ],
       ),
     );
