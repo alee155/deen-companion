@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -268,7 +269,8 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ).appear(delay: const Duration(milliseconds: 210)),
-
+          SizedBox(height: 16.h),
+          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
           SizedBox(height: 16.h),
           Center(
             child: Text(
