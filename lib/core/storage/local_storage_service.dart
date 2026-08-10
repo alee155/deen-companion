@@ -85,7 +85,7 @@ class HiveStorageService implements LocalStorageService {
   Stream<void> watch(String boxName) {
     final box = _openBoxes[boxName];
     if (box == null) return const Stream.empty();
-    return box.watch().map((event) => null);
+    return box.watch().map((event) {});
   }
 }
 

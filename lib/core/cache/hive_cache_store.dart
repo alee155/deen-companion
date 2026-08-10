@@ -3,8 +3,6 @@ import '../constants/app_constants.dart';
 import '../storage/local_storage_service.dart';
 import 'cached_result.dart';
 
-/// Recursively converts Hive's untyped Map<dynamic,dynamic> / List<dynamic>
-/// results into the Map<String, dynamic> shape every fromJson() expects.
 dynamic _deepConvert(dynamic value) {
   if (value is Map) {
     return value.map((key, v) => MapEntry(key.toString(), _deepConvert(v)));
