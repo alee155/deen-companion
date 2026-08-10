@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:deen_companion/features/home/presentation/widgets/next_prayer_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,6 +108,9 @@ class HomeScreen extends ConsumerWidget {
                     const RecentActivityCard().appear(
                       delay: const Duration(milliseconds: 200),
                     ),
+                    const BannerAdWidget(
+                      margin: EdgeInsets.symmetric(vertical: 4),
+                    ),
                     SizedBox(height: 50.h),
                   ]),
                 ),
@@ -169,7 +173,7 @@ class _GreetingContent extends ConsumerWidget {
                           // nothing to do with location — when it fails it
                           // gets its own quiet retry affordance instead of
                           // vanishing and leaving the header half-empty.
-                          error: (_, __) => GestureDetector(
+                          error: (_, _) => GestureDetector(
                             onTap: () =>
                                 ref.invalidate(todayHijriNotifierProvider),
                             child: Text(

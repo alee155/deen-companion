@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
+import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 import '../../domain/entities/favorite_item.dart';
 import '../providers/favorites_providers.dart';
 
@@ -34,75 +35,85 @@ class FavoritesScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.parchment,
       body: SafeArea(
-        child: favoritesAsync.when(
-          loading: () => const SizedBox.shrink(),
-          error: (_, __) => Center(
-            child: Text(
-              'Could not load favorites.',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          data: (favorites) {
-            if (favorites.isEmpty) {
-              return ListView(
-                padding: EdgeInsets.all(20.w),
-                children: [
-                  Text(
-                    'Favorites',
-                    style: TextStyle(
-                      fontSize: 22.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.inkText,
-                    ),
-                  ),
-                  SizedBox(height: 20.h),
-                  _EmptyCard(
-                    icon: Icons.favorite_border,
-                    message:
-                        'Tap the heart icon on a Surah, Hadith, Dua, or Name '
-                        'to save it here for quick access.',
-                  ),
-                ],
-              );
-            }
-
-            final grouped = <FavoriteContentType, List<FavoriteItem>>{};
-            for (final item in favorites) {
-              grouped.putIfAbsent(item.type, () => []).add(item);
-            }
-
-            return ListView(
-              padding: EdgeInsets.all(20.w),
-              children: [
-                Text(
-                  'Favorites',
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.inkText,
+        child: Column(
+          children: [
+            Expanded(
+              child: favoritesAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => Center(
+                  child: Text(
+                    'Could not load favorites.',
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                 ),
-                SizedBox(height: 20.h),
-                for (final type in grouped.keys) ...[
-                  _SectionHeader(title: type.label),
-                  ...grouped[type]!.asMap().entries.map(
-                    (entry) => Padding(
-                      padding: EdgeInsets.only(bottom: 8.h),
-                      child: _FavoriteTile(
-                        item: entry.value,
-                        icon: _iconFor(type),
-                        onTap: () => context.push(entry.value.route),
-                        onRemove: () => ref
-                            .read(favoritesNotifierProvider.notifier)
-                            .remove(entry.value.id),
-                      ).appearStaggered(entry.key),
-                    ),
-                  ),
-                  SizedBox(height: 16.h),
-                ],
-              ],
-            );
-          },
+                data: (favorites) {
+                  if (favorites.isEmpty) {
+                    return ListView(
+                      padding: EdgeInsets.all(20.w),
+                      children: [
+                        Text(
+                          'Favorites',
+                          style: TextStyle(
+                            fontSize: 22.sp,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.inkText,
+                          ),
+                        ),
+                        SizedBox(height: 20.h),
+                        _EmptyCard(
+                          icon: Icons.favorite_border,
+                          message:
+                              'Tap the heart icon on a Surah, Hadith, Dua, or Name '
+                              'to save it here for quick access.',
+                        ),
+                      ],
+                    );
+                  }
+
+                  final grouped = <FavoriteContentType, List<FavoriteItem>>{};
+                  for (final item in favorites) {
+                    grouped.putIfAbsent(item.type, () => []).add(item);
+                  }
+
+                  return ListView(
+                    padding: EdgeInsets.all(20.w),
+                    children: [
+                      Text(
+                        'Favorites',
+                        style: TextStyle(
+                          fontSize: 22.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.inkText,
+                        ),
+                      ),
+                      SizedBox(height: 20.h),
+                      for (final type in grouped.keys) ...[
+                        _SectionHeader(title: type.label),
+                        ...grouped[type]!.asMap().entries.map(
+                          (entry) => Padding(
+                            padding: EdgeInsets.only(bottom: 8.h),
+                            child: _FavoriteTile(
+                              item: entry.value,
+                              icon: _iconFor(type),
+                              onTap: () => context.push(entry.value.route),
+                              onRemove: () => ref
+                                  .read(favoritesNotifierProvider.notifier)
+                                  .remove(entry.value.id),
+                            ).appearStaggered(entry.key),
+                          ),
+                        ),
+                        SizedBox(height: 16.h),
+                      ],
+                    ],
+                  );
+                },
+              ),
+            ),
+            // Pinned below the list rather than inside it: stays visible
+            // regardless of loading/error/empty/data state, and doesn't
+            // shift position as favorites are added or removed.
+            const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+          ],
         ),
       ),
     );

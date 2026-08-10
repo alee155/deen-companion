@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -62,6 +63,7 @@ class RecentActivityScreen extends ConsumerWidget {
                     color: AppColors.inkText,
                   ),
                 ),
+
                 SizedBox(height: 20.h),
                 if (items.isEmpty)
                   Container(
@@ -104,6 +106,7 @@ class RecentActivityScreen extends ConsumerWidget {
                       ).appearStaggered(entry.key),
                     ),
                   ),
+                const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
               ],
             );
           },
