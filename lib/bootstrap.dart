@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,8 @@ import 'app.dart';
 import 'core/di/providers.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'core/utils/logger.dart';
+import 'features/ads/presentation/providers/ads_providers.dart';
+import 'features/ads/presentation/providers/app_open_ad_manager.dart';
 import 'features/prayer_reminders/presentation/providers/reminders_provider.dart';
 
 Future<void> bootstrap() async {
@@ -48,6 +51,24 @@ Future<void> bootstrap() async {
   // app happens to be open. Deliberately not awaited: it must never delay the
   // first frame.
   _syncPrayerReminders(container);
+
+  // Ads init (SDK setup + first interstitial/app-open preload) and the app
+  // open lifecycle observer both start after the first frame, for the same
+  // reason: nothing about monetization may ever delay the app becoming
+  // interactive. `start()` on the manager begins observing immediately so
+  // even a very fast background/foreground cycle right after launch is
+  // caught correctly.
+  //
+  // Note: these two calls used to race against MobileAds.instance.initialize()
+  // — AppOpenAdManager.start() and adsInitializationProvider both fired ad
+  // requests independently, with no guarantee the SDK had finished
+  // initializing first. That's now handled inside AdsRepositoryImpl itself
+  // (every load path awaits an internal init-completer), so the order these
+  // two lines run in no longer matters for correctness — left in this order
+  // because it reads naturally, not because it's required.
+  debugPrint('[Ads] bootstrap: starting AppOpenAdManager + ads SDK init');
+  container.read(appOpenAdManagerProvider).start();
+  unawaited(container.read(adsInitializationProvider.future));
 }
 
 Future<void> _syncPrayerReminders(ProviderContainer container) async {

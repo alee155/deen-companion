@@ -34,6 +34,7 @@ dependencies:
   flutter_animate: ^4.5.2
   permission_handler: ^11.3.1
   url_launcher: ^6.3.1
+  google_mobile_ads: ^9.0.0
 
 dev_dependencies:
   flutter_test:
@@ -47,17 +48,7 @@ flutter:
     - assets/icons/
     - assets/images/
     - assets/images/hadith_covers/
-  # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
 
-  # For details regarding adding assets from package dependencies, see
-  # https://flutter.dev/to/asset-from-package
-
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
   fonts:
     - family: Manrope
       fonts:
@@ -70,21 +61,10 @@ flutter:
       fonts:
         - asset: assets/fonts/AmiriQuran-Regular.ttf
   
-  # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
 
-# flutter_launcher_icons config — run `dart run flutter_launcher_icons`
-# after changing anything here to regenerate the actual icon files.
 flutter_launcher_icons:
   image_path: "assets/images/app_logo.png"
   android: "launcher_icon"
   min_sdk_android: 21
   ios: true
   remove_alpha_ios: true
-  # Not using adaptive_icon_foreground/adaptive_icon_background for now:
-  # those expect a logo-only image on a transparent background with the
-  # artwork kept well inside the edges, since Android masks it into a
-  # circle/squircle/rounded-square depending on the launcher. Using the
-  # full app_logo.png there risks a doubled-up background or clipped
-  # artwork once masked. Add those two keys back once there's a
-  # dedicated foreground-only asset — see the note below this block.
