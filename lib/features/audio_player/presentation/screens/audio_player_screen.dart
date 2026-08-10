@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import '../../../quran/presentation/providers/quran_providers.dart';
 import '../../domain/audio_track.dart';
 import '../providers/audio_player_provider.dart';
@@ -18,60 +18,6 @@ class AudioPlayerScreen extends ConsumerWidget {
       return '$hours:${minutes.padLeft(2, '0')}:$seconds';
     }
     return '$minutes:$seconds';
-  }
-
-  void _showReciterPicker(BuildContext context, WidgetRef ref) {
-    final meta = ref.read(quranMetaNotifierProvider).value;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceLight,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        if (meta == null) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('Reciter list unavailable offline.'),
-          );
-        }
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  'Choose reciter',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.inkText,
-                  ),
-                ),
-              ),
-              ...meta.reciters.map(
-                (r) => ListTile(
-                  title: Text(r.name),
-                  subtitle: Text(r.style),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Switching reciters needs Surah Detail integration — coming soon.',
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   @override

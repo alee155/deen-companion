@@ -236,6 +236,7 @@ class _TopBar extends StatelessWidget {
           tooltip: 'Stop and go back',
           onTap: onBack,
         ),
+        10.w.horizontalSpace,
         Text(
           'NOW PLAYING',
           style: AppTypography.caption.copyWith(
