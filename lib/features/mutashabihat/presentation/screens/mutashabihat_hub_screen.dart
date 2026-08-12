@@ -132,7 +132,7 @@ class MutashabihatHubScreen extends ConsumerWidget {
               ),
             ).appear(),
             loading: () => const SizedBox(height: 100),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
           const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
 
