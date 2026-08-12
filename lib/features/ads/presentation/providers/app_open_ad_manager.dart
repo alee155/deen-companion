@@ -46,6 +46,84 @@ class AppOpenAdManager with WidgetsBindingObserver {
     unawaited(_ref.read(adsRepositoryProvider).preloadAppOpenAd());
   }
 
+  /// Shows the App Open ad for a genuine **cold start** — called once by
+  /// the splash screen, right when it determines this is a *returning*
+  /// user heading straight to Home (onboarding and permissions already
+  /// completed), not a first-time install still going through onboarding.
+  ///
+  /// This is the path [didChangeAppLifecycleState] below can never cover
+  /// on its own: that observer only fires on genuine background→
+  /// foreground transitions, and a fresh process launch is neither — it's
+  /// the very first lifecycle event the app gets, with no prior `paused`
+  /// to compare against, which is exactly what [_maybeShowOnResume]
+  /// deliberately ignores. Cold start needs its own explicit trigger.
+  ///
+  /// Fire-and-forget by design, same as every other ad path in this
+  /// feature: never awaited by the caller, so a slow network or an
+  /// unavailable ad can never delay navigation to Home.
+  void maybeShowOnColdStart() {
+    if (!AdsConfig.adsEnabled) {
+      debugPrint('[Ads] [AppOpenManager] cold start show skipped — ads disabled');
+      return;
+    }
+    unawaited(_showOnColdStart());
+  }
+
+  Future<void> _showOnColdStart() async {
+    final repository = _ref.read(adsRepositoryProvider);
+
+    // Guards against the (unlikely but possible) case where an
+    // interstitial or another app open ad is already up by the time the
+    // splash screen makes this call.
+    if (repository.isDisplayingFullScreenAd) {
+      debugPrint(
+        '[Ads] [AppOpenManager] cold start: another full-screen ad is '
+        'already showing — skipping',
+      );
+      return;
+    }
+
+    if (!repository.isAppOpenAdReady) {
+      // THE ACTUAL FIX: on a real cold start, the ad realistically never
+      // has finished loading yet at this exact instant — SDK init plus
+      // the ad network round trip routinely takes 1-4 seconds, and this
+      // method gets called right as Home is about to render. Instead of
+      // checking readiness once and giving up (which is what silently
+      // ate every cold-start impression before), wait on the exact same
+      // preload that was already kicked off in start() — no duplicate
+      // request, just the result of the one already in flight.
+      debugPrint(
+        '[Ads] [AppOpenManager] cold start: ad not ready yet — awaiting '
+        'the in-flight preload…',
+      );
+      final loaded = await repository.preloadAppOpenAd();
+      debugPrint('[Ads] [AppOpenManager] cold start: preload settled, loaded=$loaded');
+      if (!loaded) return;
+
+      // Re-check: something else (a resume/pause cycle, an interstitial)
+      // could have started showing a full-screen ad during the wait.
+      if (repository.isDisplayingFullScreenAd) {
+        debugPrint(
+          '[Ads] [AppOpenManager] cold start: a full-screen ad started '
+          'showing while waiting for the preload — skipping',
+        );
+        return;
+      }
+    }
+
+    debugPrint('[Ads] [AppOpenManager] cold start: attempting to show');
+    final shown = await repository.showAppOpenAdIfAvailable();
+    debugPrint(
+      '[Ads] [AppOpenManager] cold start showAppOpenAdIfAvailable() -> $shown',
+    );
+    if (!shown) {
+      // Nothing was ready yet (the preload kicked off in `start()` may
+      // still be in flight) — don't retry-loop waiting for it now, just
+      // make sure one is queued for the next resume.
+      unawaited(repository.preloadAppOpenAd());
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     debugPrint('[Ads] [AppOpenManager] lifecycle state changed: $state');

@@ -60,8 +60,14 @@ abstract class AdsRepository {
   bool get isAppOpenAdReady;
 
   /// Warms up an app open ad for the next cold start / resume. Safe to
-  /// call repeatedly for the same reasons as [preloadInterstitial].
-  Future<void> preloadAppOpenAd();
+  /// call repeatedly for the same reasons as [preloadInterstitial] — a
+  /// call made while a load is already in flight awaits that same load
+  /// rather than starting a duplicate one, which is what lets a cold
+  /// start "wait for whatever preload is already running" instead of
+  /// kicking off a second, redundant request. Returns `true` once an ad
+  /// is ready (either already was, or just finished loading), `false` if
+  /// the load failed or ads are disabled.
+  Future<bool> preloadAppOpenAd();
 
   /// Shows the loaded app open ad if one is ready and nothing else is
   /// currently on screen. Returns `true` if it actually showed. Never

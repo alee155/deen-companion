@@ -5,20 +5,25 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../../../core/utils/logger.dart';
 import '../../domain/entities/banner_ad_handle.dart';
-import '../constants/ad_unit_ids.dart';
 
 /// Talks to the Mobile Ads SDK for banner ads and nothing else — no app
-/// state, no counters, no lifecycle handling. [AdsRepositoryImpl] owns all
-/// of that; this class only knows how to ask the SDK for one banner and
-/// turn its load/fail callbacks into a `Future`.
+/// state, no counters, no lifecycle handling, and (as of the Remote
+/// Config rework) no opinion on *which* ad unit ID to use either — that
+/// decision belongs to `AdUnitResolver` and is handed in by
+/// [AdsRepositoryImpl]. This class only knows how to ask the SDK for one
+/// banner and turn its load/fail callbacks into a `Future`.
 class BannerAdDataSource {
   const BannerAdDataSource();
 
-  /// Requests an adaptive anchored banner sized for [width]. Completes
+  /// Requests an adaptive anchored banner sized for [width], using
+  /// [adUnitId] (already resolved to real/test by the caller). Completes
   /// with `null` (never throws) if sizing or loading fails, so callers
   /// can treat "no ad" as a normal outcome rather than an error path.
-  Future<BannerAdHandle?> load({required double width}) async {
-    debugPrint('[Ads] [Banner] adUnitId = ${AdUnitIds.banner}');
+  Future<BannerAdHandle?> load({
+    required double width,
+    required String adUnitId,
+  }) async {
+    debugPrint('[Ads] [Banner] adUnitId = $adUnitId');
 
     final size = await AdSize.getAnchoredAdaptiveBannerAdSize(
       Orientation.portrait,
@@ -26,20 +31,16 @@ class BannerAdDataSource {
     );
 
     if (size == null) {
-      debugPrint(
-        '[Ads] [Banner] getAnchoredAdaptiveBannerAdSize returned null for width=$width',
-      );
+      debugPrint('[Ads] [Banner] getAnchoredAdaptiveBannerAdSize returned null for width=$width');
       AppLogger.e('Banner ad: could not resolve an adaptive size');
       return null;
     }
-    debugPrint(
-      '[Ads] [Banner] resolved adaptive size: ${size.width}x${size.height}',
-    );
+    debugPrint('[Ads] [Banner] resolved adaptive size: ${size.width}x${size.height}');
 
     final completer = Completer<BannerAdHandle?>();
 
     final bannerAd = BannerAd(
-      adUnitId: AdUnitIds.banner,
+      adUnitId: adUnitId,
       size: size,
       request: const AdRequest(),
       listener: BannerAdListener(

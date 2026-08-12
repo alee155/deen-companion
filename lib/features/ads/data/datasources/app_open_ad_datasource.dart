@@ -4,22 +4,23 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../../../core/utils/logger.dart';
-import '../constants/ad_unit_ids.dart';
 
 /// Talks to the Mobile Ads SDK for app open ads and nothing else. Expiry
 /// tracking, lifecycle wiring, and re-preloading all live in
-/// [AdsRepositoryImpl] / the app-open lifecycle manager.
+/// [AdsRepositoryImpl] / the app-open lifecycle manager; *which* ad unit
+/// ID to use lives in `AdUnitResolver`.
 class AppOpenAdDataSource {
   const AppOpenAdDataSource();
 
-  /// Requests one app open ad. Completes with `null` (never throws) on
+  /// Requests one app open ad using [adUnitId] (already resolved to
+  /// real/test by the caller). Completes with `null` (never throws) on
   /// failure.
-  Future<AppOpenAd?> load() {
-    debugPrint('[Ads] [AppOpen] adUnitId = ${AdUnitIds.appOpen}');
+  Future<AppOpenAd?> load({required String adUnitId}) {
+    debugPrint('[Ads] [AppOpen] adUnitId = $adUnitId');
     final completer = Completer<AppOpenAd?>();
 
     AppOpenAd.load(
-      adUnitId: AdUnitIds.appOpen,
+      adUnitId: adUnitId,
       request: const AdRequest(),
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
