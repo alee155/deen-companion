@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../../../../core/remote_config/remote_config_service.dart';
 import '../../../../core/utils/logger.dart';
 import '../../domain/entities/banner_ad_handle.dart';
 import '../../domain/repositories/ads_repository.dart';
@@ -11,19 +12,26 @@ import '../datasources/app_open_ad_datasource.dart';
 import '../datasources/banner_ad_datasource.dart';
 import '../datasources/interstitial_ad_datasource.dart';
 import '../datasources/mobile_ads_initializer.dart';
+import '../services/ad_unit_resolver.dart';
 
 class AdsRepositoryImpl implements AdsRepository {
   final MobileAdsInitializer _initializer;
+  final RemoteConfigService _remoteConfig;
+  final AdUnitResolver _adUnitResolver;
   final BannerAdDataSource _bannerDataSource;
   final InterstitialAdDataSource _interstitialDataSource;
   final AppOpenAdDataSource _appOpenDataSource;
 
   AdsRepositoryImpl({
     required MobileAdsInitializer initializer,
+    required RemoteConfigService remoteConfig,
+    required AdUnitResolver adUnitResolver,
     required BannerAdDataSource bannerDataSource,
     required InterstitialAdDataSource interstitialDataSource,
     required AppOpenAdDataSource appOpenDataSource,
   }) : _initializer = initializer,
+       _remoteConfig = remoteConfig,
+       _adUnitResolver = adUnitResolver,
        _bannerDataSource = bannerDataSource,
        _interstitialDataSource = interstitialDataSource,
        _appOpenDataSource = appOpenDataSource;
@@ -50,17 +58,27 @@ class AdsRepositoryImpl implements AdsRepository {
   // ---------------------------------------------------------------------
   // Initialization gate
   // ---------------------------------------------------------------------
-  // THE FIX: previously, `bootstrap.dart` kicked off SDK initialization
-  // (via `adsInitializationProvider`) and the App Open preload (via
-  // `AppOpenAdManager.start()`) as two independent fire-and-forget calls,
-  // and any `BannerAdWidget` on screen loaded a banner the moment it
-  // mounted — none of these waited for `MobileAds.instance.initialize()`
-  // to actually finish first. Requesting an ad before the SDK finishes
-  // initializing is a real, well-documented cause of ads silently never
-  // loading. Every load path below now funnels through
-  // [_ensureInitialized], so no matter what order the app happens to call
-  // things in, the SDK is always ready before the first ad request goes out.
+  // Every ad load path funnels through [_ensureInitialized] before doing
+  // anything else, so no matter what order the app happens to call things
+  // in, both the Mobile Ads SDK *and* Remote Config are ready before the
+  // first ad request or ad-unit resolution happens.
+  //
+  // THE LATENCY FIX for "App Open ad should run as soon as the app
+  // opens": this used to await `_remoteConfig.initialize()`, which did a
+  // full network fetch before completing — meaning the very first ad of
+  // a session was gated behind *two* network round trips (Remote Config's
+  // fetch, then the ad network's own load), run in parallel but each
+  // capable of being the long pole. It now awaits only
+  // `_remoteConfig.ensureReady()`, which is local/instant (it activates
+  // whatever config was cached from a *previous* session — see
+  // RemoteConfigService's doc comment). The actual network fetch
+  // (`refresh()`) is kicked off once, in the background, right after —
+  // never blocking this gate, so it can never delay an ad again. Its
+  // result is picked up by whichever ad load happens to run after it
+  // finishes (a retry, a re-preload after dismissal, or simply next time
+  // AdUnitResolver is asked).
   Completer<void>? _initCompleter;
+  bool _hasStartedRemoteConfigRefresh = false;
 
   Future<void> _ensureInitialized() {
     final existing = _initCompleter;
@@ -69,22 +87,40 @@ class AdsRepositoryImpl implements AdsRepository {
     final completer = Completer<void>();
     _initCompleter = completer;
 
-    debugPrint('[Ads] Initializing Mobile Ads SDK…');
-    _initializer
-        .initialize()
+    debugPrint('[Ads] Initializing Mobile Ads SDK + activating cached Remote Config…');
+    Future.wait([_initMobileAdsSdk(), _remoteConfig.ensureReady()])
         .then((_) {
-          debugPrint('[Ads] Mobile Ads SDK initialized ✅');
+          debugPrint('[Ads] Mobile Ads SDK ready + Remote Config cache activated ✅');
           completer.complete();
+          _startBackgroundRemoteConfigRefresh();
         })
         .catchError((Object error, StackTrace stackTrace) {
-          debugPrint('[Ads] Mobile Ads SDK initialization threw: $error');
-          AppLogger.e('Mobile Ads SDK initialization threw', error, stackTrace);
+          debugPrint('[Ads] Initialization threw: $error');
+          AppLogger.e('Ads/Remote Config initialization threw', error, stackTrace);
           // Complete anyway — a stuck Completer would permanently wedge
           // every future ad request behind a load that will never finish.
+          // Remote Config already falls back to its own safe defaults on
+          // failure (see FirebaseRemoteConfigService), so proceeding here
+          // just means "test ads in debug / disabled in release", never
+          // real ads by accident.
           completer.complete();
+          _startBackgroundRemoteConfigRefresh();
         });
 
     return completer.future;
+  }
+
+  void _startBackgroundRemoteConfigRefresh() {
+    if (_hasStartedRemoteConfigRefresh) return;
+    _hasStartedRemoteConfigRefresh = true;
+    debugPrint('[Ads] Kicking off background Remote Config refresh (not on the ad-loading critical path)…');
+    unawaited(_remoteConfig.refresh());
+  }
+
+  Future<void> _initMobileAdsSdk() async {
+    debugPrint('[Ads] Initializing Mobile Ads SDK…');
+    await _initializer.initialize();
+    debugPrint('[Ads] Mobile Ads SDK initialized ✅');
   }
 
   @override
@@ -107,8 +143,18 @@ class AdsRepositoryImpl implements AdsRepository {
       return null;
     }
     await _ensureInitialized();
+
+    final resolved = _adUnitResolver.banner();
+    if (!resolved.shouldLoad) {
+      debugPrint('[Ads] Banner: skipped — resolved to disabled');
+      return null;
+    }
+
     debugPrint('[Ads] Banner: requesting ad (width=$width)…');
-    final handle = await _bannerDataSource.load(width: width);
+    final handle = await _bannerDataSource.load(
+      width: width,
+      adUnitId: resolved.adUnitId!,
+    );
     debugPrint(
       handle == null
           ? '[Ads] Banner: load returned null (failed — see error above)'
@@ -141,15 +187,20 @@ class AdsRepositoryImpl implements AdsRepository {
     }
 
     await _ensureInitialized();
+
+    final resolved = _adUnitResolver.interstitial();
+    if (!resolved.shouldLoad) {
+      debugPrint('[Ads] Interstitial: preload skipped — resolved to disabled');
+      return;
+    }
+
     _isLoadingInterstitial = true;
     debugPrint('[Ads] Interstitial: requesting ad…');
-    final ad = await _interstitialDataSource.load();
+    final ad = await _interstitialDataSource.load(adUnitId: resolved.adUnitId!);
     _isLoadingInterstitial = false;
 
     if (ad == null) {
-      debugPrint(
-        '[Ads] Interstitial: load returned null (failed — see error above)',
-      );
+      debugPrint('[Ads] Interstitial: load returned null (failed — see error above)');
       return;
     }
     debugPrint('[Ads] Interstitial: loaded ✅');
@@ -261,31 +312,51 @@ class AdsRepositoryImpl implements AdsRepository {
     return true;
   }
 
+  // Shared by every caller of preloadAppOpenAd() while a load is in
+  // flight — this is what lets AppOpenAdManager's cold-start path *wait*
+  // for the exact same preload that was already kicked off back in
+  // start(), instead of instantly checking readiness and giving up
+  // because the network round trip (routinely 1-4s, SDK init included)
+  // hasn't finished yet.
+  Completer<bool>? _appOpenLoadCompleter;
+
   @override
-  Future<void> preloadAppOpenAd() async {
+  Future<bool> preloadAppOpenAd() async {
     if (!AdsConfig.adsEnabled) {
       debugPrint('[Ads] preloadAppOpenAd() skipped — ads disabled');
-      return;
+      return false;
     }
-    if (_isLoadingAppOpenAd || isAppOpenAdReady) {
-      debugPrint(
-        '[Ads] App Open: preload skipped (loading=$_isLoadingAppOpenAd, '
-        'ready=$isAppOpenAdReady)',
-      );
-      return;
+    if (isAppOpenAdReady) return true;
+
+    final inFlight = _appOpenLoadCompleter;
+    if (inFlight != null) {
+      debugPrint('[Ads] App Open: preload already in flight — awaiting it');
+      return inFlight.future;
     }
 
+    final completer = Completer<bool>();
+    _appOpenLoadCompleter = completer;
+
     await _ensureInitialized();
+
+    final resolved = _adUnitResolver.appOpen();
+    if (!resolved.shouldLoad) {
+      debugPrint('[Ads] App Open: preload skipped — resolved to disabled');
+      _appOpenLoadCompleter = null;
+      completer.complete(false);
+      return false;
+    }
+
     _isLoadingAppOpenAd = true;
     debugPrint('[Ads] App Open: requesting ad…');
-    final ad = await _appOpenDataSource.load();
+    final ad = await _appOpenDataSource.load(adUnitId: resolved.adUnitId!);
     _isLoadingAppOpenAd = false;
 
     if (ad == null) {
-      debugPrint(
-        '[Ads] App Open: load returned null (failed — see error above)',
-      );
-      return;
+      debugPrint('[Ads] App Open: load returned null (failed — see error above)');
+      _appOpenLoadCompleter = null;
+      completer.complete(false);
+      return false;
     }
     debugPrint('[Ads] App Open: loaded ✅');
 
@@ -315,6 +386,9 @@ class AdsRepositoryImpl implements AdsRepository {
 
     _appOpenAd = ad;
     _appOpenLoadedAt = DateTime.now();
+    _appOpenLoadCompleter = null;
+    completer.complete(true);
+    return true;
   }
 
   @override

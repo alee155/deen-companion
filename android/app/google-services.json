@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "930535529496",
+    "project_id": "deencompanion-59c0c",
+    "storage_bucket": "deencompanion-59c0c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:930535529496:android:c9dc34a74eb2ba44cfb76d",
+        "android_client_info": {
+          "package_name": "com.devsouq.deen_companion.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBf-UE2oawC06esmNsgIV6QVJ7-44BmFMY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

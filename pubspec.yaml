@@ -35,6 +35,18 @@ dependencies:
   permission_handler: ^11.3.1
   url_launcher: ^6.3.1
   google_mobile_ads: ^9.0.0
+  package_info_plus: ^9.0.1
+  firebase_core: ^4.13.0
+  firebase_remote_config: ^6.5.6
+  # firebase_core: added automatically by `flutterfire configure` — don't
+  # hand-edit its version once that's run; it picks whatever's actually
+  # compatible with your Firebase project setup.
+  # firebase_remote_config: NOT added by flutterfire configure (it only
+  # wires up firebase_core + platform config, not individual products).
+  # Add it yourself with: flutter pub add firebase_remote_config
+  # — this resolves the correct version against whatever firebase_core
+  # ends up at, the same way `flutter pub add package_info_plus:^9.0.1`
+  # avoided the share_plus/win32 conflict earlier.
 
 dev_dependencies:
   flutter_test:
