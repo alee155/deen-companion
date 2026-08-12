@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/app_info/app_info_service.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
@@ -104,13 +105,18 @@ class ProfileScreen extends ConsumerWidget {
             SizedBox(height: 16.h),
             Center(
               child: Text(
-                '${AppConstants.appName} · v${AppConstants.appVersion}',
+                ref
+                    .watch(appVersionNameProvider)
+                    .when(
+                      data: (version) => '${AppConstants.appName} · v$version',
+                      loading: () => AppConstants.appName,
+                      error: (_, _) => AppConstants.appName,
+                    ),
                 style: AppTypography.caption.copyWith(
                   color: AppColors.textMuted,
                 ),
               ),
             ).appear(delay: const Duration(milliseconds: 220)),
-            SizedBox(height: 16.h),
             const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
           ],
         ),

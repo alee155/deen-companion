@@ -63,8 +63,9 @@ class RecentActivityScreen extends ConsumerWidget {
                     color: AppColors.inkText,
                   ),
                 ),
-
                 SizedBox(height: 20.h),
+                const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+
                 if (items.isEmpty)
                   Container(
                     padding: EdgeInsets.all(24.w),
@@ -106,7 +107,6 @@ class RecentActivityScreen extends ConsumerWidget {
                       ).appearStaggered(entry.key),
                     ),
                   ),
-                const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
               ],
             );
           },

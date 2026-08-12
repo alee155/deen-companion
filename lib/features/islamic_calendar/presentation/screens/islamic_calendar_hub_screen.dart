@@ -70,7 +70,7 @@ class IslamicCalendarHubScreen extends ConsumerWidget {
             error: (error, _) => Text(error.toString()),
           ),
           SizedBox(height: 16.h),
-
+          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
           Row(
             children: [
               Expanded(
@@ -90,8 +90,8 @@ class IslamicCalendarHubScreen extends ConsumerWidget {
               ),
             ],
           ),
-          // SizedBox(height: 20.h),
-          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+          SizedBox(height: 20.h),
+
           eventsAsync.when(
             data: (bundle) {
               return Column(

@@ -1,4 +1,3 @@
-import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -161,8 +160,6 @@ class _ZakatCalculatorScreenState extends ConsumerState<ZakatCalculatorScreen> {
                 color: AppColors.inkText,
               ),
             ),
-            const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
-
             Container(
               margin: EdgeInsets.only(top: 8.h, bottom: 12.h),
               padding: EdgeInsets.all(14.w),

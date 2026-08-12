@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/providers.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../ads/presentation/providers/app_open_ad_manager.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -51,6 +52,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // has to render a failure state on a cold install.
       context.go('/permissions');
     } else {
+      // This is the one branch that represents a genuine cold start for a
+      // returning user — exactly where an App Open ad belongs. The
+      // lifecycle-based path in AppOpenAdManager only ever fires on a
+      // background→foreground resume, which a fresh launch is not, so it
+      // can never show one here on its own. Fire-and-forget: the ad (if
+      // any is ready) shows on top of Home once it renders, but never
+      // blocks getting there.
+      ref.read(appOpenAdManagerProvider).maybeShowOnColdStart();
       context.go('/');
     }
   }
