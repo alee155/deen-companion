@@ -2,8 +2,11 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'Deen';
-  static const String appVersion =
-      '1.0.0'; // keep in sync with pubspec.yaml's version — swap for package_info_plus if you want this to read automatically
+  // App version used to be hardcoded here. It's now read at runtime from
+  // the actual installed build via AppInfoService
+  // (core/app_info/app_info_service.dart), which wraps package_info_plus —
+  // so it can never drift out of sync with pubspec.yaml / the Android
+  // versionName again. See appVersionNameProvider / appDisplayVersionProvider.
 
   static const Duration defaultAnimationDuration = Duration(milliseconds: 250);
   static const Duration splashMinDuration = Duration(milliseconds: 800);
