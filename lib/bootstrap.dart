@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'app.dart';
@@ -11,64 +12,79 @@ import 'core/utils/logger.dart';
 import 'features/ads/presentation/providers/ads_providers.dart';
 import 'features/ads/presentation/providers/app_open_ad_manager.dart';
 import 'features/prayer_reminders/presentation/providers/reminders_provider.dart';
+import 'firebase_options.dart';
 
 Future<void> bootstrap() async {
+  final bootStart = DateTime.now();
   WidgetsFlutterBinding.ensureInitialized();
 
   final container = ProviderContainer();
+
+  // THE ACTUAL WIN: MobileAds.instance.initialize() has no dependency on
+  // Firebase or local storage, so there's no reason for it to wait behind
+  // either. Firing it here, before storage.init()/Firebase.initializeApp(),
+  // lets the ad network's own (slow — routinely 1-4s) round trip start
+  // that much earlier. Not awaited: AdsRepositoryImpl._ensureInitialized()
+  // calls MobileAdsInitializer.initialize() again later and — thanks to
+  // the guard added there — just picks up this same in-flight/completed
+  // call instead of double-firing it.
+  final mobileAdsInitFuture = container
+      .read(mobileAdsInitializerProvider)
+      .initialize();
+  debugPrint(
+    '[Boot] MobileAds SDK init kicked off at '
+    '+${DateTime.now().difference(bootStart).inMilliseconds}ms',
+  );
+
   final storageService = container.read(localStorageServiceProvider);
   await storageService.init();
+  debugPrint(
+    '[Boot] storage.init() done at +${DateTime.now().difference(bootStart).inMilliseconds}ms',
+  );
 
-  // Storage is open by this point, so the persisted theme choice can be
-  // restored before the first frame — the app opens in the user's chosen
-  // brightness instead of flashing Light and then switching.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint(
+      '[Boot] Firebase.initializeApp() done at '
+      '+${DateTime.now().difference(bootStart).inMilliseconds}ms',
+    );
+  } catch (error, stackTrace) {
+    debugPrint('[Boot] Firebase.initializeApp() failed: $error');
+    AppLogger.e('Firebase initialization failed', error, stackTrace);
+  }
+
   container.read(themeModeNotifierProvider);
-
-  // just_audio_background must be initialised *before* any AudioPlayer is
-  // constructed, otherwise the media notification/background service never
-  // attaches — and on release builds that surfaces as a foreground-service
-  // exception the first time playback starts.
-  await _initAudioBackground();
 
   FlutterError.onError = (details) {
     AppLogger.e('Flutter error', details.exception, details.stack);
   };
 
-  // Errors raised outside the Flutter framework (platform channels, async
-  // gaps) would otherwise be fatal in a release build.
   PlatformDispatcher.instance.onError = (error, stack) {
     AppLogger.e('Uncaught platform error', error, stack);
     return true;
   };
 
+  debugPrint(
+    '[Boot] calling runApp() at +${DateTime.now().difference(bootStart).inMilliseconds}ms',
+  );
   runApp(
     UncontrolledProviderScope(container: container, child: const DeenApp()),
   );
 
-  // Opportunistic re-arm of the prayer alarm window on every cold start. The
-  // native side keeps whatever is already scheduled alive across reboots, but
-  // only Dart can fetch fresh timings — so this extends the window while the
-  // app happens to be open. Deliberately not awaited: it must never delay the
-  // first frame.
-  _syncPrayerReminders(container);
-
-  // Ads init (SDK setup + first interstitial/app-open preload) and the app
-  // open lifecycle observer both start after the first frame, for the same
-  // reason: nothing about monetization may ever delay the app becoming
-  // interactive. `start()` on the manager begins observing immediately so
-  // even a very fast background/foreground cycle right after launch is
-  // caught correctly.
-  //
-  // Note: these two calls used to race against MobileAds.instance.initialize()
-  // — AppOpenAdManager.start() and adsInitializationProvider both fired ad
-  // requests independently, with no guarantee the SDK had finished
-  // initializing first. That's now handled inside AdsRepositoryImpl itself
-  // (every load path awaits an internal init-completer), so the order these
-  // two lines run in no longer matters for correctness — left in this order
-  // because it reads naturally, not because it's required.
+  // Ads first: this is the fire-and-forget call that matters most for
+  // perceived App Open latency, so it gets first crack at the event loop
+  // among everything below. It reuses mobileAdsInitFuture's work via the
+  // guard in MobileAdsInitializer — nothing is requested twice.
   debugPrint('[Ads] bootstrap: starting AppOpenAdManager + ads SDK init');
   container.read(appOpenAdManagerProvider).start();
   unawaited(container.read(adsInitializationProvider.future));
+
+  unawaited(_initAudioBackground(bootStart));
+  _syncPrayerReminders(container);
+
+  unawaited(mobileAdsInitFuture); // keep the reference alive/analyzed
 }
 
 Future<void> _syncPrayerReminders(ProviderContainer container) async {
@@ -79,12 +95,16 @@ Future<void> _syncPrayerReminders(ProviderContainer container) async {
   }
 }
 
-Future<void> _initAudioBackground() async {
+Future<void> _initAudioBackground(DateTime bootStart) async {
   try {
     await JustAudioBackground.init(
       androidNotificationChannelId: 'com.devsouq.deen_companion.app.audio',
       androidNotificationChannelName: 'Quran audio playback',
       androidNotificationOngoing: true,
+    );
+    debugPrint(
+      '[Boot] audio background init done at '
+      '+${DateTime.now().difference(bootStart).inMilliseconds}ms',
     );
   } catch (error, stackTrace) {
     // A failure here only costs background playback controls — it must
