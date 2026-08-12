@@ -21,6 +21,11 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "8.11.1" apply false
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    // Required by firebase_core to process android/app/google-services.json
+    // (downloaded via `flutterfire configure`) into usable Android
+    // resources — this is what lets Firebase.initializeApp() in
+    // bootstrap.dart actually find your project's credentials.
+    id("com.google.gms.google-services") version "4.5.0" apply false
 }
 
 include(":app")

@@ -41,13 +41,16 @@
         <!-- Flutter embedding -->
         <meta-data android:name="flutterEmbedding" android:value="2" />
 
-        <!-- AdMob application ID. This is currently Google's public TEST
-             App ID — every app testing with test ad units uses this exact
-             value, it is not secret. Replace it with the real AdMob App ID
-             (from AdMob → App settings) before the production release; see
-             lib/features/ads/data/constants/ad_unit_ids.dart for the
-             matching ad *unit* IDs, which follow the same swap. -->
-        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-3940256099942544~3347511713" />
+        <!-- AdMob application ID. This is the real AdMob App ID for this
+             project (not a secret — Application IDs are always visible in
+             the built APK). Per Google's own guidance, the real
+             Application ID is used at all times, even on builds where
+             AdUnitResolver is currently resolving individual ad *units* to
+             Google's test IDs — see
+             lib/features/ads/data/services/ad_unit_resolver.dart and
+             lib/features/ads/data/constants/ad_mob_ids.dart, which is
+             where the real vs. test ad *unit* decision actually happens. -->
+        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-1880428028238946~8005314189" />
 
         <!-- Audio Service -->
         <service android:name="com.ryanheise.audioservice.AudioService" android:foregroundServiceType="mediaPlayback" android:exported="true">
