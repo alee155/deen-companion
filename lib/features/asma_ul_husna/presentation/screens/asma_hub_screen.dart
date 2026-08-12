@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -65,6 +66,9 @@ class AsmaHubScreen extends ConsumerWidget {
                           color: AppColors.textSecondary,
                         ),
                       ),
+                      const BannerAdWidget(
+                        margin: EdgeInsets.symmetric(vertical: 4),
+                      ),
                     ],
                   ),
                 ),
@@ -119,6 +123,7 @@ class AsmaHubScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
+
                           Container(
                             width: 44.w,
                             height: 44.w,

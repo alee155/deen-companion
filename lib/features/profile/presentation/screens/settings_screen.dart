@@ -6,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/app_info/app_info_service.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -264,13 +265,19 @@ class SettingsScreen extends ConsumerWidget {
                 iconColor: AppColors.worshipAccent,
                 iconBg: AppColors.worshipAccentBg,
                 title: 'Version',
-                trailingText: AppConstants.appVersion,
+                trailingText: ref
+                    .watch(appDisplayVersionProvider)
+                    .when(
+                      data: (version) => version,
+                      loading: () => '…',
+                      error: (_, _) => '—',
+                    ),
                 showChevron: false,
               ),
             ],
           ).appear(delay: const Duration(milliseconds: 210)),
-          SizedBox(height: 16.h),
           const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+
           SizedBox(height: 16.h),
           Center(
             child: Text(

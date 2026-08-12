@@ -9,6 +9,8 @@ import '../../../../core/location/location_status.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../ads/domain/entities/ad_placement_key.dart';
+import '../../../ads/presentation/providers/interstitial_ad_coordinator.dart';
 import '../../../prayer_times/presentation/providers/prayer_times_provider.dart';
 import '../../../../shared/domain/explore_category.dart';
 import '../../../../shared/widgets/coming_soon.dart';
@@ -82,9 +84,33 @@ class HomeScreen extends ConsumerWidget {
                             icon: c.icon,
                             accentColor: c.accentColor,
                             accentBg: c.accentBg,
-                            onTap: () => c.route.isEmpty
-                                ? showComingSoonSnackbar(context, c.label)
-                                : context.push(c.route),
+                            onTap: () {
+                              if (c.route.isEmpty) {
+                                // Nothing to navigate to yet — same as
+                                // Explore's own "coming soon" tiles, this
+                                // skips the ad flow entirely rather than
+                                // showing an interstitial before a
+                                // snackbar.
+                                showComingSoonSnackbar(context, c.label);
+                                return;
+                              }
+                              // Same coordinator, same placement key as
+                              // Explore → See All (all_features_screen.dart)
+                              // — Home's quick-access tiles are just
+                              // another entry point into the same set of
+                              // destinations, so they share one odd/even
+                              // count rather than getting an independent
+                              // one. Reusing the placement, not just the
+                              // mechanism, is what keeps the frequency
+                              // consistent regardless of which route a
+                              // user takes to get there.
+                              ref
+                                  .read(interstitialAdCoordinatorProvider)
+                                  .showThenRun(
+                                    placement: AdPlacementKey.exploreSection,
+                                    action: () => context.push(c.route),
+                                  );
+                            },
                           );
                         }),
                         QuickAccessItem(
@@ -100,7 +126,10 @@ class HomeScreen extends ConsumerWidget {
                     const VerseOfDayCard().appear(
                       delay: const Duration(milliseconds: 120),
                     ),
-                    SizedBox(height: 16.h),
+                    const BannerAdWidget(
+                      margin: EdgeInsets.symmetric(vertical: 4),
+                    ),
+
                     const HadithOfDayCard().appear(
                       delay: const Duration(milliseconds: 160),
                     ),
@@ -108,9 +137,7 @@ class HomeScreen extends ConsumerWidget {
                     const RecentActivityCard().appear(
                       delay: const Duration(milliseconds: 200),
                     ),
-                    const BannerAdWidget(
-                      margin: EdgeInsets.symmetric(vertical: 4),
-                    ),
+
                     SizedBox(height: 50.h),
                   ]),
                 ),

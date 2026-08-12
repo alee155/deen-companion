@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -107,10 +108,14 @@ class _DuaSearchScreenState extends ConsumerState<DuaSearchScreen> {
                 ? bundleAsync.when(
                     data: (bundle) {
                       final duas = bundle.byCategory(_activeCategoryFilter!);
-                      return ListView.builder(
-                        itemCount: duas.length,
-                        itemBuilder: (context, index) =>
-                            DuaCardTile(dua: duas[index]),
+                      return ListView(
+                        children: [
+                          ...duas.map((dua) => DuaCardTile(dua: dua)),
+
+                          const BannerAdWidget(
+                            margin: EdgeInsets.symmetric(vertical: 4),
+                          ),
+                        ],
                       );
                     },
                     loading: () => Center(
@@ -123,8 +128,9 @@ class _DuaSearchScreenState extends ConsumerState<DuaSearchScreen> {
                 : searchState.when(
                     data: (results) {
                       if (results == null) return const SizedBox.shrink();
-                      if (results.isEmpty)
-                        return const Center(child: Text('No duas found.'));
+                      if (results.isEmpty) {
+                        return Center(child: Text('No duas found.'));
+                      }
                       return ListView.builder(
                         itemCount: results.length,
                         itemBuilder: (context, index) =>

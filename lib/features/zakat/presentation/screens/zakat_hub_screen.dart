@@ -32,13 +32,13 @@ class ZakatHubScreen extends StatelessWidget {
             onTap: () => context.push('/zakat/agriculture'),
           ).appearStaggered(1),
           SizedBox(height: 12.h),
+
           _HubTile(
             icon: Icons.menu_book_outlined,
             title: 'About Zakat',
             subtitle: 'Conditions, recipients, and rulings',
             onTap: () => context.push('/zakat/info'),
           ).appearStaggered(2),
-          SizedBox(height: 10.h),
           const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
         ],
       ),

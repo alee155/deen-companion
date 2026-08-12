@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:deen_companion/features/profile/presentation/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,6 +41,7 @@ class PrayerTimesScreen extends ConsumerWidget {
           data: (prayerTimes) => ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
+              const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
               NextPrayerHeroCard(prayerTimes: prayerTimes),
               const SizedBox(height: AppSpacing.xl),
               PrayerTimeRow(prayerTimes: prayerTimes),

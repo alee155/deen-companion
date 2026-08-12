@@ -112,7 +112,9 @@ class FavoritesScreen extends ConsumerWidget {
             // Pinned below the list rather than inside it: stays visible
             // regardless of loading/error/empty/data state, and doesn't
             // shift position as favorites are added or removed.
-            const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+            const BannerAdWidget(
+              margin: EdgeInsets.symmetric(vertical: 4),
+            ),
           ],
         ),
       ),

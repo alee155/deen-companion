@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -349,7 +350,8 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
           'Device\'s angle to qibla',
           style: TextStyle(fontSize: 13.sp, color: AppColors.textSecondary),
         ),
-        SizedBox(height: 20.h),
+        const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+
         GestureDetector(
           onTap: isLocked ? onUnlock : null,
           child: Container(

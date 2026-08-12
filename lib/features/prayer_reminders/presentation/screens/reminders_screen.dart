@@ -196,7 +196,6 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
           ),
 
           SizedBox(height: 20.h),
-          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
             decoration: BoxDecoration(
@@ -285,6 +284,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                 ),
               ),
             ),
+          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
         ],
       ),
     );

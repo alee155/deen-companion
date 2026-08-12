@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -42,7 +43,7 @@ class _MutashabihatComparisonScreenState
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
             title: const Text(
-              'Quiz mode hide similar verses until I reveal them',
+              'Quiz mode — hide similar verses until I reveal them',
             ),
           ),
           Text(
@@ -53,6 +54,7 @@ class _MutashabihatComparisonScreenState
             (v) =>
                 MutashabihatSimilarVerseCard(verse: v, startHidden: _quizMode),
           ),
+          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
           if (widget.onNext != null) ...[
             SizedBox(height: 20.h),
             SizedBox(

@@ -134,7 +134,8 @@ class MutashabihatHubScreen extends ConsumerWidget {
             loading: () => const SizedBox(height: 100),
             error: (_, __) => const SizedBox.shrink(),
           ),
-          SizedBox(height: 20.h),
+          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+
           _actionTile(
             context,
             icon: Icons.shuffle,
@@ -178,8 +179,6 @@ class MutashabihatHubScreen extends ConsumerWidget {
             subtitle: 'Check if a specific ayah has known lookalikes',
             onTap: () => _lookUpVerse(context, ref),
           ).appearStaggered(2),
-          SizedBox(height: 10.h),
-          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
         ],
       ),
     );
