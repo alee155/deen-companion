@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:deen_companion/core/motion/motion.dart';
 import 'dart:math' as math;
 import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
@@ -95,6 +96,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
 
   Future<void> _showCalibrationTip(BuildContext context) {
     return showDialog(
+      animationStyle: AppMotion.dialogStyle,
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surfaceLight,
@@ -345,16 +347,27 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
             fontWeight: FontWeight.w700,
             color: AppColors.inkText,
           ),
+        ).slideIn(
+          RevealDirection.bottomStart,
+          key: const ValueKey('qibla-deg'),
+          delay: const Duration(milliseconds: 120),
         ),
         Text(
           'Device\'s angle to qibla',
           style: TextStyle(fontSize: 13.sp, color: AppColors.textSecondary),
+        ).slideIn(
+          RevealDirection.top,
+          key: const ValueKey('qibla-label'),
+          delay: const Duration(milliseconds: 180),
+          distance: 14,
         ),
         const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
 
-        GestureDetector(
+        Pressable(
           onTap: isLocked ? onUnlock : null,
-          child: Container(
+          child: AnimatedContainer(
+            duration: context.motion.duration(AppMotion.fast),
+            curve: AppMotion.entrance,
             padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
             decoration: BoxDecoration(
               color: isMatched
@@ -388,14 +401,23 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
               ],
             ),
           ),
+        ).slideIn(
+          RevealDirection.bottom,
+          key: const ValueKey('qibla-pill'),
+          delay: const Duration(milliseconds: 240),
         ),
         SizedBox(height: 16.h),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: Text(
-            'Distance to Kaaba: ${distanceKm.toStringAsFixed(0)} km',
-            style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
-          ),
+          child:
+              Text(
+                'Distance to Kaaba: ${distanceKm.toStringAsFixed(0)} km',
+                style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+              ).slideIn(
+                RevealDirection.bottomEnd,
+                key: const ValueKey('qibla-distance'),
+                delay: const Duration(milliseconds: 300),
+              ),
         ),
         const Spacer(),
       ],
@@ -405,7 +427,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
   Widget _calibrationBanner() {
     return Padding(
       padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 0),
-      child: GestureDetector(
+      child: Pressable(
         onTap: () => _showCalibrationTip(context),
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
@@ -509,7 +531,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
             Text(
               'Waiting for compass sensor…',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
-            ),
+            ).slideIn(RevealDirection.bottom),
           ],
         ),
       ),
@@ -528,7 +550,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
               Icons.explore_off_outlined,
               size: 40.sp,
               color: AppColors.gold,
-            ),
+            ).slideIn(RevealDirection.top),
             SizedBox(height: 16.h),
             Text(
               "We couldn't get a reading from your device's compass",
@@ -538,6 +560,9 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
                 fontSize: 15.sp,
                 color: AppColors.inkText,
               ),
+            ).slideIn(
+              RevealDirection.bottom,
+              delay: const Duration(milliseconds: 60),
             ),
             SizedBox(height: 10.h),
             Text(
@@ -546,6 +571,9 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
               'the direction below with any other compass, or the sun.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
+            ).slideIn(
+              RevealDirection.top,
+              delay: const Duration(milliseconds: 120),
             ),
             SizedBox(height: 20.h),
             Container(
@@ -574,6 +602,9 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
                   ),
                 ],
               ),
+            ).slideIn(
+              RevealDirection.bottom,
+              delay: const Duration(milliseconds: 180),
             ),
           ],
         ),

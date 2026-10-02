@@ -25,6 +25,7 @@ final qiblaRepositoryProvider = Provider<QiblaRepository>((ref) {
 class QiblaNotifier extends AsyncNotifier<QiblaInfo> {
   @override
   Future<QiblaInfo> build() async {
+    ref.watch(locationRecoveryProvider);
     final result = await ref
         .watch(qiblaRepositoryProvider)
         .getQiblaForCurrentLocation();
