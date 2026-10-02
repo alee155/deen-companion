@@ -1,27 +1,118 @@
-# Flutter / Dart
+# ── Flutter / Dart ───────────────────────────────────────────────
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+.pub-cache/
+.pub/
+pubspec_overrides.yaml
+*.g.dart.bak
+coverage/
+doc/api/
 
-# Build outputs
+# ── Build outputs ────────────────────────────────────────────────
 build/
+*.apk
+*.aab
+*.ipa
+*.dSYM*
+*.app.dSYM.zip
 
-# IDE
+# ── IDE / editor ─────────────────────────────────────────────────
 .idea/
 *.iml
+.vscode/
+*.swp
+*.code-workspace
 
-# macOS
+# ── OS ───────────────────────────────────────────────────────────
 .DS_Store
+Thumbs.db
 
-# iOS
-ios/Pods/
-ios/.symlinks/
+# ── AI assistant local state ─────────────────────────────────────
+.claude/
 
-# Android Gradle
-android/.gradle/
+# ── Local machine configuration ──────────────────────────────────
+local.properties
+*.local
+*.backup
 
-# Android signing credentials
+# ── Secrets & environment ────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.env
+config/prod.json
+config/*.local.json
+secrets.json
+secrets/
+*.secret
+*.token
+
+# ── Firebase / Google services ───────────────────────────────────
+google-services.json
+GoogleService-Info.plist
+firebase.json
+.firebaserc
+firebase_options.dart
+firebase-debug.log*
+*-firebase-adminsdk-*.json
+
+# ── Signing & release (Android) ──────────────────────────────────
+android/key.properties
+android/admob.properties
 android/**/*.jks
 android/**/*.keystore
-android/key.properties
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+*.mobileprovision
+*.cer
+*.p8
+upload-keystore*
+android/.gradle/
+android/captures/
+android/.cxx/
+android/app/release/
+android/app/debug/
+android/app/profile/
+
+# ── Play Store / deployment credentials ──────────────────────────
+play-store*.json
+play-service-account*.json
+service-account*.json
+*service_account*.json
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+fastlane/metadata/
+fastlane/Appfile
+fastlane/.env*
+key.json
+
+# ── iOS ──────────────────────────────────────────────────────────
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/ephemeral/
+ios/Flutter/Flutter.podspec
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.*
+ios/**/xcuserdata/
+ios/**/*.xcuserstate
+ios/**/.swiftpm/
+**/xcshareddata/swiftpm/
+DerivedData/
+*.xcscmblueprint
+*.xccheckout
+
+# ── Generated plugin registrants ─────────────────────────────────
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
