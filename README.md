@@ -1,4 +1,4 @@
-![Deen Companion](screenshot/deen_app_cover.png)
+![Deen Companion](screenshot/new_readme.png)
 
 # Deen Companion: Quran & Athan
 
