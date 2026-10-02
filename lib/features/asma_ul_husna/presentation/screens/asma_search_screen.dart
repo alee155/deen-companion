@@ -1,3 +1,4 @@
+import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -46,18 +47,24 @@ class _AsmaSearchScreenState extends ConsumerState<AsmaSearchScreen> {
       body: searchState.when(
         data: (results) {
           if (results == null)
-            return const Center(
-              child: Text('Try "merciful", "king", or "light".'),
+            return Center(
+              child: Text(
+                'Try "merciful", "king", or "light".',
+              ).slideIn(RevealDirection.bottom),
             );
           if (results.isEmpty)
-            return const Center(child: Text('No names found.'));
+            return Center(
+              child: const Text(
+                'No names found.',
+              ).slideIn(RevealDirection.bottom),
+            );
           return GridView.builder(
             padding: const EdgeInsets.all(20),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 16,
+              crossAxisCount: 3,
+              mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 0.78,
+              childAspectRatio: 0.92,
             ),
             itemCount: results.length,
             itemBuilder: (context, index) => AsmaNameTile(
@@ -68,7 +75,7 @@ class _AsmaSearchScreenState extends ConsumerState<AsmaSearchScreen> {
                       AsmaDetailScreen(names: results, initialIndex: index),
                 ),
               ),
-            ),
+            ).slideInAt(index, columns: 3, distance: 16),
           );
         },
         loading: () =>
