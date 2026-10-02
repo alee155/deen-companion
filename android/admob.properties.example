@@ -1,0 +1,2 @@
+# Copy to android/admob.properties (gitignored). Falls back to Google's sample ID if absent.
+admobAppId=ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX

@@ -50,7 +50,7 @@
              lib/features/ads/data/services/ad_unit_resolver.dart and
              lib/features/ads/data/constants/ad_mob_ids.dart, which is
              where the real vs. test ad *unit* decision actually happens. -->
-        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-XXXXXXXXXXXXXXXX~8005314189" />
+        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobAppId}" />
 
         <!-- Audio Service -->
         <service android:name="com.ryanheise.audioservice.AudioService" android:foregroundServiceType="mediaPlayback" android:exported="true">
