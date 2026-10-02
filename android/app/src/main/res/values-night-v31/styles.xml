@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ always draws a system splash (launcher icon on a plain
+         background) before the app's first frame; it cannot be removed. Here it
+         is made to disappear into the Flutter splash instead: same background
+         colour, no icon, so the logo simply fades in on one continuous screen. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/splashBackground</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_blank</item>
+    </style>
+</resources>
