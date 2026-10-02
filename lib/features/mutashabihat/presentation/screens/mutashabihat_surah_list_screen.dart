@@ -2,13 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/failure_view.dart';
+import '../../../../shared/widgets/seal_number_badge.dart';
+import '../../../../shared/widgets/shimmer_box.dart';
+import '../../domain/entities/mutashabihat_entry.dart';
 import '../providers/mutashabihat_providers.dart';
 import 'mutashabihat_comparison_screen.dart';
 import '../../../../shared/widgets/deen_app_bar.dart';
 
 class MutashabihatSurahListScreen extends ConsumerStatefulWidget {
   final int surah;
-  const MutashabihatSurahListScreen({super.key, required this.surah});
+  final String surahName;
+  const MutashabihatSurahListScreen({
+    super.key,
+    required this.surah,
+    required this.surahName,
+  });
 
   @override
   ConsumerState<MutashabihatSurahListScreen> createState() =>
@@ -46,128 +57,236 @@ class _MutashabihatSurahListScreenState
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: const DeenAppBar(title: 'Confused Verses'),
+      appBar: DeenAppBar(
+        title: widget.surahName,
+        subtitle: 'Commonly confused verses',
+      ),
       body: pageAsync.when(
         data: (page) {
-          if (page.entries.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: EdgeInsets.all(20.w),
-                child: Text(
-                  'No commonly confused verses found in this surah.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-              ),
-            );
-          }
+          if (page.entries.isEmpty) return const _EmptySurah();
+
           return ListView.builder(
             controller: _scrollController,
-            padding: EdgeInsets.symmetric(vertical: 8.h),
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 24.h),
             itemCount: page.entries.length + (page.hasMore ? 1 : 0),
             itemBuilder: (context, index) {
               if (index >= page.entries.length) {
                 return Padding(
-                  padding: EdgeInsets.all(20.w),
+                  padding: EdgeInsets.all(20.h),
                   child: Center(
                     child: CircularProgressIndicator(
-                      color: AppColors.quranAccent,
+                      color: AppColors.emeraldInk,
+                      strokeWidth: 2.5,
                     ),
                   ),
                 );
               }
-              final entry = page.entries[index];
-              return InkWell(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        MutashabihatComparisonScreen(entry: entry),
-                  ),
-                ),
-                child: Container(
-                  margin: EdgeInsets.symmetric(horizontal: 20.w, vertical: 6.h),
-                  padding: EdgeInsets.all(14.w),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(14.r),
-                    border: Border.all(color: AppColors.borderWarm),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 34.w,
-                        height: 34.w,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppColors.quranAccentBg,
-                          borderRadius: BorderRadius.circular(10.r),
-                        ),
-                        child: Text(
-                          '${entry.verse.ayah}',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: AppColors.quranAccent,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 12.w),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              entry.verse.translation,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13.sp,
-                                color: AppColors.inkText,
-                              ),
-                            ),
-                            SizedBox(height: 4.h),
-                            Text(
-                              '${entry.similarVerses.length} similar verse${entry.similarVerses.length == 1 ? '' : 's'}',
-                              style: TextStyle(
-                                fontSize: 11.sp,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.chevron_right,
-                        color: AppColors.textMuted,
-                        size: 16.sp,
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              return _EntryCard(
+                entry: page.entries[index],
+              ).slideInAt(index % 8);
             },
           );
         },
-        loading: () => Center(
-          child: CircularProgressIndicator(color: AppColors.quranAccent),
-        ),
+        loading: () => const _ListSkeleton(),
         error: (error, _) => Center(
           child: Padding(
             padding: EdgeInsets.all(20.w),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(error.toString(), textAlign: TextAlign.center),
-                SizedBox(height: 12.h),
-                ElevatedButton(
-                  onPressed: () => ref.invalidate(
-                    mutashabihatSurahPageNotifierProvider(widget.surah),
+            child: FailureView(
+              failure: failureFrom(error),
+              onRetry: () async => ref.invalidate(
+                mutashabihatSurahPageNotifierProvider(widget.surah),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EntryCard extends StatelessWidget {
+  final MutashabihatEntry entry;
+  const _EntryCard({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final verse = entry.verse;
+    final count = entry.similarVerses.length;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: PressScale(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16.r),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) =>
+                    MutashabihatComparisonScreen(entry: entry),
+              ),
+            ),
+            child: Container(
+              padding: EdgeInsets.all(14.w),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(color: AppColors.borderWarm),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      SealNumberBadge(number: verse.ayah, size: 32.w),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: Text(
+                          verse.arabic,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.right,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.arabicBody.copyWith(
+                            fontSize: 17.sp,
+                            color: AppColors.emeraldInk,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('Try again'),
+                  SizedBox(height: 8.h),
+                  Text(
+                    verse.translation,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.inkText,
+                      height: 1.5,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 3.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.amber.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(20.r),
+                        ),
+                        child: Text(
+                          '$count similar',
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.amberDeep,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textMuted,
+                        size: 18.sp,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ListSkeleton extends StatelessWidget {
+  const _ListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 24.h),
+      itemCount: 6,
+      separatorBuilder: (_, __) => SizedBox(height: 12.h),
+      itemBuilder: (context, index) => Container(
+        padding: EdgeInsets.all(14.w),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: AppColors.borderWarm),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ShimmerBox(width: 32.w, height: 32.w, borderRadius: 10.r),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: ShimmerBox(
+                    width: double.infinity,
+                    height: 16.h,
+                    borderRadius: 4.r,
+                  ),
                 ),
               ],
             ),
-          ),
+            SizedBox(height: 12.h),
+            ShimmerBox(width: double.infinity, height: 12.h, borderRadius: 4.r),
+            SizedBox(height: 6.h),
+            ShimmerBox(width: 160.w, height: 12.h, borderRadius: 4.r),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptySurah extends StatelessWidget {
+  const _EmptySurah();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(28.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.compare_arrows_rounded,
+              size: 36.sp,
+              color: AppColors.textMuted,
+            ).slideIn(RevealDirection.top, distance: 16),
+            SizedBox(height: 12.h),
+            Text(
+              'Nothing confusable here',
+              style: AppTypography.headline.copyWith(
+                fontSize: 16.sp,
+                color: AppColors.inkText,
+              ),
+            ).slideIn(
+              RevealDirection.bottomStart,
+              delay: const Duration(milliseconds: 60),
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              'This surah has no verses commonly confused with others. Try '
+              'another surah, or shuffle a random pair from the hub.',
+              textAlign: TextAlign.center,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ).slideIn(
+              RevealDirection.bottomEnd,
+              delay: const Duration(milliseconds: 120),
+            ),
+          ],
         ),
       ),
     );

@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../quran/domain/entities/surah_summary.dart';
 import '../../../quran/presentation/providers/quran_providers.dart';
 
-Future<int?> showSurahPickerSheet(BuildContext context, WidgetRef ref) {
-  return showModalBottomSheet<int>(
+/// Returns the chosen [SurahSummary] (not just its number) so callers get the
+/// name and verse count for free — the ayah picker that usually follows this
+/// sheet needs the verse count to know how many ayahs to offer.
+Future<SurahSummary?> showSurahPickerSheet(
+  BuildContext context,
+  WidgetRef ref,
+) {
+  return showModalBottomSheet<SurahSummary>(
+    sheetAnimationStyle: AppMotion.sheetStyle,
     context: context,
     isScrollControlled: true,
     backgroundColor: AppColors.surfaceLight,
@@ -32,29 +42,47 @@ class _SurahPickerContentState extends ConsumerState<_SurahPickerContent> {
     final surahsAsync = ref.watch(surahListNotifierProvider);
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.7,
+      initialChildSize: 0.75,
       expand: false,
       builder: (context, scrollController) {
         return Padding(
-          padding: EdgeInsets.all(16.w),
+          padding: EdgeInsets.fromLTRB(18.w, 12.h, 18.w, 16.h),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 36.w,
-                height: 4.h,
-                decoration: BoxDecoration(
-                  color: AppColors.borderWarm,
-                  borderRadius: BorderRadius.circular(2.r),
+              Center(
+                child: Container(
+                  width: 36.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: AppColors.borderWarm,
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
                 ),
               ),
               SizedBox(height: 14.h),
+              Text(
+                'Choose a surah',
+                style: AppTypography.headline.copyWith(
+                  fontSize: 16.sp,
+                  color: AppColors.inkText,
+                ),
+              ),
+              SizedBox(height: 10.h),
               TextField(
                 onChanged: (v) => setState(() => _query = v.toLowerCase()),
+                style: AppTypography.bodyMedium,
                 decoration: InputDecoration(
                   hintText: 'Search surah…',
-                  prefixIcon: const Icon(Icons.search),
+                  hintStyle: TextStyle(color: AppColors.textMuted),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: AppColors.textMuted,
+                    size: 20.sp,
+                  ),
                   filled: true,
                   fillColor: AppColors.parchment,
+                  contentPadding: EdgeInsets.symmetric(vertical: 12.h),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.r),
                     borderSide: BorderSide.none,
@@ -74,12 +102,15 @@ class _SurahPickerContentState extends ConsumerState<_SurahPickerContent> {
                                 ),
                               )
                               .toList();
-                    return ListView.builder(
+                    return ListView.separated(
                       controller: scrollController,
                       itemCount: filtered.length,
+                      separatorBuilder: (_, __) =>
+                          Divider(height: 1, color: AppColors.borderWarm),
                       itemBuilder: (context, index) {
                         final s = filtered[index];
                         return ListTile(
+                          contentPadding: EdgeInsets.zero,
                           leading: CircleAvatar(
                             backgroundColor: AppColors.quranAccentBg,
                             child: Text(
@@ -87,19 +118,37 @@ class _SurahPickerContentState extends ConsumerState<_SurahPickerContent> {
                               style: TextStyle(
                                 fontSize: 12.sp,
                                 color: AppColors.quranAccent,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
-                          title: Text(s.nameEnglish),
-                          subtitle: Text(s.nameTranslation),
-                          onTap: () => Navigator.of(context).pop(s.number),
+                          title: Text(
+                            s.nameEnglish,
+                            style: TextStyle(
+                              color: AppColors.inkText,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${s.nameTranslation} · ${s.versesCount} verses',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                          onTap: () => Navigator.of(context).pop(s),
                         );
                       },
                     );
                   },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => Center(child: Text(error.toString())),
+                  loading: () => Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.emeraldInk,
+                    ),
+                  ),
+                  error: (error, _) => Center(
+                    child: Text(
+                      error.toString(),
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
                 ),
               ),
             ],
