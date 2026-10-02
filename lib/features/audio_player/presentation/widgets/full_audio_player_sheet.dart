@@ -1,9 +1,13 @@
 import 'dart:math' as math;
+import 'package:deen_companion/core/motion/motion.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../favorites/domain/entities/favorite_item.dart';
+import '../../../favorites/presentation/providers/favorites_providers.dart';
 
 // On-brand tones for text/icons that sit on the dark teal-ink background.
 const _mutedOnDark = Color(0xFFB3AD9B);
@@ -13,6 +17,7 @@ class FullAudioPlayerSheet extends StatelessWidget {
   final String surahNameArabic;
   final String surahNameEnglish;
   final String reciterName;
+  final FavoriteItem favoriteItem;
   final bool isPlaying;
   final bool isLooping;
   final double progress;
@@ -41,6 +46,7 @@ class FullAudioPlayerSheet extends StatelessWidget {
     required this.surahNameArabic,
     required this.surahNameEnglish,
     required this.reciterName,
+    required this.favoriteItem,
     required this.isPlaying,
     required this.isLooping,
     required this.progress,
@@ -62,6 +68,7 @@ class FullAudioPlayerSheet extends StatelessWidget {
 
   void _openSleepTimerSheet(BuildContext context) {
     showModalBottomSheet(
+      sheetAnimationStyle: AppMotion.sheetStyle,
       context: context,
       backgroundColor: AppColors.surfaceLight,
       shape: RoundedRectangleBorder(
@@ -116,8 +123,8 @@ class FullAudioPlayerSheet extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.gold.withValues(alpha: 0.28),
-                      AppColors.gold.withValues(alpha: 0),
+                      AppColors.emeraldInk.withValues(alpha: 0.28),
+                      AppColors.emeraldInk.withValues(alpha: 0),
                     ],
                   ),
                 ),
@@ -133,6 +140,7 @@ class FullAudioPlayerSheet extends StatelessWidget {
                   _TopBar(
                     onBack: onBack,
                     onMinimize: onMinimize,
+                    favoriteItem: favoriteItem,
                     sleepTimerRemaining: sleepTimerRemaining,
                     onTapSleepTimer: () => _openSleepTimerSheet(context),
                   ),
@@ -174,6 +182,10 @@ class FullAudioPlayerSheet extends StatelessWidget {
                   _ArtworkDisc(
                     surahNameArabic: surahNameArabic,
                     isPlaying: isPlaying,
+                  ).slideIn(
+                    RevealDirection.bottom,
+                    delay: const Duration(milliseconds: 60),
+                    distance: 28,
                   ),
                   SizedBox(height: 26.h),
                   Text(
@@ -183,6 +195,10 @@ class FullAudioPlayerSheet extends StatelessWidget {
                       color: AppColors.onHeroSurface,
                       fontSize: 26.sp,
                     ),
+                  ).slideIn(
+                    RevealDirection.top,
+                    delay: const Duration(milliseconds: 160),
+                    distance: 14,
                   ),
                   const Spacer(),
                   _ProgressBar(
@@ -191,6 +207,10 @@ class FullAudioPlayerSheet extends StatelessWidget {
                     elapsedLabel: elapsedLabel,
                     durationLabel: durationLabel,
                     onSeek: onSeek,
+                  ).slideIn(
+                    RevealDirection.bottomStart,
+                    delay: const Duration(milliseconds: 220),
+                    duration: AppMotion.normal,
                   ),
                   SizedBox(height: 22.h),
                   _Controls(
@@ -201,6 +221,10 @@ class FullAudioPlayerSheet extends StatelessWidget {
                     onSkipPrevious: onSkipPrevious,
                     onToggleLoop: onToggleLoop,
                     // onPickReciter: onPickReciter,
+                  ).slideIn(
+                    RevealDirection.bottomEnd,
+                    delay: const Duration(milliseconds: 280),
+                    duration: AppMotion.normal,
                   ),
                   SizedBox(height: 28.h),
                 ],
@@ -216,12 +240,14 @@ class FullAudioPlayerSheet extends StatelessWidget {
 class _TopBar extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onMinimize;
+  final FavoriteItem favoriteItem;
   final Duration? sleepTimerRemaining;
   final VoidCallback onTapSleepTimer;
 
   const _TopBar({
     required this.onBack,
     required this.onMinimize,
+    required this.favoriteItem,
     required this.sleepTimerRemaining,
     required this.onTapSleepTimer,
   });
@@ -235,7 +261,7 @@ class _TopBar extends StatelessWidget {
           icon: Icons.arrow_back_ios_new_rounded,
           tooltip: 'Stop and go back',
           onTap: onBack,
-        ),
+        ).slideIn(RevealDirection.topStart, distance: 18, fade: false),
         10.w.horizontalSpace,
         Text(
           'NOW PLAYING',
@@ -243,10 +269,12 @@ class _TopBar extends StatelessWidget {
             color: _faintOnDark,
             letterSpacing: 2,
           ),
-        ),
+        ).slideIn(RevealDirection.top, distance: 12),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _FavoriteRoundButton(item: favoriteItem),
+            SizedBox(width: 8.w),
             _SleepTimerButton(
               remaining: sleepTimerRemaining,
               onTap: onTapSleepTimer,
@@ -258,8 +286,48 @@ class _TopBar extends StatelessWidget {
               onTap: onMinimize,
             ),
           ],
-        ),
+        ).slideIn(RevealDirection.topEnd, distance: 18, fade: false),
       ],
+    );
+  }
+}
+
+class _FavoriteRoundButton extends ConsumerWidget {
+  final FavoriteItem item;
+  const _FavoriteRoundButton({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFavorite = ref.watch(isFavoriteProvider(item.id));
+    return Tooltip(
+      message: isFavorite ? 'Remove from favorites' : 'Add to favorites',
+      child: PressScale(
+        scale: AppMotion.pressScaleSmall,
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.06),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () =>
+                ref.read(favoritesNotifierProvider.notifier).toggle(item),
+            child: Padding(
+              padding: EdgeInsets.all(9.w),
+              child: IconSwap(
+                child: Icon(
+                  isFavorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  key: ValueKey(isFavorite),
+                  color: isFavorite
+                      ? AppColors.emeraldInk
+                      : AppColors.onHeroSurface,
+                  size: 18.sp,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -284,35 +352,39 @@ class _SleepTimerButton extends StatelessWidget {
     final active = remaining != null;
     return Tooltip(
       message: active ? 'Sleep timer running' : 'Sleep timer',
-      child: Material(
-        color: active
-            ? AppColors.gold.withValues(alpha: 0.14)
-            : Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16.r),
-        child: InkWell(
+      child: PressScale(
+        child: Material(
+          color: active
+              ? AppColors.emeraldInk.withValues(alpha: 0.14)
+              : Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(16.r),
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  active ? Icons.bedtime_rounded : Icons.bedtime_outlined,
-                  color: active ? AppColors.gold : AppColors.onHeroSurface,
-                  size: 16.sp,
-                ),
-                if (active) ...[
-                  SizedBox(width: 6.w),
-                  Text(
-                    _format(remaining!),
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.gold,
-                      fontWeight: FontWeight.w700,
-                    ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16.r),
+            onTap: onTap,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    active ? Icons.bedtime_rounded : Icons.bedtime_outlined,
+                    color: active
+                        ? AppColors.emeraldInk
+                        : AppColors.onHeroSurface,
+                    size: 16.sp,
                   ),
+                  if (active) ...[
+                    SizedBox(width: 6.w),
+                    Text(
+                      _format(remaining!),
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.emeraldInk,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -357,7 +429,7 @@ class _SleepTimerSheet extends StatelessWidget {
                   Icon(
                     Icons.bedtime_outlined,
                     size: 18.sp,
-                    color: AppColors.gold,
+                    color: AppColors.emeraldInk,
                   ),
                   SizedBox(width: 8.w),
                   Text(
@@ -417,15 +489,18 @@ class _RoundIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: Material(
-        color: Colors.white.withValues(alpha: 0.06),
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.all(9.w),
-            child: Icon(icon, color: AppColors.onHeroSurface, size: 18.sp),
+      child: PressScale(
+        scale: AppMotion.pressScaleSmall,
+        child: Material(
+          color: Colors.white.withValues(alpha: 0.06),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: Padding(
+              padding: EdgeInsets.all(9.w),
+              child: Icon(icon, color: AppColors.onHeroSurface, size: 18.sp),
+            ),
           ),
         ),
       ),
@@ -454,17 +529,28 @@ class _ArtworkDiscState extends State<_ArtworkDisc>
       vsync: this,
       duration: const Duration(seconds: 24),
     );
-    if (widget.isPlaying) _controller.repeat();
+  }
+
+  /// The disc only spins while audio is playing and motion is allowed.
+  void _sync() {
+    final shouldSpin = widget.isPlaying && !context.motion.reduced;
+    if (shouldSpin && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!shouldSpin && _controller.isAnimating) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
   }
 
   @override
   void didUpdateWidget(covariant _ArtworkDisc oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isPlaying && !_controller.isAnimating) {
-      _controller.repeat();
-    } else if (!widget.isPlaying && _controller.isAnimating) {
-      _controller.stop();
-    }
+    _sync();
   }
 
   @override
@@ -475,65 +561,69 @@ class _ArtworkDiscState extends State<_ArtworkDisc>
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 190.w,
-      height: 190.w,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          RotationTransition(
-            turns: _controller,
-            child: Container(
-              width: 190.w,
-              height: 190.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: SweepGradient(
-                  colors: [
-                    AppColors.gold.withValues(alpha: 0.05),
-                    AppColors.gold,
-                    AppColors.gold.withValues(alpha: 0.05),
-                  ],
-                ),
-              ),
-              padding: EdgeInsets.all(3.w),
-              child: DecoratedBox(
+    return RepaintBoundary(
+      child: SizedBox(
+        width: 190.w,
+        height: 190.w,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            RotationTransition(
+              turns: _controller,
+              child: Container(
+                width: 190.w,
+                height: 190.w,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.heroSurface,
+                  gradient: SweepGradient(
+                    colors: [
+                      AppColors.emeraldInk.withValues(alpha: 0.05),
+                      AppColors.emeraldInk,
+                      AppColors.emeraldInk.withValues(alpha: 0.05),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-          Container(
-            width: 158.w,
-            height: 158.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppColors.gold.withValues(alpha: 0.16),
-                  AppColors.gold.withValues(alpha: 0.03),
-                ],
-              ),
-              border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
-            ),
-            child: Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 18.w),
-                child: Text(
-                  widget.surahNameArabic,
-                  textAlign: TextAlign.center,
-                  textDirection: TextDirection.rtl,
-                  style: AppTypography.arabicBody.copyWith(
-                    fontSize: 34.sp,
-                    color: AppColors.goldLight,
+                padding: EdgeInsets.all(3.w),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.heroSurface,
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+            Container(
+              width: 158.w,
+              height: 158.w,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.emeraldInk.withValues(alpha: 0.16),
+                    AppColors.emeraldInk.withValues(alpha: 0.03),
+                  ],
+                ),
+                border: Border.all(
+                  color: AppColors.emeraldInk.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 18.w),
+                  child: Text(
+                    widget.surahNameArabic,
+                    textAlign: TextAlign.center,
+                    textDirection: TextDirection.rtl,
+                    style: AppTypography.arabicBody.copyWith(
+                      fontSize: 34.sp,
+                      color: AppColors.onHeroSurface,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -638,7 +728,10 @@ class _ProgressBarState extends State<_ProgressBar> {
                       height: isDragging ? 6.h : 4.h,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [AppColors.amber, AppColors.gold],
+                          colors: [
+                            AppColors.emeraldInkDark,
+                            AppColors.emeraldInk,
+                          ],
                         ),
                         borderRadius: BorderRadius.circular(3.r),
                       ),
@@ -649,15 +742,18 @@ class _ProgressBarState extends State<_ProgressBar> {
                         trackWidth - (isDragging ? 18.w : 12.w),
                       ),
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 120),
+                        duration: context.motion.duration(AppMotion.fast),
+                        curve: AppMotion.entrance,
                         width: isDragging ? 18.w : 12.w,
                         height: isDragging ? 18.w : 12.w,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.gold,
+                          color: AppColors.emeraldInk,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.gold.withValues(alpha: 0.6),
+                              color: AppColors.emeraldInk.withValues(
+                                alpha: 0.6,
+                              ),
                               blurRadius: isDragging ? 12 : 8,
                               spreadRadius: isDragging ? 2 : 1,
                             ),
@@ -678,7 +774,7 @@ class _ProgressBarState extends State<_ProgressBar> {
             Text(
               isDragging ? _formatDragPosition(clamped) : widget.elapsedLabel,
               style: AppTypography.caption.copyWith(
-                color: isDragging ? AppColors.gold : _faintOnDark,
+                color: isDragging ? AppColors.emeraldInk : _faintOnDark,
                 fontWeight: isDragging ? FontWeight.w700 : FontWeight.w400,
               ),
             ),
@@ -747,20 +843,23 @@ class _SecondaryIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: isActive
-          ? AppColors.gold.withValues(alpha: 0.16)
-          : Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.all(8.w),
-          child: Icon(
-            icon,
-            color: isActive ? AppColors.gold : _mutedOnDark,
-            size: 19.sp,
+    return PressScale(
+      scale: AppMotion.pressScaleSmall,
+      child: Material(
+        color: isActive
+            ? AppColors.emeraldInk.withValues(alpha: 0.16)
+            : Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.all(8.w),
+            child: Icon(
+              icon,
+              color: isActive ? AppColors.emeraldInk : _mutedOnDark,
+              size: 19.sp,
+            ),
           ),
         ),
       ),
@@ -776,67 +875,60 @@ class _SkipIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.all(8.w),
-          child: Icon(icon, color: AppColors.onHeroSurface, size: 30.sp),
+    return PressScale(
+      scale: AppMotion.pressScaleSmall,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.all(8.w),
+            child: Icon(icon, color: AppColors.onHeroSurface, size: 30.sp),
+          ),
         ),
       ),
     );
   }
 }
 
-class _PlayButton extends StatefulWidget {
+class _PlayButton extends StatelessWidget {
   final bool isPlaying;
   final VoidCallback onTap;
 
   const _PlayButton({required this.isPlaying, required this.onTap});
 
   @override
-  State<_PlayButton> createState() => _PlayButtonState();
-}
-
-class _PlayButtonState extends State<_PlayButton> {
-  bool _pressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        scale: _pressed ? 0.92 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-        child: Container(
-          width: 66.w,
-          height: 66.w,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [AppColors.gold, AppColors.amberDeep],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.gold.withValues(alpha: 0.45),
-                blurRadius: 20,
-                spreadRadius: 1,
-                offset: const Offset(0, 6),
-              ),
-            ],
+    return Pressable(
+      onTap: onTap,
+      haptic: true,
+      scale: 0.92,
+      child: Container(
+        width: 66.w,
+        height: 66.w,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.emeraldInk, AppColors.emeraldInkDark],
           ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.emeraldInk.withValues(alpha: 0.45),
+              blurRadius: 20,
+              spreadRadius: 1,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: IconSwap(
           child: Icon(
-            widget.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-            color: AppColors.emeraldInkDark,
+            isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+            key: ValueKey(isPlaying),
+            color: AppColors.onEmeraldInk,
             size: 32.sp,
           ),
         ),
@@ -852,7 +944,7 @@ class _ArabesquePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.gold
+      ..color = AppColors.emeraldInk
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 

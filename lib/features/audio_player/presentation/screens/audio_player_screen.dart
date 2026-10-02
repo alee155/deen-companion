@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../favorites/domain/entities/favorite_item.dart';
 import '../../../quran/presentation/providers/quran_providers.dart';
 import '../../domain/audio_track.dart';
 import '../providers/audio_player_provider.dart';
@@ -38,11 +39,23 @@ class AudioPlayerScreen extends ConsumerWidget {
         : audioState.position.inMilliseconds /
               audioState.duration.inMilliseconds;
 
+    final referenceId = track.id.replaceFirst('surah-', '');
+    final favoriteItem = FavoriteItem(
+      id: FavoriteItem.buildId(FavoriteContentType.surah, referenceId),
+      type: FavoriteContentType.surah,
+      referenceId: referenceId,
+      title: track.titleEnglish,
+      subtitle: track.reciterName,
+      route: '/quran',
+      savedAt: DateTime.now(),
+    );
+
     return Scaffold(
       body: FullAudioPlayerSheet(
         surahNameArabic: track.titleArabic,
         surahNameEnglish: track.titleEnglish,
         reciterName: track.reciterName,
+        favoriteItem: favoriteItem,
         isPlaying: audioState.isPlaying,
         isLooping: audioState.isLooping,
         progress: progress,

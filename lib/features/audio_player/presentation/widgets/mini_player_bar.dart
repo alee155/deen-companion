@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 
@@ -27,8 +28,9 @@ class MiniPlayerBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
+      behavior: HitTestBehavior.deferToChild,
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
         clipBehavior: Clip.antiAlias,
@@ -88,17 +90,23 @@ class MiniPlayerBar extends StatelessWidget {
                       ],
                     ),
                   ),
-                  GestureDetector(
+                  Pressable(
                     onTap: onPlayPause,
-                    child: Icon(
-                      isPlaying ? Icons.pause : Icons.play_arrow,
-                      color: AppColors.onHeroSurface,
-                      size: 22.sp,
+                    haptic: true,
+                    scale: AppMotion.pressScaleSmall,
+                    child: IconSwap(
+                      child: Icon(
+                        isPlaying ? Icons.pause : Icons.play_arrow,
+                        key: ValueKey(isPlaying),
+                        color: AppColors.onHeroSurface,
+                        size: 22.sp,
+                      ),
                     ),
                   ),
                   SizedBox(width: 10.w),
-                  GestureDetector(
+                  Pressable(
                     onTap: onClose,
+                    scale: AppMotion.pressScaleSmall,
                     child: Icon(
                       Icons.close,
                       color: const Color(0xFFB3AD9B),
