@@ -19,6 +19,7 @@ import '../../../recent_activity/domain/entities/recent_activity_item.dart';
 import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
 import '../../domain/entities/hadith.dart';
 import '../../domain/entities/hadith_collection.dart';
+import '../../domain/hadith_cover_assets.dart';
 import '../providers/hadith_providers.dart';
 
 import '../widgets/hadith_collection_picker_sheet.dart';
@@ -200,6 +201,12 @@ class _HadithReadingScreenState extends ConsumerState<HadithReadingScreen> {
                   visible: !_focusMode,
                   progress: (_page + 1) / state.hadiths.length,
                 ),
+                _HadithHeaderBanner(
+                  visible: !_focusMode,
+                  collection: collection,
+                  totalHadiths:
+                      collection?.totalHadiths ?? state.hadiths.length,
+                ),
                 Expanded(
                   child: PageView.builder(
                     controller: _controller,
@@ -324,6 +331,168 @@ class _MenuRow extends StatelessWidget {
   }
 }
 
+/// The fixed banner above the reader — the collection's own cover art (or a
+/// drawn fallback for the books that don't have one) with a black wash for
+/// legibility, the collection's name at the top-left and its hadith count at
+/// the top-right. Collapses away entirely in focus mode, same as the
+/// progress rule and the controls beneath the pager.
+class _HadithHeaderBanner extends StatelessWidget {
+  final bool visible;
+  final HadithCollection? collection;
+  final int totalHadiths;
+
+  const _HadithHeaderBanner({
+    required this.visible,
+    required this.collection,
+    required this.totalHadiths,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSize(
+      duration: context.motion.duration(AppMotion.fast),
+      curve: AppMotion.entrance,
+      child: !visible
+          ? const SizedBox(width: double.infinity)
+          : SizedBox(
+              width: double.infinity,
+              height: 108.h,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _HadithBannerArt(collection: collection),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.45),
+                          Colors.black.withValues(alpha: 0.30),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 14.h,
+                    left: 16.w,
+                    right: 16.w,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                (collection?.name ?? 'Hadith').toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.caption.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                collection?.arabicName ?? '',
+                                textDirection: TextDirection.rtl,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.arabicBody.copyWith(
+                                  fontSize: 26.sp,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 5.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(20.r),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(
+                            '$totalHadiths Hadiths',
+                            style: AppTypography.caption.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}
+
+/// The banner's background art: the collection's own cover photo when one
+/// exists, otherwise a drawn gradient so the three 40-hadith books still get
+/// a considered look instead of a placeholder.
+class _HadithBannerArt extends StatelessWidget {
+  final HadithCollection? collection;
+  const _HadithBannerArt({required this.collection});
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = collection == null
+        ? null
+        : HadithCoverAssets.forKey(collection!.key);
+
+    if (asset == null) return const _HadithBannerFallback();
+    return Image.asset(
+      asset,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stack) => const _HadithBannerFallback(),
+    );
+  }
+}
+
+class _HadithBannerFallback extends StatelessWidget {
+  const _HadithBannerFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned(
+            top: -18.h,
+            right: -18.w,
+            child: Icon(
+              Icons.brightness_7_rounded,
+              size: 96.sp,
+              color: AppColors.gold.withValues(alpha: 0.14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Hairline progress rule. Glides as pages turn instead of jumping, and
 /// collapses to nothing in focus mode.
 class _ReadingProgress extends StatelessWidget {
@@ -335,14 +504,14 @@ class _ReadingProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: AppMotion.fast,
+      duration: context.motion.duration(AppMotion.fast),
       curve: AppMotion.entrance,
       height: visible ? 3.h : 0,
       color: AppColors.borderWarm,
       alignment: Alignment.centerLeft,
       child: TweenAnimationBuilder<double>(
         tween: Tween(end: progress.clamp(0.0, 1.0)),
-        duration: AppMotion.fast,
+        duration: context.motion.duration(AppMotion.fast),
         curve: AppMotion.entrance,
         builder: (context, value, _) => FractionallySizedBox(
           alignment: Alignment.centerLeft,
@@ -376,7 +545,7 @@ class _ReaderControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSize(
-      duration: AppMotion.fast,
+      duration: context.motion.duration(AppMotion.fast),
       curve: AppMotion.entrance,
       child: !visible
           ? const SizedBox(width: double.infinity)

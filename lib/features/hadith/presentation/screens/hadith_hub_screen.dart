@@ -42,9 +42,7 @@ class HadithHubScreen extends ConsumerWidget {
       body: collectionsAsync.when(
         data: (collections) => CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(
-              child: _LibraryIntro(count: collections.length).appear(),
-            ),
+            SliverToBoxAdapter(child: _LibraryIntro(count: collections.length)),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 28.h),
               sliver: SliverGrid(
@@ -62,7 +60,7 @@ class HadithHubScreen extends ConsumerWidget {
                       collection: collection,
                       onTap: () =>
                           context.push('/hadith/read/${collection.key}'),
-                    ).appearStaggered(index);
+                    ).slideInAt(index, columns: 2, distance: 20);
                   },
                 ),
               ),
@@ -107,6 +105,7 @@ class _LibraryIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final seq = RevealSequence();
     return Padding(
       padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 16.h),
       child: Column(
@@ -118,7 +117,7 @@ class _LibraryIntro extends StatelessWidget {
               fontSize: 22.sp,
               color: AppColors.inkText,
             ),
-          ),
+          ).slideIn(RevealDirection.topStart, delay: seq.next()),
           SizedBox(height: 6.h),
           Text(
             '$count collections, with the Arabic text and its English '
@@ -126,9 +125,11 @@ class _LibraryIntro extends StatelessWidget {
             style: AppTypography.bodyLarge.copyWith(
               color: AppColors.textSecondary,
             ),
-          ),
+          ).slideIn(RevealDirection.bottomStart, delay: seq.next()),
           SizedBox(height: 16.h),
-          OrnamentDivider(ruleWidth: 40.w),
+          OrnamentDivider(
+            ruleWidth: 40.w,
+          ).slideIn(RevealDirection.end, delay: seq.next()),
           const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
         ],
       ),

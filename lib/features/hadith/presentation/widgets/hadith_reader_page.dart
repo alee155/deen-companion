@@ -2,9 +2,11 @@ import 'package:deen_companion/shared/providers/reading_preferences_provider.dar
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/ornament_divider.dart';
+import '../../../../shared/widgets/seal_number_badge.dart';
 import '../../domain/entities/hadith.dart';
 import '../../domain/entities/hadith_collection.dart';
 import '../../domain/hadith_grade.dart';
@@ -117,7 +119,7 @@ class _PageMeta extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _NumberMedallion(number: hadith.hadithNumber),
+        SealNumberBadge(number: hadith.hadithNumber),
         SizedBox(width: 12.w),
         Expanded(
           child: Column(
@@ -147,36 +149,6 @@ class _PageMeta extends StatelessWidget {
         ),
         _GradeBadge(grade: hadith.gradeLevel, raw: hadith.grade),
       ],
-    );
-  }
-}
-
-/// The hadith number set in a soft rounded medallion — gives each page an
-/// anchor and makes flicking through feel like turning numbered pages.
-class _NumberMedallion extends StatelessWidget {
-  final int number;
-  const _NumberMedallion({required this.number});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 42.w,
-      height: 42.w,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.hadithAccentBg,
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: AppColors.hadithAccent.withValues(alpha: .2)),
-      ),
-      child: Text(
-        '$number',
-        maxLines: 1,
-        style: AppTypography.headline.copyWith(
-          fontSize: number > 999 ? 12.sp : 14.sp,
-          color: AppColors.hadithAccent,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
     );
   }
 }
@@ -260,8 +232,8 @@ class _ArabicPanel extends StatelessWidget {
         label: 'Arabic text of the hadith',
         child: AnimatedDefaultTextStyle(
           // Font-size changes from the slider ease in instead of snapping.
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
+          duration: context.motion.duration(AppMotion.fast),
+          curve: AppMotion.entrance,
           style: style.copyWith(color: AppColors.inkText),
           child: SelectableText(
             text,
@@ -329,8 +301,8 @@ class _TranslationBlock extends StatelessWidget {
         Semantics(
           label: 'English translation of the hadith',
           child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
+            duration: context.motion.duration(AppMotion.fast),
+            curve: AppMotion.entrance,
             style: style.copyWith(color: AppColors.inkText),
             child: SelectableText(
               body,

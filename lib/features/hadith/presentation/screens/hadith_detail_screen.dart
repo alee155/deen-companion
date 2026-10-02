@@ -129,17 +129,21 @@ class _HadithDetailScreenState extends ConsumerState<HadithDetailScreen> {
             top: false,
             child: Padding(
               padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 12.h),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      context.push('/hadith/read/${hadith.collection}'),
-                  icon: const Icon(Icons.auto_stories_rounded, size: 18),
-                  label: Text(
-                    'Read ${collection?.name ?? hadith.collectionName}',
+              child:
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          context.push('/hadith/read/${hadith.collection}'),
+                      icon: const Icon(Icons.auto_stories_rounded, size: 18),
+                      label: Text(
+                        'Read ${collection?.name ?? hadith.collectionName}',
+                      ),
+                    ),
+                  ).slideIn(
+                    RevealDirection.bottom,
+                    delay: const Duration(milliseconds: 200),
                   ),
-                ),
-              ),
             ),
           ),
         ],

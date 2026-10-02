@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -12,6 +13,7 @@ Future<String?> showHadithCollectionPicker(
   required String selectedKey,
 }) {
   return showModalBottomSheet<String>(
+    sheetAnimationStyle: AppMotion.sheetStyle,
     context: context,
     isScrollControlled: true,
     backgroundColor: AppColors.surfaceLight,

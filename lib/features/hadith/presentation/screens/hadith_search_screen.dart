@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../providers/hadith_providers.dart';
@@ -68,7 +69,7 @@ class _HadithSearchScreenState extends ConsumerState<HadithSearchScreen> {
                   color: AppColors.inkText,
                 ),
               ),
-            ),
+            ).slideIn(RevealDirection.topStart, distance: 16),
           Expanded(
             child: searchState.when(
               data: (results) {
@@ -79,12 +80,16 @@ class _HadithSearchScreenState extends ConsumerState<HadithSearchScreen> {
                       child: Text(
                         'Search across every collection.',
                         textAlign: TextAlign.center,
-                      ),
+                      ).slideIn(RevealDirection.bottom),
                     ),
                   );
                 }
                 if (results.isEmpty) {
-                  return Center(child: Text('No hadith found.'));
+                  return Center(
+                    child: Text(
+                      'No hadith found.',
+                    ).slideIn(RevealDirection.bottom),
+                  );
                 }
                 return ListView.builder(
                   padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -93,7 +98,7 @@ class _HadithSearchScreenState extends ConsumerState<HadithSearchScreen> {
                     hadith: results[index],
                     onTap: () =>
                         context.push('/hadith/detail', extra: results[index]),
-                  ),
+                  ).slideInAt(index),
                 );
               },
               loading: () => Center(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/hadith_collection.dart';
@@ -26,65 +27,67 @@ class HadithBookCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surfaceLight,
-      borderRadius: BorderRadius.circular(20.r),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20.r),
-            border: Border.all(color: AppColors.borderWarm),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: Hero(
-                  tag: 'hadith-cover-${collection.key}',
-                  child: _Cover(collection: collection),
+    return PressScale(
+      child: Material(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(20.r),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20.r),
+              border: Border.all(color: AppColors.borderWarm),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Hero(
+                    tag: 'hadith-cover-${collection.key}',
+                    child: _Cover(collection: collection),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 12.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      collection.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.headline.copyWith(
-                        fontSize: 13.5.sp,
-                        height: 1.25,
-                        color: AppColors.inkText,
-                      ),
-                    ),
-                    SizedBox(height: 3.h),
-                    Text(
-                      collection.author,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _CountChip(total: collection.totalHadiths),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(12.w, 10.h, 12.w, 12.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        collection.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.headline.copyWith(
+                          fontSize: 13.5.sp,
+                          height: 1.25,
+                          color: AppColors.inkText,
                         ),
-                        SizedBox(width: 6.w),
-                        _ReliabilityDot(reliability: collection.reliability),
-                      ],
-                    ),
-                  ],
+                      ),
+                      SizedBox(height: 3.h),
+                      Text(
+                        collection.author,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _CountChip(total: collection.totalHadiths),
+                          ),
+                          SizedBox(width: 6.w),
+                          _ReliabilityDot(reliability: collection.reliability),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
