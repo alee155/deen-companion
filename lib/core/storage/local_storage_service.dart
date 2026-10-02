@@ -33,6 +33,7 @@ class HiveStorageService implements LocalStorageService {
     AppConstants.recentActivityBoxName,
     AppConstants.settingsBoxName,
     AppConstants.apiCacheBoxName,
+    AppConstants.dailyContentBoxName,
   ];
 
   @override

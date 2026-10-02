@@ -35,6 +35,15 @@ class UnexpectedFailure extends Failure {
   const UnexpectedFailure([super.message = 'An unexpected error occurred.']);
 }
 
+/// Returned by a repository whose backend isn't wired up yet (currently
+/// [AuthRepositoryImpl] — the auth API/flow is coming later). Distinct from
+/// [ServerFailure] so the UI can say something more honest than "try again".
+class NotImplementedFailure extends Failure {
+  const NotImplementedFailure([
+    super.message = "This isn't hooked up yet — coming soon.",
+  ]);
+}
+
 /// Carries [kind] so the UI can offer the action that actually fixes the
 /// problem (turn on Location Services / grant permission / open app
 /// settings / retry) instead of a generic "try again".

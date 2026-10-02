@@ -9,20 +9,41 @@ class AppConstants {
   // versionName again. See appVersionNameProvider / appDisplayVersionProvider.
 
   static const Duration defaultAnimationDuration = Duration(milliseconds: 250);
-  static const Duration splashMinDuration = Duration(milliseconds: 800);
 
   static const int networkTimeoutSeconds = 15;
-  static const String onboardingCompletedKey = 'onboarding_completed';
 
-  /// Set once the startup permission screen has been shown, so it isn't
-  /// re-presented on every launch — features prompt in place after that.
-  static const String permissionFlowSeenKey = 'permission_flow_seen';
+  /// Set once the user has passed the Welcome screen — either by logging
+  /// in/signing up, or by choosing "Continue as guest". After this, Splash
+  /// goes straight to Home instead of showing Welcome again. Permissions are
+  /// no longer part of this gate — they're requested contextually in place,
+  /// right where each feature needs them.
+  static const String authGateSeenKey = 'auth_gate_seen';
+
+  // Persisted signed-in identity (the auth backend is still a stub; these keep
+  // the session across launches once it starts returning real sessions).
+  /// Set once the App Open ad has been shown; it is never shown again.
+  static const String appOpenAdShownKey = 'app_open_ad_shown';
+
+  static const String authUserIdKey = 'auth_user_id';
+  static const String authEmailKey = 'auth_email';
+  static const String authNameKey = 'auth_name';
+  static const String authPhotoUrlKey = 'auth_photo_url';
 
   static const String themeModeKey = 'theme_mode';
+  static const String prayerReminderPrefsKey = 'prayer_reminder_prefs';
   static const String remindersEnabledKey = 'prayer_reminders_enabled';
+  static const String dndEnabledKey = 'prayer_dnd_enabled';
+  static const String dndDurationModeKey = 'prayer_dnd_duration_mode';
+  static const String dndPresetMinutesKey = 'prayer_dnd_preset_minutes';
+  static const String dndCustomMinutesKey = 'prayer_dnd_custom_minutes';
+  static const String dndPrayersKey = 'prayer_dnd_prayers';
+  static const String dndDurationsKey = 'prayer_dnd_durations';
   static const String bookmarksBoxName = 'bookmarks_box';
   static const String recentActivityBoxName = 'recent_activity_box';
   static const String settingsBoxName = 'settings_box';
+  static const String dailyContentBoxName = 'daily_content_box';
+  static const String dailyNotificationEnabledKey = 'daily_notification_enabled';
+  static const String reliabilityPromptedAtKey = 'reliability_prompted_at';
   static const String apiCacheBoxName =
       'api_cache_box'; // new — generic response cache
 
