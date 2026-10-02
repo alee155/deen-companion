@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'core/constants/app_constants.dart';
+import 'core/motion/motion.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
@@ -15,6 +16,7 @@ class DeenApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final choice = ref.watch(themeModeNotifierProvider);
+    final motionLevel = ref.watch(motionLevelProvider);
 
     return ScreenUtilInit(
       designSize: const Size(375, 812),
@@ -46,6 +48,8 @@ class DeenApp extends ConsumerWidget {
           darkTheme: darkTheme,
           themeMode: choice.themeMode,
           routerConfig: router,
+          builder: (context, child) =>
+              MotionScope(level: motionLevel, child: child ?? const SizedBox()),
         );
       },
     );

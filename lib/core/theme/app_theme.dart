@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../motion/page_transitions.dart';
 import 'app_colors.dart';
 import 'app_theme_extensions.dart';
 import 'app_typography.dart';
@@ -58,6 +59,7 @@ class AppTheme {
       dividerColor: AppColors.borderWarm,
       shadowColor: AppColors.shadow,
       extensions: [AppThemeExtension.forCurrentPalette()],
+      pageTransitionsTheme: appPageTransitionsTheme,
       appBarTheme: AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
