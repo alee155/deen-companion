@@ -57,5 +57,13 @@ class FavoriteItem extends Equatable {
       '${type.name}:$referenceId';
 
   @override
-  List<Object?> get props => [id, type, referenceId, title, subtitle, route, savedAt];
+  List<Object?> get props => [
+    id,
+    type,
+    referenceId,
+    title,
+    subtitle,
+    route,
+    savedAt,
+  ];
 }

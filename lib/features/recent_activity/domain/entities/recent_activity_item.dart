@@ -51,5 +51,13 @@ class RecentActivityItem extends Equatable {
       '${type.name}:$referenceId';
 
   @override
-  List<Object?> get props => [id, type, referenceId, title, subtitle, route, viewedAt];
+  List<Object?> get props => [
+    id,
+    type,
+    referenceId,
+    title,
+    subtitle,
+    route,
+    viewedAt,
+  ];
 }

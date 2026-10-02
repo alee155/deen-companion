@@ -26,7 +26,8 @@ class FavoriteButton extends ConsumerWidget {
         color: isFavorite ? AppColors.hadithAccent : AppColors.textMuted,
         size: size.sp,
       ),
-      onPressed: () => ref.read(favoritesNotifierProvider.notifier).toggle(item),
+      onPressed: () =>
+          ref.read(favoritesNotifierProvider.notifier).toggle(item),
     );
   }
 }

@@ -49,7 +49,7 @@ class RecentActivityScreen extends ConsumerWidget {
             child: Text(
               'Could not load recent activity.',
               style: TextStyle(color: AppColors.textSecondary),
-            ),
+            ).slideIn(RevealDirection.bottom),
           ),
           data: (items) {
             return ListView(
@@ -62,7 +62,7 @@ class RecentActivityScreen extends ConsumerWidget {
                     fontWeight: FontWeight.w700,
                     color: AppColors.inkText,
                   ),
-                ),
+                ).slideIn(RevealDirection.topStart),
                 SizedBox(height: 20.h),
                 const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
 
@@ -81,7 +81,7 @@ class RecentActivityScreen extends ConsumerWidget {
                           Icons.history,
                           size: 32.sp,
                           color: AppColors.textMuted,
-                        ),
+                        ).slideIn(RevealDirection.top),
                         SizedBox(height: 10.h),
                         Text(
                           'What you read, play, or open will show up here — '
@@ -91,10 +91,13 @@ class RecentActivityScreen extends ConsumerWidget {
                             fontSize: 13.sp,
                             color: AppColors.textSecondary,
                           ),
+                        ).slideIn(
+                          RevealDirection.bottom,
+                          delay: const Duration(milliseconds: 80),
                         ),
                       ],
                     ),
-                  )
+                  ).slideIn(RevealDirection.bottomStart)
                 else
                   ...items.asMap().entries.map(
                     (entry) => Padding(
@@ -104,7 +107,7 @@ class RecentActivityScreen extends ConsumerWidget {
                         icon: _iconFor(entry.value.type),
                         timeLabel: _timeAgo(entry.value.viewedAt),
                         onTap: () => context.push(entry.value.route),
-                      ).appearStaggered(entry.key),
+                      ).slideInAt(entry.key),
                     ),
                   ),
               ],
@@ -131,56 +134,58 @@ class _RecentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14.r),
-        onTap: onTap,
-        child: Container(
-          padding: EdgeInsets.all(14.w),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(color: AppColors.borderWarm),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 20.sp, color: AppColors.emeraldInk),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.inkText,
-                      ),
-                    ),
-                    if (item.subtitle != null) ...[
-                      SizedBox(height: 2.h),
+    return PressScale(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14.r),
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.all(14.w),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(14.r),
+              border: Border.all(color: AppColors.borderWarm),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 20.sp, color: AppColors.emeraldInk),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        item.subtitle!,
+                        item.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12.sp,
-                          color: AppColors.textSecondary,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.inkText,
                         ),
                       ),
+                      if (item.subtitle != null) ...[
+                        SizedBox(height: 2.h),
+                        Text(
+                          item.subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              Text(
-                timeLabel,
-                style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
-              ),
-            ],
+                Text(
+                  timeLabel,
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
+                ),
+              ],
+            ),
           ),
         ),
       ),
