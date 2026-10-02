@@ -12,11 +12,17 @@ class PrayerAlarmEntry {
   /// "atTime" or "before" — the native layer uses it only for labelling.
   final String reminderType;
 
+  /// Per-prayer snooze preference, applied by the native ring screen.
+  final bool snoozeEnabled;
+  final int snoozeMinutes;
+
   const PrayerAlarmEntry({
     required this.prayerName,
     required this.triggerAt,
     required this.label,
     this.reminderType = 'atTime',
+    this.snoozeEnabled = true,
+    this.snoozeMinutes = 10,
   });
 
   Map<String, Object?> toMap() => {
@@ -24,6 +30,8 @@ class PrayerAlarmEntry {
     'reminderType': reminderType,
     'epochMillis': triggerAt.millisecondsSinceEpoch,
     'label': label,
+    'snoozeEnabled': snoozeEnabled,
+    'snoozeMinutes': snoozeMinutes,
   };
 }
 

@@ -197,6 +197,9 @@ object AlarmMethodChannelHandler {
                             epochMillis = epochMillis,
                             label = map["label"] as? String ?: prayerName,
                             requestCode = AlarmScheduleStore.REGULAR_REQUEST_CODE_BASE + index,
+                            snoozeEnabled = map["snoozeEnabled"] as? Boolean ?: true,
+                            snoozeMinutes =
+                                    (map["snoozeMinutes"] as? Number)?.toInt() ?: snoozeMinutes,
                     )
                 }
 
@@ -215,7 +218,10 @@ object AlarmMethodChannelHandler {
         val label = args["label"] as? String ?: prayerName
         val epochMillis = (args["epochMillis"] as? Number)?.toLong() ?: System.currentTimeMillis()
 
-        AlarmScheduler.scheduleSnooze(context, prayerName, reminderType, label, epochMillis)
+        val snoozeMinutes =
+                (args["snoozeMinutes"] as? Number)?.toInt()
+                        ?: AlarmScheduleStore(context).snoozeMinutes
+        AlarmScheduler.scheduleSnooze(context, prayerName, reminderType, label, epochMillis, snoozeMinutes)
     }
 
     private fun launchRingtonePicker(activity: Activity, currentUri: String?) {

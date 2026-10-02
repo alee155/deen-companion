@@ -12,6 +12,9 @@ data class AlarmEntry(
     val epochMillis: Long,
     val label: String,
     val requestCode: Int,
+    /** Per-prayer snooze preference, set from the Flutter settings UI. */
+    val snoozeEnabled: Boolean = true,
+    val snoozeMinutes: Int = AlarmScheduleStore.DEFAULT_SNOOZE_MINUTES,
 )
 
 /**
@@ -33,6 +36,8 @@ class AlarmScheduleStore(context: Context) {
                     put("epochMillis", entry.epochMillis)
                     put("label", entry.label)
                     put("requestCode", entry.requestCode)
+                    put("snoozeEnabled", entry.snoozeEnabled)
+                    put("snoozeMinutes", entry.snoozeMinutes)
                 }
             )
         }
@@ -51,6 +56,9 @@ class AlarmScheduleStore(context: Context) {
                     epochMillis = obj.getLong("epochMillis"),
                     label = obj.getString("label"),
                     requestCode = obj.getInt("requestCode"),
+                    // Absent in schedules persisted by older builds.
+                    snoozeEnabled = obj.optBoolean("snoozeEnabled", true),
+                    snoozeMinutes = obj.optInt("snoozeMinutes", DEFAULT_SNOOZE_MINUTES),
                 )
             }
         } catch (e: Exception) {

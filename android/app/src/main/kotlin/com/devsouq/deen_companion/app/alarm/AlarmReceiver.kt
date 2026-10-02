@@ -17,6 +17,11 @@ class AlarmReceiver : BroadcastReceiver() {
         val epochMillis = intent.getLongExtra(AlarmScheduler.EXTRA_EPOCH_MILLIS, System.currentTimeMillis())
         val label = intent.getStringExtra(AlarmScheduler.EXTRA_LABEL) ?: prayerName
         val isSnooze = intent.getBooleanExtra(AlarmScheduler.EXTRA_IS_SNOOZE, false)
+        val snoozeEnabled = intent.getBooleanExtra(AlarmScheduler.EXTRA_SNOOZE_ENABLED, true)
+        val snoozeMinutes = intent.getIntExtra(
+            AlarmScheduler.EXTRA_SNOOZE_MINUTES,
+            AlarmScheduleStore.DEFAULT_SNOOZE_MINUTES,
+        )
 
         if (AppForegroundTracker.isForeground) {
             val delivered = AlarmMethodChannelHandler.emitAlarmFired(prayerName, reminderType, epochMillis, label)
@@ -32,6 +37,8 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(AlarmScheduler.EXTRA_EPOCH_MILLIS, epochMillis)
             putExtra(AlarmScheduler.EXTRA_LABEL, label)
             putExtra(AlarmScheduler.EXTRA_IS_SNOOZE, isSnooze)
+            putExtra(AlarmScheduler.EXTRA_SNOOZE_ENABLED, snoozeEnabled)
+            putExtra(AlarmScheduler.EXTRA_SNOOZE_MINUTES, snoozeMinutes)
         }
         context.startForegroundService(serviceIntent)
     }

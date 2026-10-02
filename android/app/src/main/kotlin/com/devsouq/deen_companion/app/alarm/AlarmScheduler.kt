@@ -19,6 +19,8 @@ object AlarmScheduler {
     const val EXTRA_LABEL = "label"
     const val EXTRA_REQUEST_CODE = "request_code"
     const val EXTRA_IS_SNOOZE = "is_snooze"
+    const val EXTRA_SNOOZE_ENABLED = "snooze_enabled"
+    const val EXTRA_SNOOZE_MINUTES = "snooze_minutes"
 
     private const val PENDING_INTENT_FLAGS =
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -40,6 +42,8 @@ object AlarmScheduler {
             putExtra(EXTRA_LABEL, entry.label)
             putExtra(EXTRA_REQUEST_CODE, entry.requestCode)
             putExtra(EXTRA_IS_SNOOZE, isSnooze)
+            putExtra(EXTRA_SNOOZE_ENABLED, entry.snoozeEnabled)
+            putExtra(EXTRA_SNOOZE_MINUTES, entry.snoozeMinutes)
         }
         val operationPendingIntent = PendingIntent.getBroadcast(
             context, entry.requestCode, operationIntent, PENDING_INTENT_FLAGS,
@@ -84,9 +88,10 @@ object AlarmScheduler {
         reminderType: String,
         label: String,
         currentEpochMillis: Long,
+        snoozeMinutes: Int,
     ): Boolean {
         val store = AlarmScheduleStore(context)
-        var triggerAt = System.currentTimeMillis() + store.snoozeMinutes * 60_000L
+        var triggerAt = System.currentTimeMillis() + snoozeMinutes * 60_000L
 
         val nextEntry = store.loadSchedule()
             .filter { it.epochMillis > currentEpochMillis }
@@ -103,6 +108,10 @@ object AlarmScheduler {
             epochMillis = triggerAt,
             label = "Snoozed: $label",
             requestCode = requestCode,
+            // A snoozed alarm can itself be snoozed again, with the same
+            // preference the user chose for this prayer.
+            snoozeEnabled = true,
+            snoozeMinutes = snoozeMinutes,
         )
         scheduleAlarm(context, entry, isSnooze = true)
         return true

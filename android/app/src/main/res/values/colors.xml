@@ -5,4 +5,14 @@
     <color name="alarmAccent">#FFC9A25E</color>
     <color name="alarmTextPrimary">#FFECE6D6</color>
     <color name="alarmTextSecondary">#FFB3AD9B</color>
+    <color name="splashBackground">#FCFBF4</color>
+    <!-- Ring screen — mirrors the Flutter hero (AppColors.heroSurface -> emeraldInkDark, emeraldInk accent). -->
+    <color name="alarmHeroStart">#FF1A1A1A</color>
+    <color name="alarmHeroEnd">#FFC96A2E</color>
+    <color name="alarmOrange">#FFF08232</color>
+    <color name="alarmOnOrange">#FF1A1A1A</color>
+    <color name="alarmGoldLight">#FFF3E7D0</color>
+    <color name="alarmOnHero">#FFFCFBF4</color>
+    <color name="alarmGlass">#1FFFFFFF</color>
+    <color name="alarmGlassBorder">#2EFFFFFF</color>
 </resources>

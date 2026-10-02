@@ -1,77 +1,192 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:background="@color/alarmBackground"
-    android:padding="32dp">
-
-    <TextView
-        android:id="@+id/alarmSubtitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/alarmTextSecondary"
-        android:textSize="16sp"
-        android:letterSpacing="0.05"
-        android:text="Time to pray" />
-
-    <TextView
-        android:id="@+id/alarmPrayerName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:textColor="@color/alarmTextPrimary"
-        android:textSize="40sp"
-        android:textStyle="bold"
-        android:text="Fajr" />
-
-    <TextView
-        android:id="@+id/alarmTime"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:textColor="@color/alarmAccent"
-        android:textSize="28sp"
-        android:text="5:12 AM" />
-
-    <TextView
-        android:id="@+id/alarmMessage"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:gravity="center"
-        android:textColor="@color/alarmTextSecondary"
-        android:textSize="16sp"
-        android:text="@string/alarm_motivational_message" />
+    android:background="@drawable/alarm_background"
+    android:clipChildren="false">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="48dp"
-        android:orientation="horizontal"
-        android:weightSum="2">
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingTop="48dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="40dp">
 
-        <Button
-            android:id="@+id/alarmSnoozeButton"
+        <View
             android:layout_width="0dp"
-            android:layout_weight="1"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Logo with sonar ripples and two slowly counter-rotating
+             geometric rings behind it; all of it keeps moving while the
+             alarm rings. -->
+        <FrameLayout
+            android:id="@+id/alarmLogoStack"
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:clipChildren="false">
+
+            <ImageView
+                android:id="@+id/alarmStarA"
+                android:layout_width="300dp"
+                android:layout_height="300dp"
+                android:layout_gravity="center"
+                android:alpha="0.22"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_alarm_star_a" />
+
+            <ImageView
+                android:id="@+id/alarmStarB"
+                android:layout_width="300dp"
+                android:layout_height="300dp"
+                android:layout_gravity="center"
+                android:alpha="0.22"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_alarm_star_b" />
+
+            <View
+                android:id="@+id/alarmRipple1"
+                android:layout_width="104dp"
+                android:layout_height="104dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_alarm_ripple" />
+
+            <View
+                android:id="@+id/alarmRipple2"
+                android:layout_width="104dp"
+                android:layout_height="104dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_alarm_ripple" />
+
+            <View
+                android:id="@+id/alarmRipple3"
+                android:layout_width="104dp"
+                android:layout_height="104dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_alarm_ripple" />
+
+            <ImageView
+                android:id="@+id/alarmLogo"
+                android:layout_width="104dp"
+                android:layout_height="104dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_alarm_logo"
+                android:elevation="8dp"
+                android:importantForAccessibility="no"
+                android:padding="18dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/alarm_logo" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/alarmSubtitle"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:text="Snooze"
-            android:backgroundTint="@color/alarmTextSecondary"
-            android:textColor="@color/alarmBackground" />
+            android:layout_marginTop="26dp"
+            android:background="@drawable/bg_alarm_chip"
+            android:letterSpacing="0.06"
+            android:paddingStart="14dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="6dp"
+            android:text="Time to pray"
+            android:textColor="@color/alarmGoldLight"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/alarmPrayerName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Fajr"
+            android:textColor="@color/alarmOnHero"
+            android:textSize="46sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/alarmTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="5:12 AM"
+            android:textColor="@color/alarmOrange"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/alarmMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="26dp"
+            android:background="@drawable/bg_alarm_quote"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="18dp">
+
+            <TextView
+                android:id="@+id/alarmArabic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.25"
+                android:layoutDirection="rtl"
+                android:text="@string/alarm_arabic_verse"
+                android:textColor="@color/alarmOnHero"
+                android:textSize="22sp" />
+
+            <TextView
+                android:id="@+id/alarmTranslation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.15"
+                android:text="@string/alarm_motivational_message"
+                android:textColor="@color/alarmOnHero"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/alarm_verse_reference"
+                android:textColor="@color/alarmGoldLight"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
         <Button
             android:id="@+id/alarmDismissButton"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:background="@drawable/btn_alarm_dismiss"
+            android:stateListAnimator="@null"
             android:text="Dismiss"
-            android:backgroundTint="@color/alarmAccent"
-            android:textColor="@color/alarmBackground" />
+            android:textAllCaps="false"
+            android:textColor="@color/alarmOnOrange"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
+        <Button
+            android:id="@+id/alarmSnoozeButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/btn_alarm_snooze"
+            android:stateListAnimator="@null"
+            android:text="Snooze"
+            android:textAllCaps="false"
+            android:textColor="@color/alarmOnHero"
+            android:textSize="15sp"
+            android:textStyle="bold" />
     </LinearLayout>
-
-</LinearLayout>
+</FrameLayout>

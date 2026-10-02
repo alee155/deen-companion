@@ -6,6 +6,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.devsouq.deen_companion.app.dnd.DndScheduler
 import java.util.concurrent.TimeUnit
 
 /**
@@ -21,6 +22,7 @@ class AlarmSyncWorker(context: Context, params: WorkerParameters) : CoroutineWor
         store.loadSchedule()
             .filter { it.epochMillis > now }
             .forEach { entry -> AlarmScheduler.scheduleAlarm(applicationContext, entry) }
+        DndScheduler.rearm(applicationContext)
         return Result.success()
     }
 

@@ -4,9 +4,9 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
-import '../../../prayer_times/presentation/providers/prayer_calculation_settings_provider.dart';
-import '../../../prayer_times/presentation/providers/prayer_times_provider.dart';
+import '../../../prayer_times/presentation/providers/upcoming_prayer_days.dart';
 import '../../data/prayer_alarm_channel.dart';
+import '../../domain/prayer_reminder_prefs.dart';
 
 const _prayerLabels = {
   PrayerName.fajr: 'Fajr',
@@ -92,47 +92,25 @@ class PrayerReminderService {
 
   Future<ReminderSyncResult> sync() async {
     final channel = ref.read(prayerAlarmChannelProvider);
-    final settings = ref.read(prayerCalculationSettingsProvider);
-    final repository = ref.read(prayerTimesRepositoryProvider);
     final now = DateTime.now();
 
-    final days = <PrayerTimes>[];
+    final loaded = await loadUpcomingPrayerDays(
+      ref,
+      now: now,
+      windowDays: _windowDays,
+    );
+    if (loaded.error != null) return ReminderSyncFailed(loaded.error!);
+    final days = loaded.days;
 
-    // The month calendar gives a real per-day set of timings; two calls cover
-    // a window that straddles a month boundary.
-    final months = <({int year, int month})>{
-      (year: now.year, month: now.month),
-      (
-        year: now.add(const Duration(days: _windowDays)).year,
-        month: now.add(const Duration(days: _windowDays)).month,
-      ),
-    };
-
-    for (final month in months) {
-      final result = await repository.fetchMonthCalendar(
-        year: month.year,
-        month: month.month,
-        method: settings.method.id,
-        school: settings.school.id,
-      );
-      final failure = result.when(
-        success: (data) {
-          days.addAll(data);
-          return null;
-        },
-        failure: (f) => f,
-      );
-      if (failure != null && days.isEmpty) {
-        // Fall back to today's cached timings rather than giving up entirely:
-        // one day of reminders beats none, and the backstop worker will keep
-        // them armed until the app can fetch the full window.
-        final cached = repository.getCachedPrayerTimesForLastKnownLocation();
-        if (cached == null) return ReminderSyncFailed(failure.message);
-        days.add(cached);
-      }
+    final prefs = ref.read(prayerReminderPrefsProvider);
+    if (!prefs.values.any((p) => p.enabled)) {
+      // Every prayer switched off: nothing to arm, and anything armed
+      // earlier must go.
+      await channel.cancelAll();
+      return const ReminderSyncScheduled(0, 0);
     }
 
-    final entries = _buildEntries(days, now);
+    final entries = _buildEntries(days, now, prefs);
     if (entries.isEmpty) {
       return const ReminderSyncFailed(
         "Couldn't work out any upcoming prayer times to remind you about.",
@@ -160,7 +138,11 @@ class PrayerReminderService {
     await ref.read(prayerAlarmChannelProvider).cancelAll();
   }
 
-  List<PrayerAlarmEntry> _buildEntries(List<PrayerTimes> days, DateTime now) {
+  List<PrayerAlarmEntry> _buildEntries(
+    List<PrayerTimes> days,
+    DateTime now,
+    PrayerPrefsMap prefs,
+  ) {
     final horizon = now.add(const Duration(days: _windowDays));
     final entries = <PrayerAlarmEntry>[];
 
@@ -174,6 +156,8 @@ class PrayerReminderService {
       };
 
       for (final entry in timings.entries) {
+        final pref = prefs[entry.key] ?? PrayerReminderPrefs.defaults;
+        if (!pref.enabled) continue;
         // Anything already past is dropped — arming it would fire the alarm
         // immediately on some OEM builds.
         if (!entry.value.isAfter(now) || entry.value.isAfter(horizon)) continue;
@@ -182,6 +166,8 @@ class PrayerReminderService {
             prayerName: entry.key.name,
             triggerAt: entry.value,
             label: '${_prayerLabels[entry.key]} — time to pray',
+            snoozeEnabled: pref.snoozeEnabled,
+            snoozeMinutes: pref.snoozeMinutes,
           ),
         );
       }
@@ -195,3 +181,110 @@ class PrayerReminderService {
 final prayerReminderServiceProvider = Provider<PrayerReminderService>((ref) {
   return PrayerReminderService(ref);
 });
+
+// ── Per-prayer preferences ───────────────────────────────────────────────
+
+/// What the Reminders screen shows about the last attempt to apply settings
+/// to the native scheduler. Only ever [ReminderApplied] after the native
+/// side confirmed — so the UI never claims settings that didn't take.
+sealed class ReminderApplyState {
+  const ReminderApplyState();
+}
+
+class ReminderIdle extends ReminderApplyState {
+  const ReminderIdle();
+}
+
+class ReminderApplying extends ReminderApplyState {
+  const ReminderApplying();
+}
+
+class ReminderApplied extends ReminderApplyState {
+  final String message;
+  const ReminderApplied(this.message);
+}
+
+class ReminderApplyFailed extends ReminderApplyState {
+  final String message;
+  const ReminderApplyFailed(this.message);
+}
+
+class ReminderApplyNotifier extends Notifier<ReminderApplyState> {
+  @override
+  ReminderApplyState build() => const ReminderIdle();
+
+  void set(ReminderApplyState value) => state = value;
+}
+
+final reminderApplyProvider =
+    NotifierProvider<ReminderApplyNotifier, ReminderApplyState>(
+      ReminderApplyNotifier.new,
+    );
+
+/// Human summary of a successful sync, shared by the toggle and prefs paths.
+String describeSync(ReminderSyncResult result) => switch (result) {
+  ReminderSyncScheduled(:final alarmCount, :final dayCount) =>
+    alarmCount == 0
+        ? 'No prayers selected — no alarms are armed.'
+        : 'Saved · $alarmCount alarms armed for the next $dayCount days.',
+  ReminderSyncFailed(:final message) => message,
+  ReminderSyncDisabled() => 'Reminders are off.',
+};
+
+class PrayerReminderPrefsNotifier extends Notifier<PrayerPrefsMap> {
+  @override
+  PrayerPrefsMap build() => decodePrayerPrefs(
+    ref
+        .read(localStorageServiceProvider)
+        .get<String>(
+          AppConstants.settingsBoxName,
+          AppConstants.prayerReminderPrefsKey,
+        ),
+  );
+
+  Future<void> _persist(PrayerPrefsMap value) => ref
+      .read(localStorageServiceProvider)
+      .put(
+        AppConstants.settingsBoxName,
+        AppConstants.prayerReminderPrefsKey,
+        encodePrayerPrefs(value),
+      );
+
+  /// Applies [next] and pushes it to the native scheduler. If the master
+  /// switch is on and the native side doesn't confirm, the change is rolled
+  /// back, so what's on screen is what's actually armed.
+  Future<void> _apply(PrayerPrefsMap next) async {
+    final previous = state;
+    final notifier = ref.read(reminderApplyProvider.notifier);
+    state = next;
+    await _persist(next);
+
+    if (!ref.read(remindersEnabledProvider)) {
+      notifier.set(const ReminderIdle());
+      return;
+    }
+
+    notifier.set(const ReminderApplying());
+    final result = await ref.read(prayerReminderServiceProvider).sync();
+    if (result is ReminderSyncFailed) {
+      state = previous;
+      await _persist(previous);
+      notifier.set(ReminderApplyFailed(result.message));
+    } else {
+      notifier.set(ReminderApplied(describeSync(result)));
+    }
+  }
+
+  Future<void> update(PrayerName prayer, PrayerReminderPrefs prefs) =>
+      _apply({...state, prayer: prefs});
+
+  /// "All on" / "All off".
+  Future<void> setAllEnabled(bool enabled) => _apply({
+    for (final e in state.entries) e.key: e.value.copyWith(enabled: enabled),
+  });
+}
+
+final prayerReminderPrefsProvider =
+    NotifierProvider<PrayerReminderPrefsNotifier, PrayerPrefsMap>(
+      PrayerReminderPrefsNotifier.new,
+    );
