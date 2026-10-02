@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -55,6 +56,10 @@ abstract class LocationService {
   Future<void> openLocationSettings();
 
   Future<void> openAppSettings();
+
+  /// Fires when the device-wide Location Services toggle changes. Permission
+  /// changes have no platform stream, so callers also re-check on app resume.
+  Stream<void> serviceStatusChanges();
 }
 
 class GeolocatorLocationService implements LocationService {
@@ -70,6 +75,17 @@ class GeolocatorLocationService implements LocationService {
   /// staring at "Locating…" for every one of those seconds.
   static const _fixTimeout = Duration(seconds: 12);
   static const _platformCallTimeout = Duration(seconds: 5);
+
+  /// A live fix this recent is reused, so the several features that ask for
+  /// a location at startup (prayer times, header label, Qibla) trigger one
+  /// GPS read instead of one each.
+  static const _fixFreshness = Duration(minutes: 2);
+
+  Coordinates? _lastLiveFix;
+  DateTime? _lastLiveFixAt;
+  Future<Coordinates>? _inFlightWithPrompt;
+  Future<Coordinates>? _inFlightSilent;
+  Future<LocationAvailability>? _inFlightPermission;
 
   @override
   Coordinates? lastStoredCoordinates() {
@@ -112,17 +128,40 @@ class GeolocatorLocationService implements LocationService {
     );
   }
 
+  /// Single-flight: the OS only allows one permission request at a time, and
+  /// a second concurrent call fails with "already running" — which used to
+  /// surface as a bogus "permission denied" for whichever feature lost the
+  /// race on a fresh install.
   @override
-  Future<LocationAvailability> requestPermission() async {
+  Future<LocationAvailability> requestPermission() {
+    return _inFlightPermission ??= _requestPermission().whenComplete(
+      () => _inFlightPermission = null,
+    );
+  }
+
+  Future<LocationAvailability> _requestPermission() async {
     final current = await checkAvailability();
     if (current.hasPermission || current.permanentlyDenied) return current;
 
-    await _guard(
-      Geolocator.requestPermission,
-      fallback: LocationPermission.denied,
-    );
+    // The system dialog waits on the user, so it must not use the short
+    // platform-call timeout.
+    try {
+      // Generous (the user may take a while), but bounded: if the OS drops
+      // the request because another permission dialog was on screen, the
+      // platform future never completes, which used to leave every screen
+      // waiting on location stuck on its loader.
+      await Geolocator.requestPermission().timeout(const Duration(minutes: 2));
+    } catch (error) {
+      AppLogger.e('Location: permission request failed', error);
+    }
     return checkAvailability();
   }
+
+  @override
+  Stream<void> serviceStatusChanges() =>
+      Geolocator.getServiceStatusStream().map((_) {}).handleError((Object e) {
+        AppLogger.e('Location: service status stream failed', e);
+      });
 
   @override
   Future<void> openLocationSettings() async {
@@ -135,9 +174,26 @@ class GeolocatorLocationService implements LocationService {
   }
 
   @override
-  Future<Coordinates> getCurrentCoordinates({
-    bool requestPermission = true,
-  }) async {
+  Future<Coordinates> getCurrentCoordinates({bool requestPermission = true}) {
+    final fixedAt = _lastLiveFixAt;
+    final fix = _lastLiveFix;
+    if (fix != null &&
+        fixedAt != null &&
+        DateTime.now().difference(fixedAt) < _fixFreshness) {
+      return Future.value(fix);
+    }
+    // Concurrent callers share one resolution (and one permission prompt).
+    if (requestPermission) {
+      return _inFlightWithPrompt ??= _resolve(
+        requestPermission: true,
+      ).whenComplete(() => _inFlightWithPrompt = null);
+    }
+    return _inFlightSilent ??= _resolve(
+      requestPermission: false,
+    ).whenComplete(() => _inFlightSilent = null);
+  }
+
+  Future<Coordinates> _resolve({required bool requestPermission}) async {
     var availability = await checkAvailability();
 
     if (!availability.serviceEnabled) {
@@ -174,6 +230,8 @@ class GeolocatorLocationService implements LocationService {
         latitude: position.latitude,
         longitude: position.longitude,
       );
+      _lastLiveFix = coordinates;
+      _lastLiveFixAt = DateTime.now();
       await _store(coordinates);
       return coordinates;
     } catch (error) {
@@ -229,13 +287,124 @@ final locationServiceProvider = Provider<LocationService>((ref) {
   return GeolocatorLocationService(ref.watch(localStorageServiceProvider));
 });
 
-/// Service + permission state, re-read whenever something invalidates it
-/// (the startup permission gate, returning from system settings, a retry).
-final locationAvailabilityProvider = FutureProvider<LocationAvailability>((
+/// Live service + permission state. Re-checked when Location Services are
+/// toggled, when the app returns to the foreground (system permission
+/// dialogs and the settings app both end that way), and — only while
+/// location is *not* usable — on a short poll as a safety net for OEMs that
+/// don't report the change. Emits only when something actually changed.
+///
+/// `ref.invalidate` still forces an immediate re-check (used after the app
+/// itself asks for permission).
+final locationAvailabilityProvider = StreamProvider<LocationAvailability>((
   ref,
-) async {
-  return ref.watch(locationServiceProvider).checkAvailability();
+) {
+  final service = ref.watch(locationServiceProvider);
+  final controller = StreamController<LocationAvailability>();
+  LocationAvailability? last;
+  Timer? poll;
+  var checking = false;
+
+  Future<void> check() async {
+    if (checking || controller.isClosed) return;
+    checking = true;
+    try {
+      final now = await service.checkAvailability();
+      if (controller.isClosed) return;
+      final changed =
+          last == null ||
+          last!.serviceEnabled != now.serviceEnabled ||
+          last!.hasPermission != now.hasPermission ||
+          last!.permanentlyDenied != now.permanentlyDenied;
+      last = now;
+      if (changed) controller.add(now);
+
+      if (now.isUsable) {
+        poll?.cancel();
+        poll = null;
+      } else {
+        poll ??= Timer.periodic(const Duration(seconds: 2), (_) {
+          if (WidgetsBinding.instance.lifecycleState ==
+              AppLifecycleState.resumed) {
+            check();
+          }
+        });
+      }
+    } finally {
+      checking = false;
+    }
+  }
+
+  final observer = _ResumeObserver(check);
+  WidgetsBinding.instance.addObserver(observer);
+  final statusSub = service.serviceStatusChanges().listen((_) => check());
+
+  ref.onDispose(() {
+    WidgetsBinding.instance.removeObserver(observer);
+    statusSub.cancel();
+    poll?.cancel();
+    controller.close();
+  });
+
+  check();
+  return controller.stream;
 });
+
+class _ResumeObserver with WidgetsBindingObserver {
+  final VoidCallback onResume;
+  _ResumeObserver(this.onResume);
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) onResume();
+  }
+}
+
+/// Bumps by one each time location goes from known-unusable (services off or
+/// permission missing) to usable. Location-dependent providers `watch` this,
+/// so they rebuild themselves exactly when recovery happens — no screen has
+/// to wire up a retry, and nothing refetches on ordinary launches.
+class LocationRecoveryNotifier extends Notifier<int> {
+  bool? _wasUsable;
+
+  @override
+  int build() {
+    ref.listen<AsyncValue<LocationAvailability>>(locationAvailabilityProvider, (
+      _,
+      next,
+    ) {
+      final usable = next.valueOrNull?.isUsable;
+      if (usable == null) return;
+      if (_wasUsable == false && usable) state = state + 1;
+      _wasUsable = usable;
+    }, fireImmediately: true);
+    return 0;
+  }
+}
+
+final locationRecoveryProvider =
+    NotifierProvider<LocationRecoveryNotifier, int>(
+      LocationRecoveryNotifier.new,
+    );
+
+/// Performs the fix a [LocationErrorKind] calls for. Recovery afterwards is
+/// automatic (see [locationRecoveryProvider]).
+Future<void> resolveLocationIssue(
+  LocationService service,
+  LocationErrorKind kind,
+) async {
+  switch (kind) {
+    case LocationErrorKind.serviceDisabled:
+      await service.openLocationSettings();
+    case LocationErrorKind.permissionDeniedForever:
+      await service.openAppSettings();
+    case LocationErrorKind.permissionDenied:
+      final availability = await service.requestPermission();
+      if (availability.permanentlyDenied) await service.openAppSettings();
+    case LocationErrorKind.timeout:
+    case LocationErrorKind.unavailable:
+      break;
+  }
+}
 
 const _countryCodeCacheKey = 'last_known_country_code';
 
@@ -255,6 +424,7 @@ const _countryNameToCode = {'pakistan': 'PK'};
 /// falls back to the last cached value rather than making a fresh
 /// network call every time.
 final deviceCountryCodeProvider = FutureProvider<String?>((ref) async {
+  ref.watch(locationRecoveryProvider);
   final storage = ref.watch(localStorageServiceProvider);
 
   try {
