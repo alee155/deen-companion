@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../core/error/failures.dart';
 import '../../core/location/location_service.dart';
 import '../../core/location/location_status.dart';
+import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 
@@ -147,6 +148,7 @@ class _FailureViewState extends ConsumerState<FailureView>
   @override
   Widget build(BuildContext context) {
     final padding = widget.compact ? 16.w : 24.w;
+    final seq = RevealSequence();
 
     return Container(
       width: double.infinity,
@@ -168,7 +170,7 @@ class _FailureViewState extends ConsumerState<FailureView>
               color: AppColors.worshipAccentBg,
             ),
             child: Icon(_icon, color: AppColors.worshipAccent, size: 22.sp),
-          ),
+          ).slideIn(RevealDirection.top, distance: 18),
           SizedBox(height: 12.h),
           Text(
             _title,
@@ -177,7 +179,7 @@ class _FailureViewState extends ConsumerState<FailureView>
               fontSize: widget.compact ? 15.sp : 17.sp,
               color: AppColors.inkText,
             ),
-          ),
+          ).slideIn(RevealDirection.bottom, delay: seq.next()),
           SizedBox(height: 6.h),
           Text(
             widget.failure.message,
@@ -185,7 +187,7 @@ class _FailureViewState extends ConsumerState<FailureView>
             style: AppTypography.bodyMedium.copyWith(
               color: AppColors.textSecondary,
             ),
-          ),
+          ).slideIn(RevealDirection.bottomEnd, delay: seq.next()),
           SizedBox(height: 14.h),
           if (_isRetrying)
             SizedBox(

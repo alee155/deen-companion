@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/theme/theme_mode_provider.dart';
 import 'ornament_divider.dart';
 import '../providers/reading_preferences_provider.dart';
 
@@ -13,6 +13,7 @@ import '../providers/reading_preferences_provider.dart';
 /// the page underneath immediately, no confirm step.
 Future<void> showReaderSettingsSheet(BuildContext context) {
   return showModalBottomSheet<void>(
+    sheetAnimationStyle: AppMotion.sheetStyle,
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -28,7 +29,6 @@ class _ReaderSettingsSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(readingPreferencesProvider);
     final notifier = ref.read(readingPreferencesProvider.notifier);
-    final themeChoice = ref.watch(themeModeNotifierProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -130,18 +130,6 @@ class _ReaderSettingsSheet extends ConsumerWidget {
                 onChanged: prefs.showArabic
                     ? notifier.setShowTranslation
                     : null,
-              ),
-              _ToggleRow(
-                icon: themeChoice == AppThemeChoice.dark
-                    ? Icons.dark_mode_rounded
-                    : Icons.light_mode_rounded,
-                label: 'Dark reading mode',
-                value: themeChoice == AppThemeChoice.dark,
-                onChanged: (enabled) => ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setChoice(
-                      enabled ? AppThemeChoice.dark : AppThemeChoice.light,
-                    ),
               ),
             ],
           ),
@@ -252,8 +240,8 @@ class _ScaleSlider extends StatelessWidget {
         Padding(
           padding: EdgeInsets.only(bottom: 4.h),
           child: AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 160),
-            curve: Curves.easeOut,
+            duration: context.motion.duration(AppMotion.fast),
+            curve: AppMotion.entrance,
             style: sampleStyle,
             child: Text(
               sampleText,
@@ -284,21 +272,25 @@ class _StepButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onPressed,
-      tooltip: tooltip,
-      iconSize: 18.sp,
-      constraints: BoxConstraints(minWidth: 44.w, minHeight: 44.h),
-      style: IconButton.styleFrom(
-        backgroundColor: AppColors.parchment,
-        foregroundColor: AppColors.inkText,
-        disabledForegroundColor: AppColors.textMuted,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.r),
-          side: BorderSide(color: AppColors.borderWarm),
+    return PressScale(
+      scale: AppMotion.pressScaleSmall,
+      enabled: onPressed != null,
+      child: IconButton(
+        onPressed: onPressed,
+        tooltip: tooltip,
+        iconSize: 18.sp,
+        constraints: BoxConstraints(minWidth: 44.w, minHeight: 44.h),
+        style: IconButton.styleFrom(
+          backgroundColor: AppColors.parchment,
+          foregroundColor: AppColors.inkText,
+          disabledForegroundColor: AppColors.textMuted,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+            side: BorderSide(color: AppColors.borderWarm),
+          ),
         ),
+        icon: Icon(icon),
       ),
-      icon: Icon(icon),
     );
   }
 }

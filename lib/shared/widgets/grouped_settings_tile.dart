@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../core/motion/motion.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 
@@ -48,6 +49,13 @@ class GroupedTile extends StatelessWidget {
   final bool showChevron;
   final VoidCallback? onTap;
 
+  /// Overrides the title colour (e.g. red for destructive rows).
+  final Color? titleColor;
+
+  /// Shows the chevron even without [onTap], for rows whose action isn't
+  /// wired up yet.
+  final bool forceChevron;
+
   const GroupedTile({
     super.key,
     required this.icon,
@@ -58,67 +66,73 @@ class GroupedTile extends StatelessWidget {
     this.trailingText,
     this.showChevron = true,
     this.onTap,
+    this.titleColor,
+    this.forceChevron = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-          child: Row(
-            children: [
-              Container(
-                width: 34.w,
-                height: 34.w,
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(10.r),
+    return PressScale(
+      scale: 0.985,
+      enabled: onTap != null,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+            child: Row(
+              children: [
+                Container(
+                  width: 34.w,
+                  height: 34.w,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 17.sp),
                 ),
-                child: Icon(icon, color: iconColor, size: 17.sp),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTypography.titleMedium.copyWith(
-                        color: AppColors.inkText,
-                        fontSize: 13.sp,
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      SizedBox(height: 2.h),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        subtitle!,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                        title,
+                        style: AppTypography.titleMedium.copyWith(
+                          color: titleColor ?? AppColors.inkText,
+                          fontSize: 13.sp,
                         ),
                       ),
+                      if (subtitle != null) ...[
+                        SizedBox(height: 2.h),
+                        Text(
+                          subtitle!,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ),
-              if (trailingText != null)
-                Text(
-                  trailingText!,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textMuted,
                   ),
                 ),
-              if (showChevron && onTap != null) ...[
-                SizedBox(width: 4.w),
-                Icon(
-                  Icons.chevron_right,
-                  size: 18.sp,
-                  color: AppColors.textMuted,
-                ),
+                if (trailingText != null)
+                  Text(
+                    trailingText!,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                if (showChevron && (onTap != null || forceChevron)) ...[
+                  SizedBox(width: 4.w),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 18.sp,
+                    color: AppColors.textMuted,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
