@@ -52,6 +52,17 @@ class _QiblaDialState extends State<QiblaDial> with TickerProviderStateMixin {
     duration: const Duration(milliseconds: 1600),
   );
 
+  // Continuous ripple: amber while searching, green once aligned.
+  late final AnimationController _ripple = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  );
+  // One-shot "Qibla found" burst + check pop, played on the aligned edge.
+  late final AnimationController _found = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1400),
+  );
+
   // Unwrapped (continuous) angles so tweens never wrap the long way round.
   double _headingUnwrapped = 0;
   double _diffUnwrapped = 0;
@@ -80,6 +91,9 @@ class _QiblaDialState extends State<QiblaDial> with TickerProviderStateMixin {
       _intro.forward();
     }
     _syncPulse();
+    if (!context.motion.reduced) _ripple.repeat();
+    if (widget.aligned) _found.value = context.motion.reduced ? 1 : 0;
+    if (widget.aligned && !context.motion.reduced) _found.forward();
   }
 
   @override
@@ -89,7 +103,14 @@ class _QiblaDialState extends State<QiblaDial> with TickerProviderStateMixin {
       _headingUnwrapped += shortestAngleDiff(_heading, _headingUnwrapped);
     }
     _diffUnwrapped += shortestAngleDiff(_diff, _diffUnwrapped);
-    if (old.aligned != widget.aligned) _syncPulse();
+    if (old.aligned != widget.aligned) {
+      _syncPulse();
+      if (widget.aligned) {
+        context.motion.reduced ? _found.value = 1 : _found.forward(from: 0);
+      } else {
+        _found.value = 0;
+      }
+    }
   }
 
   void _syncPulse() {
@@ -104,6 +125,8 @@ class _QiblaDialState extends State<QiblaDial> with TickerProviderStateMixin {
   void dispose() {
     _intro.dispose();
     _pulse.dispose();
+    _ripple.dispose();
+    _found.dispose();
     super.dispose();
   }
 
@@ -115,7 +138,7 @@ class _QiblaDialState extends State<QiblaDial> with TickerProviderStateMixin {
     final glide = motion.duration(const Duration(milliseconds: 260));
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_intro, _pulse]),
+      animation: Listenable.merge([_intro, _pulse, _ripple, _found]),
       builder: (context, _) {
         final t = Curves.easeOutCubic.transform(_intro.value);
         final beamT = Curves.easeOut.transform(
@@ -129,68 +152,102 @@ class _QiblaDialState extends State<QiblaDial> with TickerProviderStateMixin {
           child: Transform.scale(
             scale: 0.86 + 0.14 * t,
             child: SizedBox(
-              width: size,
-              height: size,
+              width: size * qiblaDialRippleScale,
+              height: size * qiblaDialRippleScale,
               child: Stack(
                 alignment: Alignment.center,
+                clipBehavior: Clip.none,
                 children: [
-                  // Alignment glow.
-                  Container(
-                    width: size * 0.96,
-                    height: size * 0.96,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: accent.withValues(
-                            alpha: 0.16 + 0.26 * _pulse.value,
+                  // Ripples: a calm continuous "searching" pulse that turns
+                  // green and slows once the Qibla is found, plus a one-shot
+                  // burst ring at the moment of discovery.
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _RipplePainter(
+                        t: _ripple.value,
+                        color: accent,
+                        innerFraction: 1 / qiblaDialRippleScale,
+                        found: widget.aligned,
+                        burst: _found.value,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: size,
+                    height: size,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        // Alignment glow.
+                        Container(
+                          width: size * 0.96,
+                          height: size * 0.96,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: accent.withValues(
+                                  alpha: 0.16 + 0.26 * _pulse.value,
+                                ),
+                                blurRadius: 26 + 22 * _pulse.value,
+                                spreadRadius: 1 + 5 * _pulse.value,
+                              ),
+                            ],
                           ),
-                          blurRadius: 26 + 22 * _pulse.value,
-                          spreadRadius: 1 + 5 * _pulse.value,
                         ),
+                        // Rotating dial face (north-up in the real world).
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(end: _headingUnwrapped),
+                          duration: glide,
+                          curve: Curves.easeOutCubic,
+                          builder: (context, h, child) => Transform.rotate(
+                            angle: -h * math.pi / 180 + sweep,
+                            child: child,
+                          ),
+                          child: RepaintBoundary(
+                            child: CustomPaint(
+                              size: Size.square(size),
+                              painter: QiblaDialPainter(
+                                ring: AppColors.gold,
+                                tick: Colors.white,
+                                north: AppColors.emeraldInk,
+                                label: AppColors.onHeroSurface,
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Qibla beam + Kaaba badge, rotated to the Qibla bearing
+                        // relative to where the phone points.
+                        Opacity(
+                          opacity: beamT,
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween(end: _diffUnwrapped),
+                            duration: glide,
+                            curve: Curves.easeOutCubic,
+                            builder: (context, d, child) => Transform.rotate(
+                              angle: d * math.pi / 180 + sweep,
+                              child: child,
+                            ),
+                            child: _QiblaBeam(size: size, color: accent),
+                          ),
+                        ),
+                        // Fixed "you are facing here" marker.
+                        Positioned(
+                          top: -2,
+                          child: _FacingMarker(color: accent),
+                        ),
+                        // Hub.
+                        _Hub(
+                          size: size * 0.13,
+                          color: accent,
+                          locked: widget.locked,
+                        ),
+                        // "Found" check: pops in at the moment of discovery, holds
+                        // briefly, then settles away so the dial stays readable.
+                        _FoundCheck(t: _found.value, size: size * 0.3),
                       ],
                     ),
                   ),
-                  // Rotating dial face (north-up in the real world).
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(end: _headingUnwrapped),
-                    duration: glide,
-                    curve: Curves.easeOutCubic,
-                    builder: (context, h, child) => Transform.rotate(
-                      angle: -h * math.pi / 180 + sweep,
-                      child: child,
-                    ),
-                    child: RepaintBoundary(
-                      child: CustomPaint(
-                        size: Size.square(size),
-                        painter: QiblaDialPainter(
-                          ring: AppColors.gold,
-                          tick: Colors.white,
-                          north: AppColors.emeraldInk,
-                          label: AppColors.onHeroSurface,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Qibla beam + Kaaba badge, rotated to the Qibla bearing
-                  // relative to where the phone points.
-                  Opacity(
-                    opacity: beamT,
-                    child: TweenAnimationBuilder<double>(
-                      tween: Tween(end: _diffUnwrapped),
-                      duration: glide,
-                      curve: Curves.easeOutCubic,
-                      builder: (context, d, child) => Transform.rotate(
-                        angle: d * math.pi / 180 + sweep,
-                        child: child,
-                      ),
-                      child: _QiblaBeam(size: size, color: accent),
-                    ),
-                  ),
-                  // Fixed "you are facing here" marker.
-                  Positioned(top: -2, child: _FacingMarker(color: accent)),
-                  // Hub.
-                  _Hub(size: size * 0.13, color: accent, locked: widget.locked),
                 ],
               ),
             ),
@@ -199,6 +256,108 @@ class _QiblaDialState extends State<QiblaDial> with TickerProviderStateMixin {
       },
     );
   }
+}
+
+/// Extra room around the dial reserved for the ripples (1.0 = dial only).
+const double qiblaDialRippleScale = 1.16;
+
+class _FoundCheck extends StatelessWidget {
+  final double t;
+  final double size;
+  const _FoundCheck({required this.t, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    if (t <= 0 || t >= 1) return const SizedBox.shrink();
+    final pop = Curves.elasticOut.transform((t / 0.4).clamp(0.0, 1.0));
+    final fade = t < 0.65 ? 1.0 : (1 - (t - 0.65) / 0.35).clamp(0.0, 1.0);
+    return Opacity(
+      opacity: fade,
+      child: Transform.scale(
+        scale: pop,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: qiblaAlignedColor,
+            boxShadow: [
+              BoxShadow(
+                color: qiblaAlignedColor.withValues(alpha: 0.6),
+                blurRadius: 24,
+                spreadRadius: 4,
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.check_rounded,
+            size: size * 0.64,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RipplePainter extends CustomPainter {
+  final double t;
+  final Color color;
+  final double innerFraction;
+  final bool found;
+  final double burst;
+
+  const _RipplePainter({
+    required this.t,
+    required this.color,
+    required this.innerFraction,
+    required this.found,
+    required this.burst,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final outer = size.width / 2;
+    final inner = outer * innerFraction; // the dial's own radius
+
+    // Continuous ripples radiate from the dial rim. Searching: three clearly
+    // visible rings; found: two fainter, slower-feeling rings in green.
+    final rings = found ? 2 : 3;
+    final strength = found ? 0.22 : 0.34;
+    for (var i = 0; i < rings; i++) {
+      final p = (t + i / rings) % 1;
+      final eased = Curves.easeOut.transform(p);
+      canvas.drawCircle(
+        c,
+        inner + (outer - inner) * eased,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.2 * (1 - p) + 0.6
+          ..color = color.withValues(alpha: strength * (1 - p)),
+      );
+    }
+
+    // One-shot success burst: a bright ring sweeping out past the ripples.
+    if (burst > 0 && burst < 1) {
+      final b = Curves.easeOutCubic.transform(burst);
+      canvas.drawCircle(
+        c,
+        inner * 0.9 + (outer - inner * 0.9) * b,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5 * (1 - b) + 1
+          ..color = color.withValues(alpha: 0.85 * (1 - b)),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RipplePainter old) =>
+      old.t != t ||
+      old.color != color ||
+      old.found != found ||
+      old.burst != burst;
 }
 
 class _QiblaBeam extends StatelessWidget {

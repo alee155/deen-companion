@@ -34,6 +34,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'plays a check burst when the dial becomes aligned, then settles',
+    (tester) async {
+      Widget dial({required bool aligned}) => _wrap(
+        QiblaDial(
+          heading: aligned ? 258 : 120,
+          qiblaDirection: 258,
+          aligned: aligned,
+          size: 300,
+        ),
+      );
+
+      await tester.pumpWidget(dial(aligned: false));
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.byIcon(Icons.check_rounded), findsNothing);
+
+      await tester.pumpWidget(dial(aligned: true));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 1500));
+      expect(find.byIcon(Icons.check_rounded), findsNothing);
+      expect(tester.takeException(), isNull);
+
+      // Losing alignment resets so the burst can play again later.
+      await tester.pumpWidget(dial(aligned: false));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpWidget(dial(aligned: true));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('status card shows turn guidance, then the aligned state', (
     tester,
   ) async {

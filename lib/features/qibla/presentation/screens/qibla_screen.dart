@@ -113,10 +113,10 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
   @override
   Widget build(BuildContext context) {
     final qiblaAsync = ref.watch(qiblaNotifierProvider);
-    final dialSize = (MediaQuery.sizeOf(context).width - 56.w).clamp(
-      240.0,
-      340.0,
-    );
+    // The dial's box includes room for ripples, so size it from what's left.
+    final dialSize =
+        ((MediaQuery.sizeOf(context).width - 48.w) / qiblaDialRippleScale)
+            .clamp(230.0, 330.0);
 
     return Scaffold(
       body: DecoratedBox(
@@ -135,12 +135,12 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
           child: qiblaAsync.when(
             loading: () => _layout(
               dialSize: dialSize,
-              stage: QiblaRadar(size: dialSize, label: 'Locating the Kaaba…'),
+              stage: _radar(dialSize, 'Locating the Kaaba…'),
               body: const [],
             ),
             error: (error, _) => _layout(
               dialSize: dialSize,
-              stage: QiblaRadar(size: dialSize, label: 'Something went wrong'),
+              stage: _radar(dialSize, 'Something went wrong'),
               body: [
                 FailureView(
                   failure: failureFrom(error),
@@ -158,6 +158,15 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
       ),
     );
   }
+
+  // Same footprint as the dial so the layout doesn't jump when it takes over.
+  Widget _radar(double dialSize, String label) => SizedBox(
+    width: dialSize * qiblaDialRippleScale,
+    height: dialSize * qiblaDialRippleScale,
+    child: Center(
+      child: QiblaRadar(size: dialSize, label: label),
+    ),
+  );
 
   Widget _compassBody(WidgetRef ref, QiblaInfo qibla, double dialSize) {
     final qiblaDirection = qibla.qiblaDirection;
@@ -186,10 +195,7 @@ class _QiblaScreenState extends ConsumerState<QiblaScreen> {
       if (!_timedOutWaitingForCompass) {
         return _layout(
           dialSize: dialSize,
-          stage: QiblaRadar(
-            size: dialSize,
-            label: 'Waiting for compass sensor…',
-          ),
+          stage: _radar(dialSize, 'Waiting for compass sensor…'),
           body: const [],
         );
       }
