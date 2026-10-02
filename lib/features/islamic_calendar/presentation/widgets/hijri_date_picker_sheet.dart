@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -22,6 +23,7 @@ Future<HijriPickedDate?> showHijriDatePicker(
   required int initialYear,
 }) {
   return showModalBottomSheet<HijriPickedDate>(
+    sheetAnimationStyle: AppMotion.sheetStyle,
     context: context,
     backgroundColor: AppColors.surfaceLight,
     isScrollControlled: true,
@@ -83,72 +85,107 @@ class _HijriPickerSheetContentState
             monthsAsync.when(
               data: (months) => SizedBox(
                 height: 160.h,
-                child: Row(
+                child: Stack(
                   children: [
-                    Expanded(
-                      child: CupertinoPicker(
-                        itemExtent: 36.h,
-                        scrollController: FixedExtentScrollController(
-                          initialItem: years.indexOf(_year),
+                    // The selected-row band — CupertinoPicker has no themed
+                    // selection overlay of its own, so this sits behind the
+                    // three wheels to mark the middle row as "the pick."
+                    Center(
+                      child: Container(
+                        height: 36.h,
+                        margin: EdgeInsets.symmetric(horizontal: 4.w),
+                        decoration: BoxDecoration(
+                          color: AppColors.worshipAccentBg,
+                          borderRadius: BorderRadius.circular(10.r),
                         ),
-                        onSelectedItemChanged: (i) =>
-                            setState(() => _year = years[i]),
-                        children: years
-                            .map(
-                              (y) => Center(
-                                child: Text(
-                                  '$y AH',
-                                  style: AppTypography.bodyLarge,
-                                ),
-                              ),
-                            )
-                            .toList(),
                       ),
                     ),
-                    Expanded(
-                      flex: 2,
-                      child: CupertinoPicker(
-                        itemExtent: 36.h,
-                        onSelectedItemChanged: (i) =>
-                            setState(() => _monthIndex = i),
-                        children: months
-                            .map(
-                              (m) => Center(
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CupertinoPicker(
+                            itemExtent: 36.h,
+                            scrollController: FixedExtentScrollController(
+                              initialItem: years.indexOf(_year),
+                            ),
+                            selectionOverlay: const SizedBox.shrink(),
+                            onSelectedItemChanged: (i) =>
+                                setState(() => _year = years[i]),
+                            children: years
+                                .map(
+                                  (y) => Center(
+                                    child: Text(
+                                      '$y AH',
+                                      style: AppTypography.bodyLarge.copyWith(
+                                        color: AppColors.inkText,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: CupertinoPicker(
+                            itemExtent: 36.h,
+                            selectionOverlay: const SizedBox.shrink(),
+                            onSelectedItemChanged: (i) =>
+                                setState(() => _monthIndex = i),
+                            children: months
+                                .map(
+                                  (m) => Center(
+                                    child: Text(
+                                      m.nameEnglish,
+                                      style: AppTypography.bodyLarge.copyWith(
+                                        color: AppColors.inkText,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                        Expanded(
+                          child: CupertinoPicker(
+                            itemExtent: 36.h,
+                            selectionOverlay: const SizedBox.shrink(),
+                            onSelectedItemChanged: (i) =>
+                                setState(() => _day = i + 1),
+                            children: List.generate(
+                              30,
+                              (i) => Center(
                                 child: Text(
-                                  m.nameEnglish,
-                                  style: AppTypography.bodyLarge,
+                                  '${i + 1}',
+                                  style: AppTypography.bodyLarge.copyWith(
+                                    color: AppColors.inkText,
+                                  ),
                                 ),
                               ),
-                            )
-                            .toList(),
-                      ),
-                    ),
-                    Expanded(
-                      child: CupertinoPicker(
-                        itemExtent: 36.h,
-                        onSelectedItemChanged: (i) =>
-                            setState(() => _day = i + 1),
-                        children: List.generate(
-                          30,
-                          (i) => Center(
-                            child: Text(
-                              '${i + 1}',
-                              style: AppTypography.bodyLarge,
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
               ),
               loading: () => SizedBox(
                 height: 160.h,
-                child: const Center(child: CircularProgressIndicator()),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppColors.emeraldInk),
+                ),
               ),
-              error: (_, __) => SizedBox(
+              error: (_, _) => SizedBox(
                 height: 160.h,
-                child: const Center(child: Text('Could not load months')),
+                child: Center(
+                  child: Text(
+                    'Could not load months',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
               ),
             ),
             Padding(
@@ -161,6 +198,14 @@ class _HijriPickerSheetContentState
                       year: _year,
                       month: _monthIndex + 1,
                       day: _day,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.emeraldInk,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 14.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
                     ),
                   ),
                   child: const Text('Select'),

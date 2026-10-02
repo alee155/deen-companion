@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:intl/intl.dart';
+
 import 'package:deen_companion/core/cache/hive_cache_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/cache/cache_first_stream_notifier.dart';
@@ -129,11 +131,32 @@ class DateConverterNotifier extends AsyncNotifier<HijriConversion?> {
 
   Future<void> convertGregorianToHijri(DateTime date) async {
     state = const AsyncLoading();
+    // Same offset the Home date uses, so the converter can never disagree
+    // with it: resolve the shifted date, but keep the Gregorian date the
+    // user actually picked.
+    final offset = ref.read(hijriAdjustmentProvider);
+    final shifted = date.add(Duration(days: offset));
     final result = await ref
         .read(islamicCalendarRepositoryProvider)
-        .convertGregorianToHijri(date.year, date.month, date.day);
+        .convertGregorianToHijri(shifted.year, shifted.month, shifted.day);
     state = result.when(
-      success: (d) => AsyncData(d),
+      success: (d) => AsyncData(
+        offset == 0
+            ? d
+            : HijriConversion(
+                gregorian: GregorianDateInfo(
+                  date: DateFormat('yyyy-MM-dd').format(date),
+                  formatted: DateFormat('EEEE, MMMM dd, y').format(date),
+                  dayOfWeek: DateFormat('EEEE').format(date),
+                  day: date.day,
+                  month: date.month,
+                  monthName: DateFormat('MMMM').format(date),
+                  year: date.year,
+                ),
+                hijri: d.hijri,
+                note: d.note,
+              ),
+      ),
       failure: (f) => AsyncError(f, StackTrace.current),
     );
   }

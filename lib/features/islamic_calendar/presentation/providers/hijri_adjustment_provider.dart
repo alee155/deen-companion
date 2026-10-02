@@ -1,3 +1,5 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/providers.dart';
@@ -28,55 +30,69 @@ import '../../../../core/location/location_service.dart';
 class HijriAdjustmentNotifier extends Notifier<int> {
   static const _key = 'hijri_date_adjustment';
 
+  /// Fine-tune range, in days relative to the calculated (API) date. The
+  /// calculated date follows the Saudi calendar; Pakistan's moon-sighting
+  /// date usually runs one day behind it and, some months, two.
+  static const minOffset = -2;
+  static const maxOffset = 1;
+
+  /// The usual Pakistan gap. It is a starting point, not a promise: the
+  /// Ruet-e-Hilal announcement decides each month, so users can fine-tune.
+  static const pakistanOffset = -1;
+
   @override
   int build() {
     final storage = ref.read(localStorageServiceProvider);
     final stored = storage.get<int>(AppConstants.settingsBoxName, _key);
     if (stored != null) return stored;
 
-    // No preference exists yet at all — this is (as far as this device's
-    // local storage is concerned) the first time the app has ever needed
-    // this value. Kick off the one-time regional default in the
-    // background; it writes its own persisted choice once it resolves,
-    // so this only ever runs while stored == null, i.e. once per install.
+    // No preference yet: resolve a regional default in the background. It
+    // only writes once it has a *definite* answer, so an unknown region
+    // (location not granted yet, geocoder offline) is retried on later
+    // launches instead of being saved as "Automatic" forever.
     _pickInitialDefault();
-    return 0; // Automatic, until/unless the one-time check says otherwise.
+    return 0;
   }
 
   Future<void> _pickInitialDefault() async {
-    final countryCode = await ref.read(deviceCountryCodeProvider.future);
-
-    // If the user already tapped a choice manually while this was
-    // resolving, that choice wins outright — don't overwrite it.
     final storage = ref.read(localStorageServiceProvider);
+
+    // Cheapest definite signal first: a Pakistani device timezone (PKT).
+    // Works with no permission and no network.
+    var country = DateTime.now().timeZoneName == 'PKT' ? 'PK' : null;
+
+    // Then where the device actually is.
+    country ??= await ref.read(deviceCountryCodeProvider.future);
+
+    // The device's own region setting, as a last hint.
+    country ??= PlatformDispatcher.instance.locale.countryCode;
+
+    // A manual choice made while this was resolving wins outright.
     if (storage.get<int>(AppConstants.settingsBoxName, _key) != null) return;
 
-    if (countryCode == 'PK') {
+    if (country == null || country.isEmpty) return; // unknown — try again later
+    if (country == 'PK') {
       await setPakistan();
     } else {
-      // Explicitly persisted, not left implicit — this ensures the
-      // country check above never runs again on a future cold start,
-      // exactly matching what a manual tap would have done.
       await setAutomatic();
     }
   }
 
-  /// Show exactly what the API returns.
-  Future<void> setAutomatic() async {
-    state = 0;
+  Future<void> _set(int value) async {
+    state = value;
     await ref
         .read(localStorageServiceProvider)
-        .put(AppConstants.settingsBoxName, _key, 0);
+        .put(AppConstants.settingsBoxName, _key, value);
   }
 
-  /// Always show one day earlier than the API's value, matching Pakistan's
-  /// observed date.
-  Future<void> setPakistan() async {
-    state = -1;
-    await ref
-        .read(localStorageServiceProvider)
-        .put(AppConstants.settingsBoxName, _key, -1);
-  }
+  /// Show exactly what the API returns.
+  Future<void> setAutomatic() => _set(0);
+
+  /// The usual Pakistan offset (one day behind the calculated date).
+  Future<void> setPakistan() => _set(pakistanOffset);
+
+  /// Any whole-day offset within [minOffset]..[maxOffset].
+  Future<void> setOffset(int days) => _set(days.clamp(minOffset, maxOffset));
 }
 
 final hijriAdjustmentProvider = NotifierProvider<HijriAdjustmentNotifier, int>(

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/failure_view.dart';
 import '../providers/islamic_calendar_providers.dart';
 import '../widgets/hijri_date_picker_sheet.dart';
 import '../../../../shared/widgets/deen_app_bar.dart';
@@ -54,7 +56,7 @@ class _DateConverterScreenState extends ConsumerState<DateConverterScreen> {
     return Scaffold(
       backgroundColor: AppColors.parchment,
       appBar: const DeenAppBar(title: 'Date Converter'),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(20.w),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,9 +90,9 @@ class _DateConverterScreenState extends ConsumerState<DateConverterScreen> {
                   ),
                 ],
               ),
-            ),
+            ).slideIn(RevealDirection.top, distance: 18),
             SizedBox(height: 20.h),
-            GestureDetector(
+            Pressable(
               onTap: _direction == _Direction.gregorianToHijri
                   ? _pickGregorian
                   : _pickHijri,
@@ -104,8 +106,10 @@ class _DateConverterScreenState extends ConsumerState<DateConverterScreen> {
                 child: Row(
                   children: [
                     Icon(
-                      Icons.calendar_today_outlined,
-                      color: AppColors.hijriAccent,
+                      _direction == _Direction.gregorianToHijri
+                          ? Icons.calendar_today_outlined
+                          : Icons.event_note_outlined,
+                      color: AppColors.emeraldInk,
                       size: 18.sp,
                     ),
                     SizedBox(width: 10.w),
@@ -131,50 +135,153 @@ class _DateConverterScreenState extends ConsumerState<DateConverterScreen> {
                   ],
                 ),
               ),
+            ).slideIn(
+              RevealDirection.bottomStart,
+              delay: const Duration(milliseconds: 80),
             ),
             SizedBox(height: 24.h),
-            resultAsync.when(
-              data: (result) {
-                if (result == null) return const SizedBox.shrink();
-                return Container(
-                  padding: EdgeInsets.all(20.w),
+            ContentSwitcher(
+              child: resultAsync.when(
+                data: (result) {
+                  if (result == null) {
+                    return const _ConverterEmptyState(key: ValueKey('empty'));
+                  }
+                  return Container(
+                    key: ValueKey(result.hijri.formatted),
+                    width: double.infinity,
+                    padding: EdgeInsets.all(20.w),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppColors.emeraldInk,
+                          AppColors.emeraldInk.withValues(alpha: 0.82),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(18.r),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          right: -14.w,
+                          bottom: -14.h,
+                          child: Opacity(
+                            opacity: 0.14,
+                            child: Image.asset(
+                              'assets/images/calendar_icon.png',
+                              width: 90.w,
+                              height: 90.w,
+                            ),
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'RESULT',
+                              style: AppTypography.caption.copyWith(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            SizedBox(height: 8.h),
+                            Text(
+                              result.hijri.formatted,
+                              style: AppTypography.headline.copyWith(
+                                color: Colors.white,
+                                fontSize: 19.sp,
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              result.gregorian.formatted,
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => Container(
+                  key: const ValueKey('loading'),
+                  width: double.infinity,
+                  padding: EdgeInsets.all(24.w),
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: AppColors.hijriAccent,
-                    borderRadius: BorderRadius.circular(16.r),
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(18.r),
+                    border: Border.all(color: AppColors.borderWarm),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Result',
-                        style: AppTypography.caption.copyWith(
-                          color: Colors.white70,
-                        ),
-                      ),
-                      SizedBox(height: 8.h),
-                      Text(
-                        result.hijri.formatted,
-                        style: AppTypography.titleMedium.copyWith(
-                          color: Colors.white,
-                          fontSize: 18.sp,
-                        ),
-                      ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        result.gregorian.formatted,
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
+                  child: SizedBox(
+                    width: 22.w,
+                    height: 22.w,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: AppColors.emeraldInk,
+                    ),
                   ),
-                );
-              },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Text(error.toString()),
+                ),
+                error: (error, _) => FailureView(
+                  key: const ValueKey('error'),
+                  failure: failureFrom(error),
+                  onRetry: () async {
+                    if (_direction == _Direction.gregorianToHijri &&
+                        _pickedGregorian != null) {
+                      await ref
+                          .read(dateConverterNotifierProvider.notifier)
+                          .convertGregorianToHijri(_pickedGregorian!);
+                    } else if (_pickedHijri != null) {
+                      final h = _pickedHijri!;
+                      await ref
+                          .read(dateConverterNotifierProvider.notifier)
+                          .convertHijriToGregorian(h.year, h.month, h.day);
+                    }
+                  },
+                ),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ConverterEmptyState extends StatelessWidget {
+  const _ConverterEmptyState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: AppColors.borderWarm),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.swap_horiz_rounded,
+            size: 30.sp,
+            color: AppColors.emeraldInk.withValues(alpha: 0.6),
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            'Pick a date above to convert it',
+            textAlign: TextAlign.center,
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -192,9 +299,12 @@ class _DirectionTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
+      haptic: true,
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: AppMotion.fast,
+        curve: AppMotion.entrance,
         padding: EdgeInsets.symmetric(vertical: 10.h),
         decoration: BoxDecoration(
           color: selected ? AppColors.emeraldInk : Colors.transparent,
@@ -205,6 +315,7 @@ class _DirectionTab extends StatelessWidget {
           textAlign: TextAlign.center,
           style: AppTypography.bodyMedium.copyWith(
             color: selected ? Colors.white : AppColors.textSecondary,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),
