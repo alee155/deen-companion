@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../providers/quran_providers.dart';
 import '../widgets/search_result_tile.dart';
@@ -50,24 +51,28 @@ class _QuranSearchScreenState extends ConsumerState<QuranSearchScreen> {
       body: searchState.when(
         data: (results) {
           if (results == null) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(AppSpacing.xl),
-                child: Text(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: const Text(
                   'Search across every translation and transliteration.',
                   textAlign: TextAlign.center,
-                ),
+                ).slideIn(RevealDirection.bottom),
               ),
             );
           }
           if (results.isEmpty) {
-            return const Center(child: Text('No verses found.'));
+            return Center(
+              child: const Text(
+                'No verses found.',
+              ).slideIn(RevealDirection.top),
+            );
           }
           return ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             itemCount: results.length,
             itemBuilder: (context, index) =>
-                SearchResultTile(result: results[index]),
+                SearchResultTile(result: results[index]).slideInAt(index),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

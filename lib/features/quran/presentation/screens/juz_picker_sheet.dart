@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -9,6 +10,7 @@ import '../../../../core/theme/app_typography.dart';
 /// scrolling a long list of rows.
 Future<int?> showJuzPickerSheet(BuildContext context, {required int selected}) {
   return showModalBottomSheet<int>(
+    sheetAnimationStyle: AppMotion.sheetStyle,
     context: context,
     isScrollControlled: true,
     backgroundColor: AppColors.surfaceLight,
@@ -53,31 +55,34 @@ Future<int?> showJuzPickerSheet(BuildContext context, {required int selected}) {
                 itemBuilder: (context, index) {
                   final number = index + 1;
                   final isSelected = number == selected;
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(10.r),
-                    onTap: () => Navigator.of(context).pop(number),
-                    child: Container(
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.emeraldInk
-                            : AppColors.parchment,
-                        borderRadius: BorderRadius.circular(10.r),
-                        border: Border.all(
+                  return PressScale(
+                    scale: AppMotion.pressScaleSmall,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10.r),
+                      onTap: () => Navigator.of(context).pop(number),
+                      child: Container(
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
                           color: isSelected
                               ? AppColors.emeraldInk
-                              : AppColors.borderWarm,
+                              : AppColors.parchment,
+                          borderRadius: BorderRadius.circular(10.r),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.emeraldInk
+                                : AppColors.borderWarm,
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        '$number',
-                        style: AppTypography.bodyMedium.copyWith(
-                          color: isSelected
-                              ? AppColors.surfaceLight
-                              : AppColors.inkText,
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+                        child: Text(
+                          '$number',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: isSelected
+                                ? AppColors.surfaceLight
+                                : AppColors.inkText,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),

@@ -10,6 +10,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/providers/reading_preferences_provider.dart';
 import '../../../../shared/widgets/deen_app_bar.dart';
 import '../../../../shared/widgets/failure_view.dart';
+import '../../../../shared/widgets/ornament_divider.dart';
 import '../../../../shared/widgets/reader_settings_sheet.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../favorites/domain/entities/favorite_item.dart';
@@ -17,16 +18,18 @@ import '../../../favorites/presentation/widgets/favorite_button.dart';
 import '../../../recent_activity/domain/entities/recent_activity_item.dart';
 import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
 import '../../domain/entities/juz.dart';
+import '../../domain/juz_arabic_names.dart';
 import '../providers/quran_providers.dart';
 import '../widgets/juz_verse_tile.dart';
 
 /// The Juz reader.
 ///
-/// A continuous scroll through the Juz's verses — right for ~200 verses of
-/// Quran text, where paging one verse at a time (à la Hadith) would turn a
-/// single Juz into 200 swipes. What it borrows from the Hadith reader is the
-/// supporting toolbar: reading settings, favoriting, a progress indicator,
-/// and switching to another Juz without a trip back to the hub.
+/// A fixed banner — the Juz's name and its verse count over a mosque
+/// illustration — sits above the reading area while the verses themselves
+/// scroll underneath it, the way a section header stays put while its list
+/// moves. Chrome besides that is unchanged from before: reading settings,
+/// favoriting, a scroll progress indicator, and switching to another Juz
+/// without a trip back to the hub.
 class JuzReadingScreen extends ConsumerStatefulWidget {
   final int juzNumber;
   const JuzReadingScreen({super.key, required this.juzNumber});
@@ -144,23 +147,38 @@ class _JuzReadingScreenState extends ConsumerState<JuzReadingScreen> {
           return Column(
             children: [
               _ReadingProgress(progress: _progress),
+              _JuzHeaderBanner(
+                juzNumber: widget.juzNumber,
+                totalVerses: juz.totalVerses,
+              ),
               Expanded(
                 child: ListView.builder(
                   controller: _controller,
+                  padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 24.h),
                   itemCount: juz.verses.length,
                   itemBuilder: (context, index) {
                     final verse = juz.verses[index];
-                    final isNewSurah =
+                    final isSurahStart =
                         index == 0 ||
                         juz.verses[index - 1].surahName != verse.surahName;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (isNewSurah) _SurahHeader(name: verse.surahName),
-                        JuzVerseTile(verse: verse, preferences: preferences),
-                        Divider(height: 1, color: AppColors.borderWarm),
-                      ],
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: 14.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          JuzVerseTile(
+                            verse: verse,
+                            preferences: preferences,
+                            showSurahBanner: isSurahStart,
+                          ),
+                          if (index != juz.verses.length - 1)
+                            Padding(
+                              padding: EdgeInsets.only(top: 14.h),
+                              child: OrnamentDivider(ruleWidth: 24.w),
+                            ),
+                        ],
+                      ),
                     );
                   },
                 ),
@@ -184,32 +202,92 @@ class _JuzReadingScreenState extends ConsumerState<JuzReadingScreen> {
   }
 }
 
-/// Marks where a new surah begins within the Juz — a Juz usually spans parts
-/// of two to four surahs, and without this the verses would read as one
-/// undifferentiated block.
-class _SurahHeader extends StatelessWidget {
-  final String name;
-  const _SurahHeader({required this.name});
+/// The fixed banner above the verse list — a mosque illustration with a
+/// black wash for legibility, the Juz's Arabic name at the top-left and its
+/// verse count at the top-right. Stays put while the list scrolls beneath
+/// it, the way a printed Mushaf's running header never moves even as your
+/// eye travels down the page.
+class _JuzHeaderBanner extends StatelessWidget {
+  final int juzNumber;
+  final int totalVerses;
+
+  const _JuzHeaderBanner({required this.juzNumber, required this.totalVerses});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      color: AppColors.quranAccentBg.withValues(alpha: 0.5),
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
-      child: Row(
+      height: 108.h,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Icon(
-            Icons.menu_book_outlined,
-            size: 14.sp,
-            color: AppColors.quranAccent,
+          Image.asset('assets/images/juzz_card.png', fit: BoxFit.cover),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.45),
+                  Colors.black.withValues(alpha: 0.30),
+                ],
+              ),
+            ),
           ),
-          SizedBox(width: 6.w),
-          Text(
-            name,
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.quranAccent,
-              fontWeight: FontWeight.w700,
+          Positioned(
+            top: 14.h,
+            left: 16.w,
+            right: 16.w,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'JUZ $juzNumber',
+                        style: AppTypography.caption.copyWith(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      Text(
+                        juzArabicName(juzNumber),
+                        textDirection: TextDirection.rtl,
+                        style: AppTypography.arabicBody.copyWith(
+                          fontSize: 26.sp,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 10.w,
+                    vertical: 5.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(20.r),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Text(
+                    '$totalVerses Verses',
+                    style: AppTypography.caption.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -236,7 +314,7 @@ class _ReadingProgress extends StatelessWidget {
         builder: (context, value, _) => FractionallySizedBox(
           alignment: Alignment.centerLeft,
           widthFactor: value,
-          child: Container(color: AppColors.quranAccent),
+          child: Container(color: AppColors.emeraldInk),
         ),
       ),
     );
