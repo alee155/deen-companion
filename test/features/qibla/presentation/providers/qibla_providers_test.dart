@@ -1,4 +1,3 @@
-
 import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/core/location/location_service.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
