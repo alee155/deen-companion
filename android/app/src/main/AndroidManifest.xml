@@ -21,6 +21,11 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Prayer-time Do Not Disturb: exact start/end alarms, and (granted by the
+         user in system settings, not at runtime) Notification Policy access. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+
     <!-- Google Mobile Ads SDK 20.4.0+ merges this in automatically, but it's
          declared explicitly (rather than relying on manifest merge) so it's
          obvious this app requests the advertising identifier and why. -->
@@ -69,10 +74,37 @@
         <!-- Prayer alarm reminders -->
         <receiver android:name=".alarm.AlarmReceiver" android:exported="false" />
 
+        <!-- flutter_local_notifications: shows scheduled notifications and
+             re-arms them after reboot / app update. Used by the daily
+             Ayat & Hadith notification only; prayer alarms stay native. -->
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" android:exported="false" />
+        <receiver android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
         <receiver android:name=".alarm.BootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Prayer-time Do Not Disturb -->
+        <receiver android:name=".dnd.DndReceiver" android:exported="false" />
+
+        <receiver android:name=".dnd.DndBootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 

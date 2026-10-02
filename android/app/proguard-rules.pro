@@ -7,6 +7,7 @@
 -keep class com.devsouq.deen_companion.app.DeenCompanionApplication { *; }
 -keep class com.devsouq.deen_companion.app.MainActivity { *; }
 -keep class com.devsouq.deen_companion.app.alarm.** { *; }
+-keep class com.devsouq.deen_companion.app.dnd.** { *; }
 
 # Flutter embedding + plugin registration happen reflectively.
 -keep class io.flutter.** { *; }
