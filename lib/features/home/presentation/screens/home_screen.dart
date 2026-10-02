@@ -1,411 +1,264 @@
-import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
-import 'package:deen_companion/features/home/presentation/widgets/next_prayer_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/location/location_service.dart';
-import '../../../../core/location/location_status.dart';
+
+import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../ads/domain/entities/ad_placement_key.dart';
-import '../../../ads/presentation/providers/interstitial_ad_coordinator.dart';
-import '../../../prayer_times/presentation/providers/prayer_times_provider.dart';
-import '../../../../shared/domain/explore_category.dart';
-import '../../../../shared/widgets/coming_soon.dart';
-import '../../../../shared/widgets/live_clock.dart';
-import '../../../../shared/widgets/warm_gradient_scaffold.dart';
-import '../../../hadith/presentation/widgets/hadith_of_day_card.dart';
-import '../../../islamic_calendar/presentation/providers/islamic_calendar_providers.dart';
-import '../providers/home_provider.dart';
-import '../widgets/recent_activity_card.dart';
+import '../../../../core/location/location_service.dart';
+import '../../../audio_player/domain/audio_track.dart';
+import '../../../reliability_setup/domain/reliability_requirement.dart';
+import '../../../reliability_setup/presentation/providers/reliability_providers.dart';
+import '../../../reliability_setup/presentation/widgets/reliability_banner.dart';
+import '../../../reliability_setup/presentation/widgets/reliability_setup_sheet.dart';
+import '../../../daily_content/presentation/providers/daily_notification_service.dart';
+import '../../../audio_player/presentation/providers/audio_player_provider.dart';
+import '../../../quran/domain/entities/surah_summary.dart';
+import '../../../recent_activity/domain/entities/recent_activity_item.dart';
+import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
+import '../providers/home_recitations_provider.dart';
+import '../widgets/home_category_grid.dart';
+import '../widgets/home_recitation_list.dart';
+import '../widgets/home_slider_header.dart';
 
-import '../widgets/quick_access_grid.dart';
-import '../widgets/verse_of_day_card.dart';
-
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
-  static const double _headerHeight = 110;
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final previewCategories = ExploreCatalog.homePreviewIds
-        .map((id) => ExploreCatalog.all.firstWhere((c) => c.id == id))
-        .toList();
-
-    return Scaffold(
-      body: WarmGradientBackground(
-        child: SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _PinnedGreetingHeaderDelegate(
-                  height: _headerHeight.h,
-                  backgroundColor: AppColors.backgroundGradientStart,
-                  child: _GreetingContent(),
-                ),
-              ),
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(10.w, 0.h, 10.w, 0.h),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    const NextPrayerHeroCard().appear(),
-                    SizedBox(height: 20.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Explore',
-                          style: AppTypography.titleMedium.copyWith(
-                            color: AppColors.inkText,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => context.push('/explore'),
-                          child: Text(
-                            'See all',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.emeraldInk,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ).appear(delay: const Duration(milliseconds: 60)),
-                    SizedBox(height: 10.h),
-                    QuickAccessGrid(
-                      items: [
-                        ...previewCategories.map((c) {
-                          return QuickAccessItem(
-                            label: c.label,
-                            icon: c.icon,
-                            accentColor: c.accentColor,
-                            accentBg: c.accentBg,
-                            onTap: () {
-                              if (c.route.isEmpty) {
-                                // Nothing to navigate to yet — same as
-                                // Explore's own "coming soon" tiles, this
-                                // skips the ad flow entirely rather than
-                                // showing an interstitial before a
-                                // snackbar.
-                                showComingSoonSnackbar(context, c.label);
-                                return;
-                              }
-                              // Same coordinator, same placement key as
-                              // Explore → See All (all_features_screen.dart)
-                              // — Home's quick-access tiles are just
-                              // another entry point into the same set of
-                              // destinations, so they share one odd/even
-                              // count rather than getting an independent
-                              // one. Reusing the placement, not just the
-                              // mechanism, is what keeps the frequency
-                              // consistent regardless of which route a
-                              // user takes to get there.
-                              ref
-                                  .read(interstitialAdCoordinatorProvider)
-                                  .showThenRun(
-                                    placement: AdPlacementKey.exploreSection,
-                                    action: () => context.push(c.route),
-                                  );
-                            },
-                          );
-                        }),
-                        QuickAccessItem(
-                          label: 'More',
-                          icon: Icons.grid_view_rounded,
-                          accentColor: AppColors.inkText,
-                          accentBg: AppColors.borderWarm,
-                          onTap: () => context.push('/explore'),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20.h),
-                    const VerseOfDayCard().appear(
-                      delay: const Duration(milliseconds: 120),
-                    ),
-                    const BannerAdWidget(
-                      margin: EdgeInsets.symmetric(vertical: 4),
-                    ),
-
-                    const HadithOfDayCard().appear(
-                      delay: const Duration(milliseconds: 160),
-                    ),
-                    SizedBox(height: 20.h),
-                    const RecentActivityCard().appear(
-                      delay: const Duration(milliseconds: 200),
-                    ),
-
-                    SizedBox(height: 50.h),
-                  ]),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _GreetingContent extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final todayHijriAsync = ref.watch(todayHijriNotifierProvider);
-    final locationAsync = ref.watch(currentLocationNameProvider);
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int _selectedCategoryIndex = 0;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(10.w, 0.h, 10.w, 12.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
+  @override
+  void initState() {
+    super.initState();
+    // Router is live and Home is on screen: deliver any notification tap
+    // queued during launch and (once) ask for notification permission.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startUp());
+  }
+
+  /// Home is the moment to ask for everything reminders and notifications
+  /// need, so no alert ever fails later because of a missing permission.
+  Future<void> _startUp() async {
+    await ref.read(dailyNotificationServiceProvider).onHomeReady();
+
+    // Android drops a permission request made while another dialog is up,
+    // and Home's prayer times ask for location on their own — so wait for
+    // that prompt to settle (this joins it rather than racing it).
+    await ref.read(locationServiceProvider).requestPermission();
+    if (!mounted) return;
+
+    final reliability = ref.read(reliabilityServiceProvider);
+    final status = await reliability.check();
+    ref.invalidate(reliabilityStatusProvider);
+    if (!mounted || status.allGranted || !reliability.shouldPrompt()) return;
+
+    await reliability.markPrompted();
+    if (mounted) await showReliabilitySetupSheet(context);
+  }
+
+  void _playRecitation(SurahSummary surah) {
+    ref
+        .read(audioPlayerNotifierProvider.notifier)
+        .playTrack(
+          AudioTrack(
+            id: 'surah-${surah.number}',
+            titleEnglish: surah.nameEnglish,
+            titleArabic: surah.nameArabic,
+            reciterName: 'Mishary Rashid Alafasy',
+            url: surah.exampleAudioUrl,
+          ),
+        );
+    ref
+        .read(recentActivityNotifierProvider.notifier)
+        .logActivity(
+          RecentActivityItem(
+            id: RecentActivityItem.buildId(
+              RecentActivityType.surah,
+              '${surah.number}',
+            ),
+            type: RecentActivityType.surah,
+            referenceId: '${surah.number}',
+            title: surah.nameEnglish,
+            subtitle: surah.nameArabic,
+            route: '/quran',
+            viewedAt: DateTime.now(),
+          ),
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final recitationsAsync = ref.watch(featuredRecitationsProvider);
+    final seq = RevealSequence(start: const Duration(milliseconds: 140));
+
+    return Scaffold(
+      backgroundColor: AppColors.surfaceLight,
+      body: Stack(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'As-salamu alaykum',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.greetingSerif.copyWith(
-                    color: AppColors.inkText,
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 340.h,
+            child: HomeSliderHeader(
+              height: 340.h,
+              onAvatarTap: () => context.go('/profile'),
+            ),
+          ),
+          Positioned(
+            top: 300.h,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.parchment,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(30.r)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.shadow,
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
                   ),
-                ),
-                SizedBox(height: 4.h),
-                Row(
+                ],
+              ),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(18.w, 12.h, 18.w, 110.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Flexible(
-                      child: GestureDetector(
-                        onTap: () => context.push('/profile/settings'),
-                        child: todayHijriAsync.when(
-                          data: (today) => Text(
-                            '${today.hijri.formatted} ⓘ',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                    Center(
+                      child: Container(
+                        height: 5.h,
+                        width: 50.w,
+                        decoration: BoxDecoration(
+                          color: AppColors.borderWarm,
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 22.h),
+                    const ReliabilityBanner(),
+                    _SectionHeader(
+                      title: 'Categories',
+                      onSeeAll: () => context.push('/explore'),
+                      seq: seq,
+                      titleDirection: RevealDirection.bottomStart,
+                      actionDirection: RevealDirection.topEnd,
+                    ),
+                    SizedBox(height: 14.h),
+                    HomeCategoryGrid(
+                      selectedIndex: _selectedCategoryIndex,
+                      onSelected: (index) {
+                        setState(() => _selectedCategoryIndex = index);
+                        context.push(homeCategories[index].route);
+                      },
+                    ),
+                    SizedBox(height: 28.h),
+                    _SectionHeader(
+                      title: 'Recitations',
+                      onSeeAll: () => context.push('/quran'),
+                      seq: seq,
+                      titleDirection: RevealDirection.end,
+                      actionDirection: RevealDirection.bottomEnd,
+                    ),
+                    SizedBox(height: 14.h),
+                    ContentSwitcher(
+                      child: KeyedSubtree(
+                        key: ValueKey(recitationsAsync.hasValue),
+                        child: recitationsAsync.when(
+                          data: (surahs) => HomeRecitationList(
+                            surahs: surahs,
+                            onTap: _playRecitation,
                           ),
-                          loading: () => Text(
-                            'Loading date…',
-                            style: AppTypography.bodyMedium.copyWith(
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                          // The Hijri date comes from the network and has
-                          // nothing to do with location — when it fails it
-                          // gets its own quiet retry affordance instead of
-                          // vanishing and leaving the header half-empty.
-                          error: (_, _) => GestureDetector(
-                            onTap: () =>
-                                ref.invalidate(todayHijriNotifierProvider),
-                            child: Text(
-                              'Date unavailable · Retry',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.bodyMedium.copyWith(
-                                color: AppColors.textMuted,
+                          loading: () => SizedBox(
+                            height: 130.h,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: AppColors.emeraldInk,
                               ),
                             ),
                           ),
+                          error: (_, _) => SizedBox(
+                            height: 60.h,
+                            child: Center(
+                              child: Text(
+                                'Recitations unavailable',
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.textMuted,
+                                ),
+                              ).slideIn(RevealDirection.top),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    Text(
-                      '  ·  ',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    LiveClock(
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    SizedBox(height: 20.h),
+                    // const BannerAdWidget(
+                    //   margin: EdgeInsets.symmetric(vertical: 4),
+                    // ),
                   ],
                 ),
-                SizedBox(height: 2.h),
-                _LocationLine(locationAsync: locationAsync),
-              ],
+              ),
             ),
           ),
-          // Container(
-          //   width: 42.w,
-          //   height: 42.w,
-          //   decoration: BoxDecoration(
-          //     color: AppColors.surfaceLight,
-          //     // shape: BoxShape.circle,
-          //     border: Border.all(color: AppColors.borderWarm),
-          //   ),
-          //   child: Icon(
-          //     Icons.notifications_none,
-          //     color: AppColors.inkText,
-          //     size: 25.sp,
-          //   ),
-          // ),
         ],
       ),
     );
   }
 }
 
-/// The city line under the greeting.
-///
-/// Three distinct outcomes, three distinct labels: still resolving, resolved
-/// (optionally flagged as approximate), or unavailable with a tap target that
-/// applies the actual fix. It can no longer sit on "Locating…" forever —
-/// the provider behind it always settles.
-class _LocationLine extends ConsumerWidget {
-  final AsyncValue<LocationLabel> locationAsync;
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final VoidCallback onSeeAll;
+  final RevealSequence seq;
+  final RevealDirection titleDirection;
+  final RevealDirection actionDirection;
 
-  const _LocationLine({required this.locationAsync});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mutedStyle = AppTypography.bodyMedium.copyWith(
-      color: AppColors.textMuted,
-    );
-
-    return locationAsync.when(
-      loading: () => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 10.w,
-            height: 10.w,
-            child: CircularProgressIndicator(
-              strokeWidth: 1.5,
-              color: AppColors.textMuted,
-            ),
-          ),
-          SizedBox(width: 6.w),
-          Text('Locating…', style: mutedStyle),
-        ],
-      ),
-      error: (_, _) => _ActionableLine(
-        label: 'Location unavailable · Retry',
-        style: mutedStyle,
-        onTap: () => ref.invalidate(currentLocationNameProvider),
-      ),
-      data: (label) => switch (label) {
-        LocationLabelResolved(:final name, :final isApproximate) => Text(
-          isApproximate ? '$name · approximate' : name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: mutedStyle,
-        ),
-        LocationLabelUnavailable(:final kind) => _ActionableLine(
-          label: kind.needsSystemSettings
-              ? 'Location off · Enable'
-              : 'Location unavailable · Fix',
-          style: mutedStyle.copyWith(color: AppColors.worshipAccent),
-          onTap: () => _resolveLocation(context, ref, kind),
-        ),
-      },
-    );
-  }
-
-  Future<void> _resolveLocation(
-    BuildContext context,
-    WidgetRef ref,
-    LocationErrorKind kind,
-  ) async {
-    final service = ref.read(locationServiceProvider);
-    switch (kind) {
-      case LocationErrorKind.serviceDisabled:
-        await service.openLocationSettings();
-      case LocationErrorKind.permissionDeniedForever:
-        await service.openAppSettings();
-      case LocationErrorKind.permissionDenied:
-        await service.requestPermission();
-      case LocationErrorKind.timeout:
-      case LocationErrorKind.unavailable:
-        break;
-    }
-    ref.invalidate(locationAvailabilityProvider);
-    ref.invalidate(currentLocationNameProvider);
-    ref.invalidate(prayerTimesNotifierProvider);
-  }
-}
-
-class _ActionableLine extends StatelessWidget {
-  final String label;
-  final TextStyle style;
-  final VoidCallback onTap;
-
-  const _ActionableLine({
-    required this.label,
-    required this.style,
-    required this.onTap,
+  const _SectionHeader({
+    required this.title,
+    required this.onSeeAll,
+    required this.seq,
+    required this.titleDirection,
+    required this.actionDirection,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: style.copyWith(fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
-class _PinnedGreetingHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-  final double height;
-  final Color backgroundColor;
-
-  _PinnedGreetingHeaderDelegate({
-    required this.child,
-    required this.height,
-    required this.backgroundColor,
-  });
-
-  @override
-  double get minExtent => height;
-  @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return Container(
-      color: backgroundColor,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            top: -25.h,
-            right: -30.w,
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.3,
-                child: Image.asset(
-                  'assets/images/top_righ.png',
-                  width: 130.w,
-                  fit: BoxFit.contain,
-                ),
-              ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        seq.wrap(
+          Text(
+            title,
+            style: AppTypography.headline.copyWith(
+              color: AppColors.textSecondary,
             ),
           ),
-
-          Align(alignment: Alignment.topCenter, child: child),
-        ],
-      ),
+          direction: titleDirection,
+        ),
+        Pressable(
+          onTap: onSeeAll,
+          scale: AppMotion.pressScaleSmall,
+          child: Text(
+            'See All',
+            style: TextStyle(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.emeraldInk,
+            ),
+          ),
+        ).slideIn(
+          actionDirection,
+          delay: seq.next(),
+          duration: AppMotion.normal,
+          distance: 16,
+        ),
+      ],
     );
   }
-
-  @override
-  bool shouldRebuild(covariant _PinnedGreetingHeaderDelegate oldDelegate) =>
-      true;
 }

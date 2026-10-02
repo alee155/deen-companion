@@ -37,6 +37,8 @@ const _cachedNameKey = 'last_known_location_name';
 /// Every step is bounded and every failure is a value, so this provider
 /// always settles: it can't leave the greeting header spinning.
 final currentLocationNameProvider = FutureProvider<LocationLabel>((ref) async {
+  // Rebuilds by itself when location goes from unusable to usable.
+  ref.watch(locationRecoveryProvider);
   final locationService = ref.watch(locationServiceProvider);
   final storage = ref.watch(localStorageServiceProvider);
 
