@@ -10,6 +10,7 @@ import 'core/theme/theme_mode_provider.dart';
 import 'core/utils/logger.dart';
 import 'features/ads/presentation/providers/ads_providers.dart';
 import 'features/ads/presentation/providers/app_open_ad_manager.dart';
+import 'features/daily_content/presentation/providers/daily_notification_service.dart';
 import 'features/prayer_reminders/presentation/providers/reminders_provider.dart';
 
 Future<void> bootstrap() async {
@@ -67,6 +68,7 @@ Future<void> bootstrap() async {
 
   unawaited(_initAudioBackground(bootStart));
   _syncPrayerReminders(container);
+  container.read(dailyNotificationServiceProvider).start();
 
   unawaited(mobileAdsInitFuture); // keep the reference alive/analyzed
 }
