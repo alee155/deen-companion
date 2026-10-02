@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'app.dart';
@@ -12,7 +11,6 @@ import 'core/utils/logger.dart';
 import 'features/ads/presentation/providers/ads_providers.dart';
 import 'features/ads/presentation/providers/app_open_ad_manager.dart';
 import 'features/prayer_reminders/presentation/providers/reminders_provider.dart';
-import 'firebase_options.dart';
 
 Future<void> bootstrap() async {
   final bootStart = DateTime.now();
@@ -21,10 +19,9 @@ Future<void> bootstrap() async {
   final container = ProviderContainer();
 
   // THE ACTUAL WIN: MobileAds.instance.initialize() has no dependency on
-  // Firebase or local storage, so there's no reason for it to wait behind
-  // either. Firing it here, before storage.init()/Firebase.initializeApp(),
-  // lets the ad network's own (slow — routinely 1-4s) round trip start
-  // that much earlier. Not awaited: AdsRepositoryImpl._ensureInitialized()
+  // local storage, so there's no reason for it to wait behind it. Firing
+  // it here, before storage.init(), lets the ad network's own (slow —
+  // routinely 1-4s) round trip start that much earlier. Not awaited: AdsRepositoryImpl._ensureInitialized()
   // calls MobileAdsInitializer.initialize() again later and — thanks to
   // the guard added there — just picks up this same in-flight/completed
   // call instead of double-firing it.
@@ -41,19 +38,6 @@ Future<void> bootstrap() async {
   debugPrint(
     '[Boot] storage.init() done at +${DateTime.now().difference(bootStart).inMilliseconds}ms',
   );
-
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    debugPrint(
-      '[Boot] Firebase.initializeApp() done at '
-      '+${DateTime.now().difference(bootStart).inMilliseconds}ms',
-    );
-  } catch (error, stackTrace) {
-    debugPrint('[Boot] Firebase.initializeApp() failed: $error');
-    AppLogger.e('Firebase initialization failed', error, stackTrace);
-  }
 
   container.read(themeModeNotifierProvider);
 

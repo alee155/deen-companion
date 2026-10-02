@@ -29,6 +29,7 @@ class AppOpenAdManager with WidgetsBindingObserver {
   DateTime? _backgroundedAt;
 
   bool _started = false;
+  bool _coldStartAttempted = false;
 
   /// Begins observing app lifecycle changes and warms up the first ad.
   /// Call once, from `bootstrap.dart`, after the provider container exists.
@@ -36,6 +37,10 @@ class AppOpenAdManager with WidgetsBindingObserver {
     if (_started) return;
     if (!AdsConfig.adsEnabled) {
       debugPrint('[Ads] [AppOpenManager] start() skipped — ads disabled');
+      return;
+    }
+    if (_hasShownOnce()) {
+      debugPrint('[Ads] [AppOpenManager] start() skipped — already shown once');
       return;
     }
     _started = true;
@@ -62,10 +67,21 @@ class AppOpenAdManager with WidgetsBindingObserver {
   /// feature: never awaited by the caller, so a slow network or an
   /// unavailable ad can never delay navigation to Home.
   void maybeShowOnColdStart() {
+    // One attempt per process: Splash covers returning users, Home covers
+    // first-install users (who skip Splash's Home branch via Welcome), and
+    // whichever gets here first wins.
+    if (_coldStartAttempted) return;
     if (!AdsConfig.adsEnabled) {
       debugPrint('[Ads] [AppOpenManager] cold start show skipped — ads disabled');
       return;
     }
+    if (_hasShownOnce()) {
+      debugPrint(
+        '[Ads] [AppOpenManager] cold start show skipped — already shown once',
+      );
+      return;
+    }
+    _coldStartAttempted = true;
     unawaited(_showOnColdStart());
   }
 
@@ -116,6 +132,10 @@ class AppOpenAdManager with WidgetsBindingObserver {
     debugPrint(
       '[Ads] [AppOpenManager] cold start showAppOpenAdIfAvailable() -> $shown',
     );
+    if (shown) {
+      await _markShown();
+      return;
+    }
     if (!shown) {
       // Nothing was ready yet (the preload kicked off in `start()` may
       // still be in flight) — don't retry-loop waiting for it now, just
@@ -154,6 +174,7 @@ class AppOpenAdManager with WidgetsBindingObserver {
   Future<void> _maybeShowOnResume(AdsRepository repository) async {
     final wasBackgrounded = _backgroundedAt != null;
     _backgroundedAt = null;
+    if (_hasShownOnce()) return;
     if (!wasBackgrounded) {
       debugPrint(
         '[Ads] [AppOpenManager] resumed without a prior real backgrounding '
@@ -174,12 +195,11 @@ class AppOpenAdManager with WidgetsBindingObserver {
     }
 
     // Don't show a first-run user an ad before they've even reached the
-    // app: only start showing App Open ads once onboarding and the
-    // permissions flow have both been completed at least once.
+    // app: only start showing App Open ads once the Welcome/auth gate has
+    // been passed at least once.
     if (!_hasCompletedFirstRun()) {
       debugPrint(
-        '[Ads] [AppOpenManager] onboarding/permission flow not completed '
-        'yet — not showing',
+        '[Ads] [AppOpenManager] auth gate not passed yet — not showing',
       );
       return;
     }
@@ -187,6 +207,10 @@ class AppOpenAdManager with WidgetsBindingObserver {
     debugPrint('[Ads] [AppOpenManager] genuine resume — attempting to show');
     final shown = await repository.showAppOpenAdIfAvailable();
     debugPrint('[Ads] [AppOpenManager] showAppOpenAdIfAvailable() -> $shown');
+    if (shown) {
+      await _markShown();
+      return;
+    }
     if (!shown) {
       // Nothing was ready — don't leave the user waiting on a load that
       // was never going to finish in time to matter; just queue the next
@@ -195,25 +219,43 @@ class AppOpenAdManager with WidgetsBindingObserver {
     }
   }
 
+  /// Persisted (Hive-backed settings box) so the one-time ad stays spent
+  /// across restarts.
+  bool _hasShownOnce() =>
+      _ref
+          .read(localStorageServiceProvider)
+          .get<bool>(
+            AppConstants.settingsBoxName,
+            AppConstants.appOpenAdShownKey,
+          ) ??
+      false;
+
+  Future<void> _markShown() async {
+    try {
+      await _ref
+          .read(localStorageServiceProvider)
+          .put(
+            AppConstants.settingsBoxName,
+            AppConstants.appOpenAdShownKey,
+            true,
+          );
+      // Spent: stop observing lifecycle so nothing else can trigger it.
+      dispose();
+    } catch (e) {
+      debugPrint('[Ads] [AppOpenManager] failed to persist shown flag: $e');
+    }
+  }
+
   bool _hasCompletedFirstRun() {
     final storage = _ref.read(localStorageServiceProvider);
-    final onboardingCompleted =
+    final authGateSeen =
         storage.get<bool>(
           AppConstants.settingsBoxName,
-          AppConstants.onboardingCompletedKey,
+          AppConstants.authGateSeenKey,
         ) ??
         false;
-    final permissionFlowSeen =
-        storage.get<bool>(
-          AppConstants.settingsBoxName,
-          AppConstants.permissionFlowSeenKey,
-        ) ??
-        false;
-    debugPrint(
-      '[Ads] [AppOpenManager] onboardingCompleted=$onboardingCompleted '
-      'permissionFlowSeen=$permissionFlowSeen',
-    );
-    return onboardingCompleted && permissionFlowSeen;
+    debugPrint('[Ads] [AppOpenManager] authGateSeen=$authGateSeen');
+    return authGateSeen;
   }
 
   void dispose() {

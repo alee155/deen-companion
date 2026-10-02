@@ -1,24 +1,22 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
-import '../../../../core/remote_config/remote_config_service.dart';
 import '../constants/ad_mob_ids.dart';
-import '../constants/remote_config_keys.dart';
+import '../constants/ads_config.dart';
 
 /// What an ad-unit resolution decided to do.
 enum AdAvailability {
-  /// Remote Config says this ad type is live — use the real AdMob ad
-  /// unit.
+  /// This ad type is enabled and this is a release build — use the real
+  /// AdMob ad unit.
   real,
 
-  /// Remote Config says this ad type is off, and this is a debug build —
-  /// fall back to Google's public test ad unit so development/QA still
-  /// sees ads.
+  /// This ad type is enabled and this is a debug build — use Google's
+  /// public test ad unit so development/QA sees ads without generating
+  /// real ad traffic.
   test,
 
-  /// Remote Config says this ad type is off, and this is a release
-  /// build — don't show this ad type at all. A debug build never
-  /// resolves to this: the whole point of `test` is that debug always has
-  /// *something* to show while iterating.
+  /// This ad type is switched off in [AdsConfig] — don't show it at all.
   disabled,
 }
 
@@ -41,72 +39,73 @@ class ResolvedAdUnit {
 
 /// Single centralized place that decides, per ad format, whether to serve
 /// real ads, test ads, or nothing at all. Every ad datasource/repository
-/// call goes through this instead of reading Remote Config or picking an
-/// ad unit ID itself — that's what makes the real/test/disabled rule
+/// call goes through this instead of reading [AdsConfig] or picking an ad
+/// unit ID itself — that's what makes the real/test/disabled rule
 /// "reusable" rather than reimplemented per ad type.
 ///
 /// The rule, applied identically to Banner, Interstitial, and App Open:
-///   • Remote Config flag `true`                    → real ad unit
-///   • Remote Config flag `false`, debug build       → Google's test ad unit
-///   • Remote Config flag `false`, release build     → disabled (no ad)
+///   • format switched off in [AdsConfig]  → disabled (no ad)
+///   • format enabled, debug build         → Google's test ad unit
+///   • format enabled, release build, iOS  → disabled ([AdMobIds] only
+///                                           holds Android ad units)
+///   • format enabled, release, no unit ID → disabled (IDs are injected via
+///                                           --dart-define, never committed)
+///   • format enabled, release build       → real ad unit
 class AdUnitResolver {
-  final RemoteConfigService _remoteConfig;
-  const AdUnitResolver(this._remoteConfig);
+  const AdUnitResolver();
 
   ResolvedAdUnit banner() => _resolve(
     label: 'Banner',
-    remoteConfigKey: RemoteConfigKeys.banner,
+    enabled: AdsConfig.bannerEnabled,
     prodAdUnitId: AdMobIds.prodBanner,
-    testAdUnitId: AdMobIds.testBanner,
+    testAdUnitId: Platform.isIOS ? AdMobIds.iosTestBanner : AdMobIds.testBanner,
   );
 
   ResolvedAdUnit interstitial() => _resolve(
     label: 'Interstitial',
-    remoteConfigKey: RemoteConfigKeys.interstitial,
+    enabled: AdsConfig.interstitialEnabled,
     prodAdUnitId: AdMobIds.prodInterstitial,
-    testAdUnitId: AdMobIds.testInterstitial,
+    testAdUnitId: Platform.isIOS
+        ? AdMobIds.iosTestInterstitial
+        : AdMobIds.testInterstitial,
   );
 
   ResolvedAdUnit appOpen() => _resolve(
     label: 'AppOpen',
-    remoteConfigKey: RemoteConfigKeys.appOpen,
+    enabled: AdsConfig.appOpenEnabled,
     prodAdUnitId: AdMobIds.prodAppOpen,
-    testAdUnitId: AdMobIds.testAppOpen,
+    testAdUnitId: Platform.isIOS
+        ? AdMobIds.iosTestAppOpen
+        : AdMobIds.testAppOpen,
   );
 
   ResolvedAdUnit _resolve({
     required String label,
-    required String remoteConfigKey,
+    required bool enabled,
     required String prodAdUnitId,
     required String testAdUnitId,
   }) {
-    // false is the safe default here on purpose — see
-    // FirebaseRemoteConfigService.setDefaults, which sets the same
-    // default locally. If Remote Config hasn't fetched yet (or fails
-    // entirely), this resolves exactly the same way "off" does: test ads
-    // in debug, nothing in release. Never real ads by accident.
-    final remoteEnabled = _remoteConfig.getBool(
-      remoteConfigKey,
-      defaultValue: false,
-    );
-
-    if (remoteEnabled) {
-      debugPrint('[AdUnitResolver] $label: Remote Config = true → real ad unit');
-      return ResolvedAdUnit.real(prodAdUnitId);
+    if (!enabled) {
+      debugPrint('[AdUnitResolver] $label: disabled in AdsConfig');
+      return const ResolvedAdUnit.disabled();
     }
 
     if (kDebugMode) {
-      debugPrint(
-        '[AdUnitResolver] $label: Remote Config = false, debug build '
-        '→ test ad unit',
-      );
+      debugPrint('[AdUnitResolver] $label: debug build → test ad unit');
       return ResolvedAdUnit.test(testAdUnitId);
     }
 
-    debugPrint(
-      '[AdUnitResolver] $label: Remote Config = false, release build '
-      '→ disabled',
-    );
-    return const ResolvedAdUnit.disabled();
+    if (Platform.isIOS) {
+      debugPrint('[AdUnitResolver] $label: no iOS ad units yet → disabled');
+      return const ResolvedAdUnit.disabled();
+    }
+
+    if (prodAdUnitId.isEmpty) {
+      debugPrint('[AdUnitResolver] $label: no production ad unit configured');
+      return const ResolvedAdUnit.disabled();
+    }
+
+    debugPrint('[AdUnitResolver] $label: release build → real ad unit');
+    return ResolvedAdUnit.real(prodAdUnitId);
   }
 }

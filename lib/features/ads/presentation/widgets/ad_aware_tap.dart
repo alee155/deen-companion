@@ -1,3 +1,4 @@
+import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,14 +30,16 @@ class AdAwareTap extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return InkWell(
-      borderRadius: borderRadius,
-      onTap: () {
-        ref
-            .read(interstitialAdCoordinatorProvider)
-            .showThenRun(placement: placement, action: onTap);
-      },
-      child: child,
+    return PressScale(
+      child: InkWell(
+        borderRadius: borderRadius,
+        onTap: () {
+          ref
+              .read(interstitialAdCoordinatorProvider)
+              .showThenRun(placement: placement, action: onTap);
+        },
+        child: child,
+      ),
     );
   }
 }

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
-import '../../../../core/remote_config/remote_config_service.dart';
 import '../../../../core/utils/logger.dart';
 import '../../domain/entities/banner_ad_handle.dart';
 import '../../domain/repositories/ads_repository.dart';
@@ -16,7 +15,6 @@ import '../services/ad_unit_resolver.dart';
 
 class AdsRepositoryImpl implements AdsRepository {
   final MobileAdsInitializer _initializer;
-  final RemoteConfigService _remoteConfig;
   final AdUnitResolver _adUnitResolver;
   final BannerAdDataSource _bannerDataSource;
   final InterstitialAdDataSource _interstitialDataSource;
@@ -24,13 +22,11 @@ class AdsRepositoryImpl implements AdsRepository {
 
   AdsRepositoryImpl({
     required MobileAdsInitializer initializer,
-    required RemoteConfigService remoteConfig,
     required AdUnitResolver adUnitResolver,
     required BannerAdDataSource bannerDataSource,
     required InterstitialAdDataSource interstitialDataSource,
     required AppOpenAdDataSource appOpenDataSource,
   }) : _initializer = initializer,
-       _remoteConfig = remoteConfig,
        _adUnitResolver = adUnitResolver,
        _bannerDataSource = bannerDataSource,
        _interstitialDataSource = interstitialDataSource,
@@ -60,25 +56,8 @@ class AdsRepositoryImpl implements AdsRepository {
   // ---------------------------------------------------------------------
   // Every ad load path funnels through [_ensureInitialized] before doing
   // anything else, so no matter what order the app happens to call things
-  // in, both the Mobile Ads SDK *and* Remote Config are ready before the
-  // first ad request or ad-unit resolution happens.
-  //
-  // THE LATENCY FIX for "App Open ad should run as soon as the app
-  // opens": this used to await `_remoteConfig.initialize()`, which did a
-  // full network fetch before completing — meaning the very first ad of
-  // a session was gated behind *two* network round trips (Remote Config's
-  // fetch, then the ad network's own load), run in parallel but each
-  // capable of being the long pole. It now awaits only
-  // `_remoteConfig.ensureReady()`, which is local/instant (it activates
-  // whatever config was cached from a *previous* session — see
-  // RemoteConfigService's doc comment). The actual network fetch
-  // (`refresh()`) is kicked off once, in the background, right after —
-  // never blocking this gate, so it can never delay an ad again. Its
-  // result is picked up by whichever ad load happens to run after it
-  // finishes (a retry, a re-preload after dismissal, or simply next time
-  // AdUnitResolver is asked).
+  // in, the Mobile Ads SDK is ready before the first ad request happens.
   Completer<void>? _initCompleter;
-  bool _hasStartedRemoteConfigRefresh = false;
 
   Future<void> _ensureInitialized() {
     final existing = _initCompleter;
@@ -87,34 +66,17 @@ class AdsRepositoryImpl implements AdsRepository {
     final completer = Completer<void>();
     _initCompleter = completer;
 
-    debugPrint('[Ads] Initializing Mobile Ads SDK + activating cached Remote Config…');
-    Future.wait([_initMobileAdsSdk(), _remoteConfig.ensureReady()])
-        .then((_) {
-          debugPrint('[Ads] Mobile Ads SDK ready + Remote Config cache activated ✅');
-          completer.complete();
-          _startBackgroundRemoteConfigRefresh();
-        })
+    _initMobileAdsSdk()
+        .then((_) => completer.complete())
         .catchError((Object error, StackTrace stackTrace) {
           debugPrint('[Ads] Initialization threw: $error');
-          AppLogger.e('Ads/Remote Config initialization threw', error, stackTrace);
+          AppLogger.e('Ads initialization threw', error, stackTrace);
           // Complete anyway — a stuck Completer would permanently wedge
           // every future ad request behind a load that will never finish.
-          // Remote Config already falls back to its own safe defaults on
-          // failure (see FirebaseRemoteConfigService), so proceeding here
-          // just means "test ads in debug / disabled in release", never
-          // real ads by accident.
           completer.complete();
-          _startBackgroundRemoteConfigRefresh();
         });
 
     return completer.future;
-  }
-
-  void _startBackgroundRemoteConfigRefresh() {
-    if (_hasStartedRemoteConfigRefresh) return;
-    _hasStartedRemoteConfigRefresh = true;
-    debugPrint('[Ads] Kicking off background Remote Config refresh (not on the ad-loading critical path)…');
-    unawaited(_remoteConfig.refresh());
   }
 
   Future<void> _initMobileAdsSdk() async {
