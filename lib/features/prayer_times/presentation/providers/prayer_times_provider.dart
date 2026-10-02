@@ -32,6 +32,9 @@ class PrayerTimesNotifier extends CacheFirstStreamNotifier<PrayerTimes> {
     // school in Settings automatically triggers a rebuild of this
     // provider — no manual "please refresh now" wiring needed elsewhere.
     ref.watch(prayerCalculationSettingsProvider);
+    // Rebuilds (and refetches) by itself once location recovers from an
+    // off/denied state, so the screen never waits on a manual Retry.
+    ref.watch(locationRecoveryProvider);
     return ref
         .read(prayerTimesRepositoryProvider)
         .getCachedPrayerTimesForLastKnownLocation();

@@ -84,13 +84,16 @@ class _PrayerCalendarScreenState extends ConsumerState<PrayerCalendarScreen> {
                         Icons.cloud_off_outlined,
                         size: 32.sp,
                         color: AppColors.textMuted,
-                      ),
+                      ).slideIn(RevealDirection.top),
                       SizedBox(height: 10.h),
                       Text(
                         "Couldn't load this month's calendar. Check your "
                         'connection and try again.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: AppColors.textSecondary),
+                      ).slideIn(
+                        RevealDirection.bottom,
+                        delay: const Duration(milliseconds: 60),
                       ),
                     ],
                   ),
@@ -103,10 +106,7 @@ class _PrayerCalendarScreenState extends ConsumerState<PrayerCalendarScreen> {
                 itemBuilder: (context, index) {
                   final day = days[index];
                   final isToday = isCurrentMonth && day.fajr.day == today.day;
-                  return _DayRow(
-                    day: day,
-                    isToday: isToday,
-                  ).appearStaggered(index, maxIndex: 8);
+                  return _DayRow(day: day, isToday: isToday).slideInAt(index);
                 },
               ),
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -10,6 +11,7 @@ Future<void> showCalculationMethodPicker(BuildContext context, WidgetRef ref) {
   final current = ref.read(prayerCalculationSettingsProvider).method;
 
   return showModalBottomSheet(
+    sheetAnimationStyle: AppMotion.sheetStyle,
     context: context,
     backgroundColor: AppColors.surfaceLight,
     shape: RoundedRectangleBorder(
@@ -92,6 +94,7 @@ Future<void> showAsrSchoolPicker(BuildContext context, WidgetRef ref) {
   final current = ref.read(prayerCalculationSettingsProvider).school;
 
   return showModalBottomSheet(
+    sheetAnimationStyle: AppMotion.sheetStyle,
     context: context,
     backgroundColor: AppColors.surfaceLight,
     shape: RoundedRectangleBorder(

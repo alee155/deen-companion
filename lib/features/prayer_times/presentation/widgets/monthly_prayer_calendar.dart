@@ -73,7 +73,7 @@ class _MonthlyPrayerCalendarState extends State<MonthlyPrayerCalendar> {
                         day: days[i],
                         isToday:
                             isCurrentMonth && days[i].fajr.day == today.day,
-                      ).appearStaggered(i, maxIndex: 10),
+                      ).slideInAt(i),
                     ),
                 ],
               ),
@@ -107,6 +107,10 @@ class _Header extends StatelessWidget {
               Icons.calendar_month_rounded,
               size: 18.sp,
               color: AppColors.emeraldInk,
+            ).slideIn(
+              RevealDirection.bottomStart,
+              distance: 16,
+              duration: AppMotion.normal,
             ),
             SizedBox(width: 8.w),
             Text(
@@ -114,6 +118,9 @@ class _Header extends StatelessWidget {
               style: AppTypography.titleMedium.copyWith(
                 color: AppColors.inkText,
               ),
+            ).slideIn(
+              RevealDirection.start,
+              delay: const Duration(milliseconds: 50),
             ),
           ],
         ),
@@ -130,7 +137,7 @@ class _Header extends StatelessWidget {
               _NavButton(icon: Icons.chevron_left_rounded, onTap: onPrevious),
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 6.w),
-                child: Text(
+                child: AnimatedText(
                   DateFormat('MMM yyyy').format(visibleMonth),
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.inkText,
@@ -141,6 +148,11 @@ class _Header extends StatelessWidget {
               _NavButton(icon: Icons.chevron_right_rounded, onTap: onNext),
             ],
           ),
+        ).slideIn(
+          RevealDirection.topEnd,
+          delay: const Duration(milliseconds: 80),
+          duration: AppMotion.normal,
+          distance: 16,
         ),
       ],
     );
@@ -154,15 +166,18 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.all(4.w),
-          child: Icon(icon, size: 20.sp, color: AppColors.inkText),
+    return PressScale(
+      scale: AppMotion.pressScaleSmall,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.all(4.w),
+            child: Icon(icon, size: 20.sp, color: AppColors.inkText),
+          ),
         ),
       ),
     );
