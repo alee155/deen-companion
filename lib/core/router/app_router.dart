@@ -1,10 +1,14 @@
 import 'package:deen_companion/features/audio_player/presentation/screens/audio_player_screen.dart';
 import 'package:deen_companion/features/explore/presentation/screens/all_features_screen.dart';
 import 'package:deen_companion/features/favorites/presentation/screens/favorites_screen.dart';
+import 'package:deen_companion/features/groups/presentation/screens/create_group_screen.dart';
+import 'package:deen_companion/features/groups/presentation/screens/group_streak_screen.dart';
+import 'package:deen_companion/features/groups/presentation/screens/groups_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/profile_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/settings_screen.dart';
 import 'package:deen_companion/features/recent_activity/presentation/screens/recent_activity_screen.dart';
 import 'package:flutter/foundation.dart';
+import '../motion/motion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
@@ -14,7 +18,6 @@ import '../../features/quran/presentation/screens/juz_reading_screen.dart';
 import '../../features/quran/presentation/screens/mushaf_page_screen.dart';
 import '../../features/quran/presentation/screens/quran_search_screen.dart';
 import '../../features/quran/presentation/screens/surah_list_screen.dart';
-
 import 'app_routes.dart';
 import 'app_shell.dart';
 import '../../features/hadith/domain/entities/hadith.dart';
@@ -28,19 +31,22 @@ import '../../features/duas/presentation/screens/duas_hub_screen.dart';
 import '../../features/islamic_calendar/presentation/screens/date_converter_screen.dart';
 import '../../features/islamic_calendar/presentation/screens/islamic_calendar_hub_screen.dart';
 import '../../features/islamic_calendar/presentation/screens/islamic_months_screen.dart';
-import '../../features/zakat/presentation/screens/zakat_agriculture_screen.dart';
-import '../../features/zakat/presentation/screens/zakat_calculator_screen.dart';
 import '../../features/zakat/presentation/screens/zakat_hub_screen.dart';
-import '../../features/zakat/presentation/screens/zakat_info_screen.dart';
 import '../../features/qibla/presentation/screens/qibla_screen.dart';
 import '../../features/asma_ul_husna/presentation/screens/asma_hub_screen.dart';
 import '../../features/asma_ul_husna/presentation/screens/asma_search_screen.dart';
 import '../../features/mutashabihat/presentation/screens/mutashabihat_hub_screen.dart';
 import '../../features/islamic_names/presentation/screens/islamic_names_hub_screen.dart';
 import '../../features/hadith/presentation/screens/hadith_reading_screen.dart';
-import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
-import '../../features/onboarding/presentation/screens/permission_gate_screen.dart';
-import '../../features/onboarding/presentation/screens/splash_screen.dart';
+import '../../features/daily_content/presentation/screens/daily_content_screen.dart';
+import '../../features/daily_content/presentation/screens/notifications_screen.dart';
+import '../../features/splash/presentation/screens/splash_screen.dart';
+import '../../features/auth/presentation/screens/welcome_screen.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/signup_screen.dart';
+import '../../features/auth/presentation/screens/otp_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../../features/prayer_dnd/presentation/screens/prayer_dnd_screen.dart';
 import '../../features/prayer_reminders/presentation/screens/reminders_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -51,23 +57,95 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Top-level — no bottom nav (unchanged group, plus new additions below)
       GoRoute(
         path: '/splash',
-        builder: (context, state) => const SplashScreen(),
+        pageBuilder: (context, state) => AppTransitionPage(
+          context: context,
+          state: state,
+          kind: AppTransitionKind.fadeThrough,
+          child: const SplashScreen(),
+        ),
       ),
       GoRoute(
-        path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        path: '/welcome',
+        pageBuilder: (context, state) => AppTransitionPage(
+          context: context,
+          state: state,
+          kind: AppTransitionKind.fadeThrough,
+          child: const WelcomeScreen(),
+        ),
       ),
       GoRoute(
-        path: '/permissions',
-        builder: (context, state) => const PermissionGateScreen(),
+        path: '/login',
+        pageBuilder: (context, state) => AppTransitionPage(
+          context: context,
+          state: state,
+          kind: AppTransitionKind.fadeThrough,
+          child: const LoginScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/signup',
+        pageBuilder: (context, state) => AppTransitionPage(
+          context: context,
+          state: state,
+          kind: AppTransitionKind.fadeThrough,
+          child: const SignupScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/otp',
+        builder: (context, state) =>
+            OtpScreen(email: state.uri.queryParameters['email'] ?? ''),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        pageBuilder: (context, state) => AppTransitionPage(
+          context: context,
+          state: state,
+          kind: AppTransitionKind.fadeThrough,
+          child: const ForgotPasswordScreen(),
+        ),
+      ),
+      // Group flow screens. Declared at the top level (outside the shell) so
+      // the bottom navigation bar isn't shown on them; `/groups` itself stays
+      // a shell tab. Push these with `context.push`, not `go`.
+      GoRoute(
+        path: '/groups/create',
+        builder: (context, state) => const CreateGroupScreen(),
+      ),
+      GoRoute(
+        path: '/groups/:groupId/streak',
+        builder: (context, state) =>
+            GroupStreakScreen(groupId: state.pathParameters['groupId']!),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/daily-content',
+        builder: (context, state) =>
+            DailyContentScreen(notificationId: state.uri.queryParameters['id']),
       ),
       GoRoute(
         path: '/reminders',
         builder: (context, state) => const RemindersScreen(),
       ),
       GoRoute(
+        path: '/prayer-dnd',
+        builder: (context, state) => const PrayerDndScreen(),
+      ),
+      GoRoute(
+        path: '/recent-activity',
+        builder: (context, state) => const RecentActivityScreen(),
+      ),
+      GoRoute(
         path: '/player',
-        builder: (context, state) => const AudioPlayerScreen(),
+        pageBuilder: (context, state) => AppTransitionPage(
+          context: context,
+          state: state,
+          kind: AppTransitionKind.slideUp,
+          child: const AudioPlayerScreen(),
+        ),
       ),
       GoRoute(
         path: '/quran',
@@ -148,15 +226,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/zakat/calculator',
-        builder: (context, state) => const ZakatCalculatorScreen(),
+        builder: (context, state) => const ZakatHubScreen(initialTab: 0),
       ),
       GoRoute(
         path: '/zakat/agriculture',
-        builder: (context, state) => const ZakatAgricultureScreen(),
-      ),
-      GoRoute(
-        path: '/zakat/info',
-        builder: (context, state) => const ZakatInfoScreen(),
+        builder: (context, state) => const ZakatHubScreen(initialTab: 1),
       ),
       GoRoute(path: '/qibla', builder: (context, state) => const QiblaScreen()),
       GoRoute(
@@ -185,9 +259,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // the bottom nav bar vanishing: GoRouter matches routes in declaration
       // order, so the top-level copy — which rendered without AppShell —
       // was winning the match instead of the shell's branch route.
-      StatefulShellRoute.indexedStack(
+      StatefulShellRoute(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
+        navigatorContainerBuilder: (context, navigationShell, children) =>
+            AnimatedBranchContainer(
+              currentIndex: navigationShell.currentIndex,
+              children: children,
+            ),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -208,8 +287,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/recent-activity',
-                builder: (context, state) => const RecentActivityScreen(),
+                path: '/groups',
+                builder: (context, state) => const GroupsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                builder: (context, state) => const SettingsScreen(),
               ),
             ],
           ),
@@ -218,10 +305,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/profile',
                 builder: (context, state) => const ProfileScreen(),
-              ),
-              GoRoute(
-                path: '/profile/settings',
-                builder: (context, state) => const SettingsScreen(),
               ),
             ],
           ),
