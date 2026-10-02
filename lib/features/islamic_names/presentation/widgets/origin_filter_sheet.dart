@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -9,6 +10,7 @@ Future<Set<String>?> showOriginFilterSheet(
 }) {
   return showModalBottomSheet<Set<String>>(
     context: context,
+    sheetAnimationStyle: AppMotion.sheetStyle,
     backgroundColor: AppColors.surfaceLight,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
@@ -57,23 +59,23 @@ class _OriginFilterContentState extends State<_OriginFilterContent> {
                 borderRadius: BorderRadius.circular(2.r),
               ),
             ),
-            SizedBox(height: 14.h),
-            Text(
-              'Filter by origin',
-              style: TextStyle(
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
-                color: AppColors.inkText,
-              ),
-            ),
+            // SizedBox(height: 14.h),
+            // Text(
+            //   'Filter by origin',
+            //   style: TextStyle(
+            //     fontSize: 16.sp,
+            //     fontWeight: FontWeight.w600,
+            //     color: AppColors.inkText,
+            //   ),
+            // ),
             ConstrainedBox(
-              constraints: BoxConstraints(maxHeight: 360.h),
+              constraints: BoxConstraints(maxHeight: 400.h),
               child: ListView(
                 shrinkWrap: true,
                 children: widget.allOrigins.map((origin) {
                   return CheckboxListTile(
                     value: _selected.contains(origin),
-                    activeColor: AppColors.gold,
+                    activeColor: AppColors.emeraldInk,
                     title: Text(origin),
                     onChanged: (checked) => setState(() {
                       if (checked ?? false) {
