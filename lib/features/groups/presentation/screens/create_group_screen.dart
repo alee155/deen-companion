@@ -96,10 +96,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   Future<void> _create() async {
     FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
-    if (_imagePath == null) {
-      _toast('Please add a group photo.');
-      return;
-    }
     setState(() => _isCreating = true);
     final result = await ref
         .read(myGroupsProvider.notifier)

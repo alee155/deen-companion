@@ -72,17 +72,19 @@ class GroupCard extends StatelessWidget {
                           ],
                         ],
                       ),
-                      SizedBox(height: 4.h),
-                      Text(
-                        group.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          height: 1.35,
-                          color: AppColors.textSecondary,
+                      if (group.description.isNotEmpty) ...[
+                        SizedBox(height: 4.h),
+                        Text(
+                          group.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            height: 1.35,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
+                      ],
                       SizedBox(height: 8.h),
                       Row(
                         children: [

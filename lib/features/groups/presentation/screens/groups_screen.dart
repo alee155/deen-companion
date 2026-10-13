@@ -8,6 +8,7 @@ import '../../../../core/motion/motion.dart';
 import '../../../../shared/widgets/islamic_ornaments.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
+import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../domain/entities/group.dart';
 import '../providers/groups_providers.dart';
 import '../widgets/empty_groups.dart';
@@ -51,6 +52,12 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
 
   Future<void> _create() async {
     HapticFeedback.selectionClick();
+    // Groups need an account: send guests through Sign Up → OTP, then back
+    // here signed in.
+    if (!ref.read(authSessionProvider).isAuthenticated) {
+      context.push('/signup?redirect=${Uri.encodeQueryComponent('/groups')}');
+      return;
+    }
     final created = await context.push<Group>('/groups/create');
     if (!mounted || created == null) return;
     ScaffoldMessenger.of(context)
@@ -223,7 +230,7 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
             separatorBuilder: (_, _) => SizedBox(height: 12.h),
             itemBuilder: (context, i) => GroupCard(
               group: groups[i],
-              onTap: () => context.push('/groups/${groups[i].id}/streak'),
+              onTap: () => context.push('/groups/${groups[i].id}'),
             ).slideInAt(i),
           ),
         ),
