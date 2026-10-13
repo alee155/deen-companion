@@ -1,0 +1,337 @@
+name: CI/CD
+
+# Every push to main / release branches and every pull request runs the quality
+# gate. Release builds (signed Android bundle + APK, iOS compile check) are
+# produced ONLY for pushes whose commit message contains "[Release]".
+#
+# Setup, secrets and how to cut a release: docs/CI_CD.md
+
+on:
+  push:
+    branches: [main, "release/**"]
+  pull_request:
+    branches: [main]
+
+# Least privilege by default; jobs that need more declare it themselves.
+permissions:
+  contents: read
+
+# One run per ref. A newer pull-request push supersedes the older in-flight
+# run; runs on main / release branches are never cancelled, so a release build
+# can't be killed half-way by the next commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # The single place the Flutter version is pinned. Keep in step with local dev.
+  FLUTTER_VERSION: 3.47.1
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Decide what this run is allowed to do. Cheap; everything else hangs off it.
+  # ---------------------------------------------------------------------------
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      release: ${{ steps.detect.outputs.release }}
+      version: ${{ steps.version.outputs.version }}
+      build_number: ${{ steps.version.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so every commit message in the push can be read.
+          fetch-depth: 0
+
+      - name: Detect "[Release]" commit
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          # Messages are read from git and handed over as data (never spliced
+          # into a script), so a commit message can't inject shell.
+          COMMIT_MESSAGES="$(tool/ci/commit_messages.sh "$BEFORE_SHA" "$GITHUB_SHA")"
+          export COMMIT_MESSAGES
+          tool/ci/detect_release.sh | tee -a "$GITHUB_OUTPUT"
+
+      - name: Compute version
+        id: version
+        env:
+          # Optional repo variable. Play requires a strictly increasing
+          # versionCode; set this above the highest code already uploaded.
+          BUILD_NUMBER_OFFSET: ${{ vars.ANDROID_BUILD_NUMBER_OFFSET || '0' }}
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^version: *\([^+ ]*\).*/\1/p' pubspec.yaml)"
+          if [[ -z "$version" ]]; then
+            echo "::error::Could not read the version from pubspec.yaml"
+            exit 1
+          fi
+          build_number=$(( GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET ))
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        env:
+          # Via env, not spliced into the script: the reason contains the
+          # branch name, which is attacker-influenced text.
+          RELEASE: ${{ steps.detect.outputs.release }}
+          REASON: ${{ steps.detect.outputs.reason }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+        run: |
+          {
+            echo "### Plan"
+            echo "- Release build: **$RELEASE** — $REASON"
+            echo "- Version: \`$VERSION+$BUILD_NUMBER\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Quality gate: runs on every commit and pull request.
+  # ---------------------------------------------------------------------------
+  quality:
+    name: Format, analyze, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # History is needed to find which Dart files this push/PR changed.
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - name: Check formatting (changed files)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: tool/ci/check_format.sh "$BASE_SHA"
+
+      - name: Analyze
+        # Errors and warnings fail the build. Existing info-level lints are
+        # still printed, so they stay visible without blocking.
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        run: flutter test --coverage --reporter github
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Release builds: only for "[Release]" pushes, and only after the quality
+  # gate passed. Secrets live in the `release` environment (scoped, and
+  # optionally behind required reviewers).
+  # ---------------------------------------------------------------------------
+  android:
+    name: Android release (AAB + APK)
+    needs: [plan, quality]
+    if: needs.plan.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: release
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      BUILD_NUMBER: ${{ needs.plan.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          # Caches ~/.gradle (wrappers, dependencies) keyed on the Gradle files.
+          cache: gradle
+
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - uses: ./.github/actions/write-prod-config
+        with:
+          config-json: ${{ secrets.PROD_CONFIG_JSON }}
+
+      - name: Write signing files
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ADMOB_APP_ID: ${{ secrets.ADMOB_APP_ID }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD ADMOB_APP_ID; do
+            [[ -n "${!name// }" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} )); then
+            echo "::error::Missing release secret(s): ${missing[*]}. See docs/CI_CD.md."
+            exit 1
+          fi
+
+          keystore="$RUNNER_TEMP/upload-keystore.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          chmod 600 "$keystore"
+
+          # Same files a developer would create locally (see the *.example files).
+          {
+            echo "storeFile=$keystore"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+          chmod 600 android/key.properties
+          echo "admobAppId=$ADMOB_APP_ID" > android/admob.properties
+
+      - name: Build app bundle (Play Store)
+        run: |
+          flutter build appbundle --release \
+            -t lib/main_prod.dart \
+            --dart-define-from-file=config/prod.json \
+            --build-name="$VERSION" --build-number="$BUILD_NUMBER" \
+            --obfuscate --split-debug-info=build/symbols
+
+      - name: Build APK (direct install / testers)
+        run: |
+          flutter build apk --release \
+            -t lib/main_prod.dart \
+            --dart-define-from-file=config/prod.json \
+            --build-name="$VERSION" --build-number="$BUILD_NUMBER" \
+            --obfuscate --split-debug-info=build/symbols
+
+      - name: Verify signature
+        run: |
+          set -euo pipefail
+          apksigner="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -1)"
+          out="$("$apksigner" verify --print-certs build/app/outputs/flutter-apk/app-release.apk)"
+          echo "$out"
+          if grep -qi "Android Debug" <<<"$out"; then
+            echo "::error::The release APK is signed with a DEBUG key."
+            exit 1
+          fi
+          sha="$(sed -n 's/.*certificate SHA-256 digest: //p' <<<"$out" | head -1)"
+          {
+            echo "### Android release"
+            echo "- Version: \`$VERSION+$BUILD_NUMBER\`"
+            echo "- Signing certificate SHA-256: \`$sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aab-${{ needs.plan.outputs.version }}+${{ needs.plan.outputs.build_number }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-${{ needs.plan.outputs.version }}+${{ needs.plan.outputs.build_number }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload debug symbols
+        # Needed to de-obfuscate crash stack traces for this exact build.
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-symbols-${{ needs.plan.outputs.version }}+${{ needs.plan.outputs.build_number }}
+          path: build/symbols
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Remove secrets from the runner
+        if: always()
+        run: |
+          rm -f android/key.properties android/admob.properties config/prod.json \
+            "$RUNNER_TEMP/upload-keystore.jks"
+
+  ios:
+    name: iOS release (unsigned build check)
+    needs: [plan, quality]
+    # On by default; set the repository variable IOS_BUILD_ENABLED=false to
+    # skip it (macOS runners cost ~10x Linux minutes).
+    if: needs.plan.outputs.release == 'true' && vars.IOS_BUILD_ENABLED != 'false'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    environment: release
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      BUILD_NUMBER: ${{ needs.plan.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - uses: ./.github/actions/write-prod-config
+        with:
+          config-json: ${{ secrets.PROD_CONFIG_JSON }}
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
+          restore-keys: pods-${{ runner.os }}-
+
+      # No signing credentials are configured, so this proves the release
+      # configuration compiles and links; it does not produce an installable
+      # IPA. See docs/CI_CD.md for adding signing + TestFlight upload.
+      - name: Build iOS (no code signing)
+        run: |
+          flutter build ios --release --no-codesign \
+            -t lib/main_prod.dart \
+            --dart-define-from-file=config/prod.json \
+            --build-name="$VERSION" --build-number="$BUILD_NUMBER"
+
+      - name: Summary
+        run: |
+          {
+            echo "### iOS release"
+            echo "- Version: \`$VERSION+$BUILD_NUMBER\`"
+            echo "- Compiled with \`--no-codesign\`. No installable IPA is produced (no signing credentials configured)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove secrets from the runner
+        if: always()
+        run: rm -f config/prod.json
+
+  # ---------------------------------------------------------------------------
+  # One stable status to require in branch protection: green only if nothing
+  # failed or was cancelled (skipped release jobs are fine).
+  # ---------------------------------------------------------------------------
+  pipeline-status:
+    name: Pipeline status
+    needs: [plan, quality, android, ios]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Evaluate results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          if grep -Eq 'failure|cancelled' <<<"$RESULTS"; then
+            echo "::error::A pipeline job failed or was cancelled."
+            exit 1
+          fi

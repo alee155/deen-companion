@@ -1,0 +1,42 @@
+name: Write production config
+description: >
+  Materialises the git-ignored config/prod.json (UmmahAPI key, AdMob ad-unit
+  IDs) from a secret so builds can use --dart-define-from-file. The value is
+  passed through the environment, never interpolated into shell text.
+
+inputs:
+  config-json:
+    description: Full JSON content of config/prod.json
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Write and validate config/prod.json
+      shell: bash
+      env:
+        CONFIG_JSON: ${{ inputs.config-json }}
+      run: |
+        set -euo pipefail
+        if [[ -z "${CONFIG_JSON// }" ]]; then
+          echo "::error::The PROD_CONFIG_JSON secret is empty or missing. See docs/CI_CD.md."
+          exit 1
+        fi
+        mkdir -p config
+        printf '%s' "$CONFIG_JSON" > config/prod.json
+        python3 - <<'PY'
+        import json, sys
+        try:
+            data = json.load(open("config/prod.json"))
+        except Exception as e:
+            print(f"::error::PROD_CONFIG_JSON is not valid JSON: {e}")
+            sys.exit(1)
+        expected = ["UMMAH_API_KEY", "ADMOB_BANNER_ID", "ADMOB_INTERSTITIAL_ID", "ADMOB_APP_OPEN_ID"]
+        empty = [k for k in expected if not str(data.get(k, "")).strip()]
+        if empty:
+            # A warning, not a failure: some values may legitimately be empty
+            # (the app disables ads without ad-unit IDs). Key names only —
+            # never values.
+            print(f"::warning::PROD_CONFIG_JSON has empty/missing values for: {', '.join(empty)}")
+        print("config/prod.json written and validated (values not shown).")
+        PY
