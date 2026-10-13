@@ -138,7 +138,7 @@ notifications. The `android` job is the place to extend: the AAB is already at
 
 - **Flutter version:** change `FLUTTER_VERSION` at the top of `ci.yml` (one
   place), together with your local SDK.
-- **Actions:** Dependabot opens monthly PRs for the pinned action versions.
+- **Actions:** the pinned action versions (`@v4`, ...) are updated by hand when GitHub deprecates one.
 - **New secret:** add it to the `release` environment, read it via `env:` in the
   step (never `${{ secrets.X }}` inside a `run:` script), and clean up any file
   you write.
