@@ -105,7 +105,7 @@ class _SurahPickerContentState extends ConsumerState<_SurahPickerContent> {
                     return ListView.separated(
                       controller: scrollController,
                       itemCount: filtered.length,
-                      separatorBuilder: (_, __) =>
+                      separatorBuilder: (_, _) =>
                           Divider(height: 1, color: AppColors.borderWarm),
                       itemBuilder: (context, index) {
                         final s = filtered[index];

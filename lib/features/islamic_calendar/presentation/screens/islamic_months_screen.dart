@@ -199,7 +199,7 @@ class _MonthsSkeleton extends StatelessWidget {
     return ListView.separated(
       padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 24.h),
       itemCount: 8,
-      separatorBuilder: (_, __) => SizedBox(height: 10.h),
+      separatorBuilder: (_, _) => SizedBox(height: 10.h),
       itemBuilder: (context, index) =>
           ShimmerBox(width: double.infinity, height: 84.h, borderRadius: 16.r),
     );

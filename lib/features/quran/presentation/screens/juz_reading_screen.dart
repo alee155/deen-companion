@@ -329,7 +329,7 @@ class _ReaderSkeleton extends StatelessWidget {
     return ListView.separated(
       padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 20.h),
       itemCount: 5,
-      separatorBuilder: (_, __) => SizedBox(height: 18.h),
+      separatorBuilder: (_, _) => SizedBox(height: 18.h),
       itemBuilder: (context, index) => Padding(
         padding: EdgeInsets.symmetric(horizontal: 4.w),
         child: Column(

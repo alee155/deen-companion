@@ -44,7 +44,6 @@ class AdsRepositoryImpl implements AdsRepository {
   // ---------------------------------------------------------------------
   AppOpenAd? _appOpenAd;
   DateTime? _appOpenLoadedAt;
-  bool _isLoadingAppOpenAd = false;
   bool _isShowingAppOpenAd = false;
 
   /// Google's own guidance: discard an unshown app open ad after roughly
@@ -66,15 +65,16 @@ class AdsRepositoryImpl implements AdsRepository {
     final completer = Completer<void>();
     _initCompleter = completer;
 
-    _initMobileAdsSdk()
-        .then((_) => completer.complete())
-        .catchError((Object error, StackTrace stackTrace) {
-          debugPrint('[Ads] Initialization threw: $error');
-          AppLogger.e('Ads initialization threw', error, stackTrace);
-          // Complete anyway — a stuck Completer would permanently wedge
-          // every future ad request behind a load that will never finish.
-          completer.complete();
-        });
+    _initMobileAdsSdk().then((_) => completer.complete()).catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      debugPrint('[Ads] Initialization threw: $error');
+      AppLogger.e('Ads initialization threw', error, stackTrace);
+      // Complete anyway — a stuck Completer would permanently wedge
+      // every future ad request behind a load that will never finish.
+      completer.complete();
+    });
 
     return completer.future;
   }
@@ -162,7 +162,9 @@ class AdsRepositoryImpl implements AdsRepository {
     _isLoadingInterstitial = false;
 
     if (ad == null) {
-      debugPrint('[Ads] Interstitial: load returned null (failed — see error above)');
+      debugPrint(
+        '[Ads] Interstitial: load returned null (failed — see error above)',
+      );
       return;
     }
     debugPrint('[Ads] Interstitial: loaded ✅');
@@ -309,13 +311,13 @@ class AdsRepositoryImpl implements AdsRepository {
       return false;
     }
 
-    _isLoadingAppOpenAd = true;
     debugPrint('[Ads] App Open: requesting ad…');
     final ad = await _appOpenDataSource.load(adUnitId: resolved.adUnitId!);
-    _isLoadingAppOpenAd = false;
 
     if (ad == null) {
-      debugPrint('[Ads] App Open: load returned null (failed — see error above)');
+      debugPrint(
+        '[Ads] App Open: load returned null (failed — see error above)',
+      );
       _appOpenLoadCompleter = null;
       completer.complete(false);
       return false;

@@ -596,7 +596,7 @@ class _AsmaHubScreenState extends ConsumerState<AsmaHubScreen> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _Range.values.length,
-              separatorBuilder: (_, __) => SizedBox(width: 8.w),
+              separatorBuilder: (_, _) => SizedBox(width: 8.w),
               itemBuilder: (context, i) {
                 final r = _Range.values[i];
                 final selected = r == _range;
@@ -698,7 +698,7 @@ class _AsmaHubScreenState extends ConsumerState<AsmaHubScreen> {
         padding: EdgeInsets.symmetric(horizontal: 20.w),
         sliver: SliverList.separated(
           itemCount: visible.length,
-          separatorBuilder: (_, __) => SizedBox(height: 10.h),
+          separatorBuilder: (_, _) => SizedBox(height: 10.h),
           itemBuilder: (context, i) =>
               AsmaNameRow(name: visible[i], onTap: () => open(i)).slideInAt(i),
         ),

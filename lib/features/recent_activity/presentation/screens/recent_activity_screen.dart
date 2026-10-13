@@ -45,7 +45,7 @@ class RecentActivityScreen extends ConsumerWidget {
       body: SafeArea(
         child: recentAsync.when(
           loading: () => const SizedBox.shrink(),
-          error: (_, __) => Center(
+          error: (_, _) => Center(
             child: Text(
               'Could not load recent activity.',
               style: TextStyle(color: AppColors.textSecondary),

@@ -173,13 +173,12 @@ class AppTransitionPage<T> extends CustomTransitionPage<T> {
   AppTransitionPage({
     required BuildContext context,
     required GoRouterState state,
-    required Widget child,
+    required super.child,
     AppTransitionKind kind = AppTransitionKind.sharedAxis,
   }) : super(
          key: state.pageKey,
          name: state.name ?? state.path,
          arguments: <String, String>{...state.pathParameters},
-         child: child,
          transitionDuration: MediaQuery.disableAnimationsOf(context)
              ? Duration.zero
              : AppMotion.page,
@@ -187,6 +186,12 @@ class AppTransitionPage<T> extends CustomTransitionPage<T> {
              ? Duration.zero
              : AppMotion.pageReverse,
          transitionsBuilder: (context, animation, secondary, child) =>
-             buildAppTransition(context, animation, secondary, child, kind: kind),
+             buildAppTransition(
+               context,
+               animation,
+               secondary,
+               child,
+               kind: kind,
+             ),
        );
 }
