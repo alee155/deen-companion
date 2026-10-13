@@ -45,7 +45,12 @@ InputDecoration groupInputDecoration({
   required String hint,
   required IconData icon,
   bool alignLabelWithHint = false,
+
+  /// Icon and focus colour. Defaults to the Create Group form's brass; the
+  /// group sheets pass the brand orange.
+  Color? accent,
 }) {
+  final tint = accent ?? AppColors.gold;
   OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
     borderRadius: BorderRadius.circular(18.r),
     borderSide: BorderSide(color: c, width: w),
@@ -54,7 +59,7 @@ InputDecoration groupInputDecoration({
     labelText: label,
     hintText: hint,
     alignLabelWithHint: alignLabelWithHint,
-    prefixIcon: Icon(icon, color: AppColors.gold, size: 21.sp),
+    prefixIcon: Icon(icon, color: tint, size: 21.sp),
     labelStyle: TextStyle(color: AppColors.textSecondary, fontSize: 13.sp),
     hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 13.sp),
     counterStyle: TextStyle(color: AppColors.textMuted, fontSize: 11.sp),
@@ -63,7 +68,7 @@ InputDecoration groupInputDecoration({
     contentPadding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 16.h),
     border: border(AppColors.borderWarm),
     enabledBorder: border(AppColors.borderWarm),
-    focusedBorder: border(AppColors.gold, 1.6),
+    focusedBorder: border(tint, 1.6),
     errorBorder: border(AppColors.error),
     focusedErrorBorder: border(AppColors.error, 1.6),
   );
