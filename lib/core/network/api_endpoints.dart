@@ -212,6 +212,19 @@ class ApiEndpoints {
   static const String authForgotPassword = '$_deenBase/auth/forgot-password';
   static const String authResetPassword = '$_deenBase/auth/reset-password';
   static const String authMe = '$_deenBase/auth/me';
+  static const String groups = '$_deenBase/groups';
+  static String group(String id) => '$_deenBase/groups/$id';
+  static String invitePreview(String token) =>
+      '$_deenBase/invites/${Uri.encodeComponent(token)}';
+  static String inviteJoin(String token) =>
+      '$_deenBase/invites/${Uri.encodeComponent(token)}/join';
+  static String groupMember(String groupId, String userId) =>
+      '$_deenBase/groups/$groupId/members/$userId';
+  static String groupLeave(String groupId) =>
+      '$_deenBase/groups/$groupId/leave';
+  static String groupInvite(String id) => '$_deenBase/groups/$id/invite';
+  static String groupInviteReset(String id) =>
+      '$_deenBase/groups/$id/invite/reset';
   static const String authAccount = '$_deenBase/auth/account';
   static const String authVerifyEmail = '$_deenBase/auth/verify-email';
 }
