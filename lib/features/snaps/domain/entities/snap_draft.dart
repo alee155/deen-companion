@@ -1,0 +1,49 @@
+/// How long a recipient can view a snap once opened.
+class SnapViewTimer {
+  SnapViewTimer._();
+
+  static const options = [3, 5, 10, 15, 30];
+  static const defaultSeconds = 5;
+}
+
+/// The image after cropping and compression, ready to upload.
+class PreparedImage {
+  /// JPEG file on disk (temporary).
+  final String path;
+  final int originalBytes;
+  final int compressedBytes;
+
+  const PreparedImage({
+    required this.path,
+    required this.originalBytes,
+    required this.compressedBytes,
+  });
+
+  /// 0..1 — how much smaller the upload is than the cropped source.
+  double get savedFraction =>
+      originalBytes == 0 ? 0 : 1 - compressedBytes / originalBytes;
+}
+
+/// Everything the "send snap" API will need. Recipients are always the whole
+/// group, so [recipientIds] is every member (except the sender).
+class SnapDraft {
+  final String groupId;
+  final String imagePath;
+  final int viewSeconds;
+  final String? caption;
+  final List<String> recipientIds;
+
+  const SnapDraft({
+    required this.groupId,
+    required this.imagePath,
+    required this.viewSeconds,
+    required this.recipientIds,
+    this.caption,
+  });
+}
+
+/// What the backend reports for a sent snap. Minimal until the API exists.
+class SentSnap {
+  final String id;
+  const SentSnap({required this.id});
+}

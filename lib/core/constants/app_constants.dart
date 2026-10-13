@@ -29,6 +29,10 @@ class AppConstants {
   static const String authNameKey = 'auth_name';
   static const String authPhotoUrlKey = 'auth_photo_url';
 
+  /// Set once the camera permission has been requested at startup, so a
+  /// denial isn't followed by a prompt on every launch.
+  static const String cameraPermissionAskedKey = 'camera_permission_asked';
+
   static const String themeModeKey = 'theme_mode';
   static const String prayerReminderPrefsKey = 'prayer_reminder_prefs';
   static const String remindersEnabledKey = 'prayer_reminders_enabled';

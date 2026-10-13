@@ -7,6 +7,8 @@ import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/location/location_service.dart';
+import '../../../../core/permissions/camera_permission_service.dart';
+import '../../../../core/storage/local_storage_service.dart';
 import '../../../audio_player/domain/audio_track.dart';
 import '../../../reliability_setup/domain/reliability_requirement.dart';
 import '../../../reliability_setup/presentation/providers/reliability_providers.dart';
@@ -49,6 +51,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // and Home's prayer times ask for location on their own — so wait for
     // that prompt to settle (this joins it rather than racing it).
     await ref.read(locationServiceProvider).requestPermission();
+    if (!mounted) return;
+
+    // Camera, for sending snaps — asked once here with the rest, so the
+    // camera is ready the first time someone taps "Send snap".
+    await requestCameraPermissionOnce(
+      storage: ref.read(localStorageServiceProvider),
+      service: ref.read(cameraPermissionServiceProvider),
+    );
     if (!mounted) return;
 
     final reliability = ref.read(reliabilityServiceProvider);
