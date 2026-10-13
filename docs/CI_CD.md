@@ -11,7 +11,6 @@ push / pull request
       ├─ quality ───────────► format (changed files) → analyze → test      (always)
       │
       ├─ android ───────────► signed AAB + APK + symbols                   (only [Release], after quality)
-      ├─ ios ───────────────► unsigned compile check                       (only [Release], after quality)
       │
       └─ pipeline-status ───► single required check for branch protection
 ```
@@ -90,7 +89,6 @@ GitHub masks them in logs.
 | Variable | Purpose |
 | --- | --- |
 | `ANDROID_BUILD_NUMBER_OFFSET` | **Set this before the first release.** Google Play needs a `versionCode` higher than any already uploaded. Set it to the highest uploaded code (for example `10`); the first CI build is then `10 + run number`. Defaults to `0`. |
-| `IOS_BUILD_ENABLED` | Set to `false` to skip the iOS job (macOS minutes cost ~10× Linux). Default: enabled. |
 
 ### 4. Branch protection (recommended)
 
@@ -112,7 +110,7 @@ was cancelled, and ignores release jobs that were legitimately skipped.
 ## Speed
 
 Flutter SDK and pub cache (`subosito/flutter-action` cache), Gradle
-(`actions/setup-java` cache), CocoaPods (keyed on `ios/Podfile.lock`), shallow
+(`actions/setup-java` cache), shallow
 fetch except where history is needed, and superseded *pull-request* runs are
 cancelled (runs on `main` / `release/**` are never cancelled, so a release build
 can't be killed by the next commit). Release builds wait for the quality job, so a broken commit
@@ -125,20 +123,11 @@ never burns build minutes.
 obfuscation and split debug info. The build fails if the APK turns out to be
 signed with a debug key.
 
-**iOS** currently runs `flutter build ios --release --no-codesign`. That proves
-the release configuration compiles, but **it does not produce an installable
-IPA**, because no Apple signing credentials are configured. To ship from CI you
-need, as environment secrets:
-
-- a distribution certificate (`.p12`, base64) and its password,
-- an App Store provisioning profile for `com.devsouq.deen-companion.app`
-  (team `F9S4JHVYRP`),
-- an App Store Connect API key (for TestFlight upload).
-
-Then replace the `--no-codesign` step with: import the certificate into a
-temporary keychain, install the profile, `flutter build ipa --export-options-plist ...`,
-and upload with `xcrun altool`/`fastlane pilot`. This is intentionally not
-included yet, to avoid shipping untested signing code.
+**iOS** is not part of the pipeline: the app is currently shipped on Android only.
+When iOS is needed, add a job on a `macos` runner that builds with
+`flutter build ipa` using an Apple distribution certificate, an App Store
+provisioning profile and an App Store Connect API key stored as `release`
+environment secrets.
 
 **Not included (add when needed):** automatic Play Store upload (needs a Google
 service account and the Play Developer API), GitHub Releases, and Slack/email
@@ -158,7 +147,7 @@ notifications. The `android` job is the place to extend: the AAB is already at
 
 | Symptom | Cause / fix |
 | --- | --- |
-| IDE shows "Context access might be invalid" for `release`, `PROD_CONFIG_JSON` or `IOS_BUILD_ENABLED` | The GitHub Actions extension checks against the real repo; these appear until the environment, secret and variable exist (see setup above). They are not workflow errors. |
+| IDE shows "Context access might be invalid" for `release` or one of the secrets / variables | The GitHub Actions extension checks against the real repo; these appear until the environment, secret and variable exist (see setup above). They are not workflow errors. |
 | Release job not created | Not a push to `main`/`release/**`, or no `[Release]` in any commit of the push. See the *Plan* summary for the reason. |
 | `Missing release secret(s): …` | The named secret isn't in the `release` environment. |
 | Play rejects the upload: version code already used | Raise `ANDROID_BUILD_NUMBER_OFFSET`. |

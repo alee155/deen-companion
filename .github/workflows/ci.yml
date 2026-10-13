@@ -1,7 +1,7 @@
 name: CI/CD
 
 # Every push to main / release branches and every pull request runs the quality
-# gate. Release builds (signed Android bundle + APK, iOS compile check) are
+# gate. Release builds (signed Android bundle + APK) are
 # produced ONLY for pushes whose commit message contains "[Release]".
 #
 # Setup, secrets and how to cut a release: docs/CI_CD.md
@@ -263,65 +263,13 @@ jobs:
           rm -f android/key.properties android/admob.properties config/prod.json \
             "$RUNNER_TEMP/upload-keystore.jks"
 
-  ios:
-    name: iOS release (unsigned build check)
-    needs: [plan, quality]
-    # On by default; set the repository variable IOS_BUILD_ENABLED=false to
-    # skip it (macOS runners cost ~10x Linux minutes).
-    if: needs.plan.outputs.release == 'true' && vars.IOS_BUILD_ENABLED != 'false'
-    runs-on: macos-latest
-    timeout-minutes: 60
-    environment: release
-    env:
-      VERSION: ${{ needs.plan.outputs.version }}
-      BUILD_NUMBER: ${{ needs.plan.outputs.build_number }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/setup-flutter
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-
-      - uses: ./.github/actions/write-prod-config
-        with:
-          config-json: ${{ secrets.PROD_CONFIG_JSON }}
-
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: ios/Pods
-          key: pods-${{ runner.os }}-${{ hashFiles('ios/Podfile.lock') }}
-          restore-keys: pods-${{ runner.os }}-
-
-      # No signing credentials are configured, so this proves the release
-      # configuration compiles and links; it does not produce an installable
-      # IPA. See docs/CI_CD.md for adding signing + TestFlight upload.
-      - name: Build iOS (no code signing)
-        run: |
-          flutter build ios --release --no-codesign \
-            -t lib/main_prod.dart \
-            --dart-define-from-file=config/prod.json \
-            --build-name="$VERSION" --build-number="$BUILD_NUMBER"
-
-      - name: Summary
-        run: |
-          {
-            echo "### iOS release"
-            echo "- Version: \`$VERSION+$BUILD_NUMBER\`"
-            echo "- Compiled with \`--no-codesign\`. No installable IPA is produced (no signing credentials configured)."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Remove secrets from the runner
-        if: always()
-        run: rm -f config/prod.json
-
   # ---------------------------------------------------------------------------
   # One stable status to require in branch protection: green only if nothing
   # failed or was cancelled (skipped release jobs are fine).
   # ---------------------------------------------------------------------------
   pipeline-status:
     name: Pipeline status
-    needs: [plan, quality, android, ios]
+    needs: [plan, quality, android]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
