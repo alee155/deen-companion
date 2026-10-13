@@ -234,6 +234,14 @@ Strategy:
 
 ---
 
+## CI/CD
+
+GitHub Actions runs format/analyze/test on every push and pull request, and builds
+signed release artifacts only for commits whose message contains `[Release]`.
+Setup, required secrets and the release steps are in [`docs/CI_CD.md`](docs/CI_CD.md).
+
+---
+
 ## Development guidelines
 
 - Follow the feature layout (`domain` / `data` / `presentation`) and keep dependencies pointing inward.
