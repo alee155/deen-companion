@@ -4,6 +4,7 @@ import 'package:deen_companion/features/favorites/presentation/screens/favorites
 import 'package:deen_companion/features/groups/presentation/screens/create_group_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/join_group_screen.dart';
+import 'package:deen_companion/features/snaps/presentation/screens/snap_flow_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/groups_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/profile_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/settings_screen.dart';
@@ -131,6 +132,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/groups/create',
         builder: (context, state) => const CreateGroupScreen(),
+      ),
+      // Send-a-snap flow (camera → crop → timer → recipients).
+      GoRoute(
+        path: '/groups/:groupId/snap',
+        builder: (context, state) =>
+            SnapFlowScreen(groupId: state.pathParameters['groupId']!),
       ),
       // Group invite links. Android App Links (https://<host>/invite/<token>)
       // land here directly. Declared at the top level: no bottom nav.
