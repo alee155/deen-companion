@@ -11,6 +11,7 @@ import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/grouped_settings_tile.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
+import '../../../auth/presentation/providers/delete_account_controller.dart';
 import '../../../favorites/presentation/providers/favorites_providers.dart';
 import '../../../groups/presentation/providers/groups_providers.dart';
 import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
@@ -72,6 +73,69 @@ class ProfileScreen extends ConsumerWidget {
     if (ok != true) return;
     HapticFeedback.mediumImpact();
     await ref.read(authSessionProvider.notifier).signOut();
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      animationStyle: AppMotion.dialogStyle,
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.parchment,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24.r),
+        ),
+        title: Text(
+          'Delete account?',
+          style: TextStyle(
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
+            color: AppColors.inkText,
+          ),
+        ),
+        content: Text(
+          'This permanently deletes your account and can’t be undone. '
+          'Favorites and settings on this device are kept.',
+          style: TextStyle(
+            fontSize: 13.sp,
+            height: 1.45,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    HapticFeedback.mediumImpact();
+    final messenger = ScaffoldMessenger.of(context);
+    final deleted = await ref
+        .read(deleteAccountControllerProvider.notifier)
+        .delete();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          deleted
+              ? 'Your account has been deleted.'
+              : ref.read(deleteAccountControllerProvider).errorMessage ??
+                    'Couldn’t delete your account. Try again.',
+        ),
+      ),
+    );
   }
 
   @override
@@ -241,8 +305,6 @@ class ProfileScreen extends ConsumerWidget {
                   if (signedIn) ...[
                     SizedBox(height: 24.h),
                     stagger(const GroupedSectionLabel('Account'), 8),
-                    // Reset password and Delete account are UI-only for now:
-                    // no onTap / navigation until their flows are decided.
                     stagger(
                       GroupedCard(
                         children: [
@@ -252,6 +314,10 @@ class ProfileScreen extends ConsumerWidget {
                             iconBg: AppColors.toolsAccentBg,
                             title: 'Reset password',
                             forceChevron: true,
+                            onTap: () => context.push(
+                              '/forgot-password'
+                              '?email=${Uri.encodeQueryComponent(session.email ?? '')}',
+                            ),
                           ),
                           GroupedTile(
                             icon: Icons.delete_outline_rounded,
@@ -260,6 +326,7 @@ class ProfileScreen extends ConsumerWidget {
                             title: 'Delete account',
                             titleColor: AppColors.error,
                             forceChevron: true,
+                            onTap: () => _confirmDelete(context, ref),
                           ),
                           GroupedTile(
                             icon: Icons.logout_rounded,
