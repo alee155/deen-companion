@@ -2,6 +2,7 @@ import 'package:deen_companion/features/audio_player/presentation/screens/audio_
 import 'package:deen_companion/features/explore/presentation/screens/all_features_screen.dart';
 import 'package:deen_companion/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/create_group_screen.dart';
+import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/groups_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/profile_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/settings_screen.dart';
@@ -129,6 +130,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/groups/create',
         builder: (context, state) => const CreateGroupScreen(),
+      ),
+      GoRoute(
+        path: '/groups/:groupId',
+        builder: (context, state) =>
+            GroupDetailScreen(groupId: state.pathParameters['groupId']!),
       ),
       GoRoute(
         path: '/notifications',
