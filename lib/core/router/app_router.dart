@@ -3,6 +3,7 @@ import 'package:deen_companion/features/explore/presentation/screens/all_feature
 import 'package:deen_companion/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/create_group_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
+import 'package:deen_companion/features/groups/presentation/screens/join_group_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/groups_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/profile_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/settings_screen.dart';
@@ -130,6 +131,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/groups/create',
         builder: (context, state) => const CreateGroupScreen(),
+      ),
+      // Group invite links. Android App Links (https://<host>/invite/<token>)
+      // land here directly. Declared at the top level: no bottom nav.
+      GoRoute(
+        path: '/invite/:token',
+        builder: (context, state) =>
+            JoinGroupScreen(token: state.pathParameters['token']!),
       ),
       GoRoute(
         path: '/groups/:groupId',

@@ -41,10 +41,27 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Group invite links (https://deencompanion.dgexpense.com/invite/<token>)
+                 open the app directly once Android verifies the domain via
+                 /.well-known/assetlinks.json (autoVerify). Until then the
+                 browser page's "Open in Deen Companion" button hands the same
+                 URL to this filter. go_router receives the URL and routes it
+                 to /invite/<token>. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="deencompanion.dgexpense.com" android:pathPrefix="/invite"/>
+            </intent-filter>
         </activity>
 
         <!-- Flutter embedding -->
         <meta-data android:name="flutterEmbedding" android:value="2" />
+
+        <!-- Let Flutter hand incoming App Links to the router (default on in
+             current Flutter; explicit so it can't regress). -->
+        <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
 
         <!-- AdMob application ID. This is the real AdMob App ID for this
              project (not a secret — Application IDs are always visible in
