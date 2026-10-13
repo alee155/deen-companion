@@ -45,9 +45,14 @@ import '../../features/auth/presentation/screens/welcome_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/screens/otp_screen.dart';
+import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/prayer_dnd/presentation/screens/prayer_dnd_screen.dart';
 import '../../features/prayer_reminders/presentation/screens/reminders_screen.dart';
+
+/// Only app-internal paths are honoured as post-auth destinations.
+String? safeRedirect(String? raw) =>
+    (raw != null && raw.startsWith('/') && !raw.startsWith('//')) ? raw : null;
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -79,7 +84,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           kind: AppTransitionKind.fadeThrough,
-          child: const LoginScreen(),
+          child: LoginScreen(
+            redirect: safeRedirect(state.uri.queryParameters['redirect']),
+          ),
         ),
       ),
       GoRoute(
@@ -88,13 +95,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           kind: AppTransitionKind.fadeThrough,
-          child: const SignupScreen(),
+          child: SignupScreen(
+            redirect: safeRedirect(state.uri.queryParameters['redirect']),
+          ),
         ),
       ),
       GoRoute(
         path: '/otp',
-        builder: (context, state) =>
-            OtpScreen(email: state.uri.queryParameters['email'] ?? ''),
+        builder: (context, state) => OtpScreen(
+          email: state.uri.queryParameters['email'] ?? '',
+          redirect: safeRedirect(state.uri.queryParameters['redirect']),
+        ),
       ),
       GoRoute(
         path: '/forgot-password',
@@ -102,7 +113,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           context: context,
           state: state,
           kind: AppTransitionKind.fadeThrough,
-          child: const ForgotPasswordScreen(),
+          child: ForgotPasswordScreen(
+            initialEmail: state.uri.queryParameters['email'],
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) => ResetPasswordScreen(
+          email: state.uri.queryParameters['email'] ?? '',
         ),
       ),
       // Group flow screens. Declared at the top level (outside the shell) so

@@ -13,7 +13,10 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/google_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  /// Where to go after signing in (e.g. back to an invite). Null → Home.
+  final String? redirect;
+
+  const LoginScreen({super.key, this.redirect});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -33,7 +36,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -47,12 +50,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     if (_emailError != null || _passwordError != null) return;
 
-    // TODO(auth-backend): AuthRepository.login is a stub until the real
-    // API/flow is provided — this surfaces "coming soon" via the listener
-    // below rather than pretending to sign the user in.
-    ref
+    FocusScope.of(context).unfocus();
+    final outcome = await ref
         .read(loginControllerProvider.notifier)
         .submit(email: email, password: password);
+    if (!mounted) return;
+    switch (outcome) {
+      case LoginOutcome.signedIn:
+        context.go(widget.redirect ?? '/');
+      case LoginOutcome.needsVerification:
+        // Right password, but the email was never verified: finish that first.
+        context.push(
+          '/otp?email=${Uri.encodeQueryComponent(email)}'
+          '${widget.redirect == null ? '' : '&redirect=${Uri.encodeQueryComponent(widget.redirect!)}'}',
+        );
+      case LoginOutcome.failed:
+        break; // the listener below shows the error
+    }
   }
 
   @override
@@ -99,7 +113,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AuthIconBadge().slideIn(RevealDirection.topStart, distance: 18),
+                    const AuthIconBadge().slideIn(
+                      RevealDirection.topStart,
+                      distance: 18,
+                    ),
 
                     Transform.translate(
                       offset: Offset(0, -15.h),
@@ -243,8 +260,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () =>
-                                    context.pushReplacement('/signup'),
+                                ..onTap = () => context.pushReplacement(
+                                  widget.redirect == null
+                                      ? '/signup'
+                                      : '/signup?redirect=${Uri.encodeQueryComponent(widget.redirect!)}',
+                                ),
                             ),
                           ],
                         ),

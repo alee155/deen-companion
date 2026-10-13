@@ -1,30 +1,52 @@
 import '../../../../core/usecase/usecase.dart';
 import '../entities/auth_session.dart';
+import '../entities/auth_user.dart';
+import '../entities/otp_purpose.dart';
 
-/// Contract for the auth backend. No implementation is wired up yet — see
-/// [AuthRepositoryImpl] — this interface exists so the Login/Signup/OTP
-/// screens can be built end-to-end now, and the real API/flow can be
-/// dropped in behind it later without touching any presentation code.
 abstract class AuthRepository {
-  Future<Result<AuthSession>> login({
+  /// Authenticates with email + password. The backend also accepts accounts
+  /// whose email is unverified; for those the returned user has
+  /// `isEmailVerified == false`, the token is held aside (not active), and
+  /// the caller must run OTP verification before the user counts as signed in.
+  Future<Result<AuthUser>> login({
     required String email,
     required String password,
   });
 
-  Future<Result<AuthSession>> signup({
+  /// Creates the account and emails an OTP. The returned user is NOT signed
+  /// in: their token is held aside until [verifyOtp] succeeds.
+  Future<Result<AuthUser>> signup({
     required String name,
     required String email,
     required String password,
   });
 
-  /// Sends a verification code to [email]. Returns once the code has been
-  /// dispatched, not once it's confirmed read.
-  Future<Result<void>> sendOtp({required String email});
-
+  /// Verifies the emailed OTP. On success the held token becomes the active
+  /// access token and the verified user is returned as a session.
   Future<Result<AuthSession>> verifyOtp({
     required String email,
     required String code,
   });
 
-  Future<Result<void>> resendOtp({required String email});
+  /// Emails a fresh OTP for [purpose].
+  Future<Result<void>> resendOtp({
+    required String email,
+    OtpPurpose purpose = OtpPurpose.verifyEmail,
+  });
+
+  /// Starts a password reset: emails a reset OTP. The backend answers the
+  /// same way whether or not the account exists.
+  Future<Result<void>> forgotPassword({required String email});
+
+  Future<Result<void>> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  });
+
+  /// The signed-in user's current profile (requires the access token).
+  Future<Result<AuthUser>> getCurrentUser();
+
+  /// Permanently deletes the signed-in account and clears local tokens.
+  Future<Result<void>> deleteAccount();
 }

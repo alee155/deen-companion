@@ -1,8 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/usecase/usecase.dart';
-import 'auth_gate_provider.dart';
 import 'auth_providers.dart';
-import 'auth_session_provider.dart';
 
 class SignupState {
   final bool isSubmitting;
@@ -15,24 +13,31 @@ class SignupController extends Notifier<SignupState> {
   @override
   SignupState build() => const SignupState();
 
-  /// TODO(auth-backend): wired to [AuthRepository.signup], which is a stub
-  /// until the real API/flow is provided.
-  Future<void> submit({
+  void clearError() {
+    if (state.errorMessage != null) state = const SignupState();
+  }
+
+  /// Registers the account. Returns true when the account was created and an
+  /// OTP is on its way — the caller then moves on to OTP verification. This
+  /// deliberately does NOT sign the user in: the session is only established
+  /// after the OTP is verified (see [OtpController.verify]).
+  Future<bool> submit({
     required String name,
     required String email,
     required String password,
   }) async {
+    if (state.isSubmitting) return false;
     state = const SignupState(isSubmitting: true);
     final result = await ref
         .read(authRepositoryProvider)
         .signup(name: name, email: email, password: password);
     switch (result) {
-      case Success(:final data):
-        await ref.read(authSessionProvider.notifier).signIn(data);
-        await ref.read(authGateProvider).markSeen();
+      case Success():
         state = const SignupState();
+        return true;
       case Error(:final failure):
         state = SignupState(errorMessage: failure.message);
+        return false;
     }
   }
 }

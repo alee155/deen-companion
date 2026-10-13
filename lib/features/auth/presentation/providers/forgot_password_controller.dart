@@ -6,35 +6,28 @@ class ForgotPasswordState {
   final String? errorMessage;
 
   const ForgotPasswordState({this.isSubmitting = false, this.errorMessage});
-
-  ForgotPasswordState copyWith({bool? isSubmitting, String? errorMessage}) {
-    return ForgotPasswordState(
-      isSubmitting: isSubmitting ?? this.isSubmitting,
-      errorMessage: errorMessage,
-    );
-  }
 }
 
-/// Reuses [AuthRepository.sendOtp] — a reset code is the same "send a code
-/// to this email" action as the signup verification step, just entered from
-/// a different screen.
+/// Step 1 of a password reset: ask the backend to email a reset code.
 class ForgotPasswordController extends Notifier<ForgotPasswordState> {
   @override
   ForgotPasswordState build() => const ForgotPasswordState();
 
-  /// TODO(auth-backend): wired to [AuthRepository.sendOtp], which is a stub
-  /// until the real API/flow is provided.
+  /// Returns true when the request was accepted (the backend answers the same
+  /// whether or not the account exists, so this never confirms an account).
   Future<bool> sendResetCode({required String email}) async {
-    state = state.copyWith(isSubmitting: true, errorMessage: null);
-    final result = await ref.read(authRepositoryProvider).sendOtp(email: email);
+    if (state.isSubmitting) return false;
+    state = const ForgotPasswordState(isSubmitting: true);
+    final result = await ref
+        .read(authRepositoryProvider)
+        .forgotPassword(email: email);
     var succeeded = false;
     state = result.when(
       success: (_) {
         succeeded = true;
-        return state.copyWith(isSubmitting: false);
+        return const ForgotPasswordState();
       },
-      failure: (failure) =>
-          state.copyWith(isSubmitting: false, errorMessage: failure.message),
+      failure: (failure) => ForgotPasswordState(errorMessage: failure.message),
     );
     return succeeded;
   }

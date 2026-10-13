@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../domain/entities/otp_purpose.dart';
 import 'auth_gate_provider.dart';
 import 'auth_providers.dart';
 import 'auth_session_provider.dart';
@@ -44,7 +45,8 @@ class OtpState {
 }
 
 class OtpController extends AutoDisposeNotifier<OtpState> {
-  static const _resendCooldown = 30;
+  /// OTPs expire after 10 minutes, so Resend stays locked for that long.
+  static const resendCooldown = 600;
 
   Timer? _ticker;
 
@@ -52,7 +54,7 @@ class OtpController extends AutoDisposeNotifier<OtpState> {
   OtpState build() {
     ref.onDispose(() => _ticker?.cancel());
     _startCooldown();
-    return const OtpState(resendCooldownSeconds: _resendCooldown);
+    return const OtpState(resendCooldownSeconds: resendCooldown);
   }
 
   void clearError() {
@@ -74,9 +76,10 @@ class OtpController extends AutoDisposeNotifier<OtpState> {
     });
   }
 
-  /// TODO(auth-backend): wired to [AuthRepository.verifyOtp], which is a
-  /// stub until the real API/flow is provided.
-  Future<void> verify({required String email, required String code}) async {
+  /// Verifies the OTP and, only on success, completes the sign-in. Returns
+  /// true once the user is signed in.
+  Future<bool> verify({required String email, required String code}) async {
+    if (state.isSubmitting) return false;
     state = state.copyWith(isSubmitting: true, clearError: true);
     final result = await ref
         .read(authRepositoryProvider)
@@ -86,29 +89,34 @@ class OtpController extends AutoDisposeNotifier<OtpState> {
         await ref.read(authSessionProvider.notifier).signIn(data);
         await ref.read(authGateProvider).markSeen();
         state = state.copyWith(isSubmitting: false);
+        return true;
       case Error(:final failure):
         state = state.copyWith(
           isSubmitting: false,
           errorMessage: failure.message,
         );
+        return false;
     }
   }
 
-  /// TODO(auth-backend): wired to [AuthRepository.resendOtp], which is a
-  /// stub until the real API/flow is provided.
-  Future<void> resend({required String email}) async {
+  /// Requests a fresh OTP and restarts the 10-minute countdown. Also used by
+  /// the reset-password screen (with [OtpPurpose.resetPassword]).
+  Future<void> resend({
+    required String email,
+    OtpPurpose purpose = OtpPurpose.verifyEmail,
+  }) async {
     if (!state.canResend) return;
     state = state.copyWith(isResending: true, clearError: true);
     final result = await ref
         .read(authRepositoryProvider)
-        .resendOtp(email: email);
+        .resendOtp(email: email, purpose: purpose);
     var succeeded = false;
     state = result.when(
       success: (_) {
         succeeded = true;
         return state.copyWith(
           isResending: false,
-          resendCooldownSeconds: _resendCooldown,
+          resendCooldownSeconds: resendCooldown,
         );
       },
       failure: (failure) =>

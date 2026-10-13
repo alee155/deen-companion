@@ -12,7 +12,10 @@ import '../widgets/auth_top_header.dart';
 import '../widgets/custom_text_field.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  /// Pre-filled when started from Profile → Reset password.
+  final String? initialEmail;
+
+  const ForgotPasswordScreen({super.key, this.initialEmail});
 
   @override
   ConsumerState<ForgotPasswordScreen> createState() =>
@@ -20,7 +23,9 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
-  final _emailController = TextEditingController();
+  late final _emailController = TextEditingController(
+    text: widget.initialEmail,
+  );
 
   @override
   void dispose() {
@@ -37,15 +42,19 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       return;
     }
 
-    // TODO(auth-backend): AuthRepository.sendOtp is a stub until the real
-    // API/flow is provided. The OTP step is still shown regardless of the
-    // stub's result, so the reset flow can be walked end-to-end before then.
-    await ref
+    FocusScope.of(context).unfocus();
+    final sent = await ref
         .read(forgotPasswordControllerProvider.notifier)
         .sendResetCode(email: email);
-
     if (!mounted) return;
-    context.push('/otp?email=${Uri.encodeQueryComponent(email)}');
+    if (!sent) {
+      final message = ref.read(forgotPasswordControllerProvider).errorMessage;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message ?? 'Something went wrong. Try again.')),
+      );
+      return;
+    }
+    context.push('/reset-password?email=${Uri.encodeQueryComponent(email)}');
   }
 
   @override
@@ -83,7 +92,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AuthIconBadge().slideIn(RevealDirection.topStart, distance: 18),
+                    const AuthIconBadge().slideIn(
+                      RevealDirection.topStart,
+                      distance: 18,
+                    ),
 
                     Transform.translate(
                       offset: Offset(0, -15.h),

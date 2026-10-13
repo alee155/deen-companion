@@ -13,14 +13,17 @@ import '../widgets/auth_top_header.dart';
 class OtpScreen extends ConsumerStatefulWidget {
   final String email;
 
-  const OtpScreen({super.key, required this.email});
+  /// Where to go once verified. Null → Home.
+  final String? redirect;
+
+  const OtpScreen({super.key, required this.email, this.redirect});
 
   @override
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
 }
 
 class _OtpScreenState extends ConsumerState<OtpScreen> {
-  static const _otpLength = 4;
+  static const _otpLength = 4; // backend: "otp must be a 4-digit code"
 
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _focusNodes;
@@ -49,11 +52,29 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     if (_otpCode.length == _otpLength) {
       FocusScope.of(context).unfocus();
-      ref
-          .read(otpControllerProvider.notifier)
-          .verify(email: widget.email, code: _otpCode);
+      _verify();
     }
   }
+
+  Future<void> _verify() async {
+    final ok = await ref
+        .read(otpControllerProvider.notifier)
+        .verify(email: widget.email, code: _otpCode);
+    if (!mounted) return;
+    if (ok) {
+      context.go(widget.redirect ?? '/');
+    } else {
+      // Let the user retype from the start.
+      for (final c in _controllers) {
+        c.clear();
+      }
+      _focusNodes.first.requestFocus();
+    }
+  }
+
+  static String _mmss(int seconds) =>
+      '${(seconds ~/ 60).toString().padLeft(2, '0')}:'
+      '${(seconds % 60).toString().padLeft(2, '0')}';
 
   @override
   void dispose() {
@@ -102,7 +123,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AuthIconBadge().slideIn(RevealDirection.topStart, distance: 18),
+                    const AuthIconBadge().slideIn(
+                      RevealDirection.topStart,
+                      distance: 18,
+                    ),
 
                     Transform.translate(
                       offset: Offset(0, -15.h),
@@ -126,9 +150,9 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                                 height: 1.5,
                               ),
                               children: [
-                                const TextSpan(
+                                TextSpan(
                                   text:
-                                      'Enter the 4-digit verification code we sent to ',
+                                      'Enter the $_otpLength-digit verification code we sent to ',
                                 ),
                                 TextSpan(
                                   text: widget.email,
@@ -152,8 +176,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: List.generate(_otpLength, (index) {
                         return SizedBox(
-                          height: 68.h,
-                          width: 68.h,
+                          height: 64.h,
+                          width: 64.h,
                           child: TextField(
                             controller: _controllers[index],
                             focusNode: _focusNodes[index],
@@ -162,7 +186,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                             maxLength: 1,
                             enabled: !state.isSubmitting,
                             style: TextStyle(
-                              fontSize: 24.sp,
+                              fontSize: 22.sp,
                               fontWeight: FontWeight.bold,
                               color: AppColors.inkText,
                             ),
@@ -171,6 +195,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                             ],
                             decoration: InputDecoration(
                               counterText: '',
+                              contentPadding: EdgeInsets.zero,
                               filled: true,
                               fillColor: AppColors.surfaceLight,
                               border: OutlineInputBorder(
@@ -245,57 +270,44 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     SizedBox(height: 22.h),
 
                     Center(
-                      child: state.resendCooldownSeconds > 0
-                          ? RichText(
-                              text: TextSpan(
-                                style: TextStyle(
-                                  fontSize: 14.sp,
-                                  color: AppColors.textSecondary,
-                                ),
-                                children: [
-                                  const TextSpan(
-                                    text: "Didn't receive the code? ",
-                                  ),
-                                  TextSpan(
-                                    text:
-                                        'Resend in ${state.resendCooldownSeconds}s',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textMuted,
-                                    ),
-                                  ),
-                                ],
+                      child: Column(
+                        children: [
+                          if (state.resendCooldownSeconds > 0)
+                            Text(
+                              'Code expires in '
+                              '${_mmss(state.resendCooldownSeconds)}',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
                               ),
                             )
-                          : Pressable(
-                              onTap: state.isResending
-                                  ? null
-                                  : () => ref
-                                        .read(otpControllerProvider.notifier)
-                                        .resend(email: widget.email),
-                              child: RichText(
-                                text: TextSpan(
-                                  style: TextStyle(
-                                    fontSize: 14.sp,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                  children: [
-                                    const TextSpan(
-                                      text: "Didn't receive the code? ",
-                                    ),
-                                    TextSpan(
-                                      text: state.isResending
-                                          ? 'Resending…'
-                                          : 'Resend',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.emeraldInk,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                          else
+                            Text(
+                              'Your code has expired. Request a new one.',
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: AppColors.textSecondary,
                               ),
                             ),
+                          SizedBox(height: 6.h),
+                          TextButton(
+                            // Null while the 10-minute countdown runs.
+                            onPressed: state.canResend && !state.isSubmitting
+                                ? () => ref
+                                      .read(otpControllerProvider.notifier)
+                                      .resend(email: widget.email)
+                                : null,
+                            child: Text(
+                              state.isResending ? 'Resending…' : 'Resend OTP',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ).slideIn(RevealDirection.bottomStart, delay: seq.next()),
                     SizedBox(height: 18.h),
 

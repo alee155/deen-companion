@@ -13,7 +13,11 @@ import '../widgets/custom_text_field.dart';
 import '../widgets/google_button.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
-  const SignupScreen({super.key});
+  /// Where to land once the account is verified and signed in (e.g. the
+  /// Groups tab when sign-up was started from "Create group"). Null → Home.
+  final String? redirect;
+
+  const SignupScreen({super.key, this.redirect});
 
   @override
   ConsumerState<SignupScreen> createState() => _SignupScreenState();
@@ -23,6 +27,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  static final _emailPattern = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  static const _minPasswordLength = 8;
 
   String? _nameError;
   String? _emailError;
@@ -45,25 +52,31 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       _nameError = name.isEmpty ? 'Enter your name' : null;
       _emailError = email.isEmpty
           ? 'Enter your email'
-          : (!email.contains('@') || !email.contains('.'))
+          : !_emailPattern.hasMatch(email)
           ? 'Enter a valid email'
           : null;
-      _passwordError = password.isEmpty ? 'Create a password' : null;
+      _passwordError = password.isEmpty
+          ? 'Create a password'
+          : password.length < _minPasswordLength
+          ? 'Use at least $_minPasswordLength characters'
+          : null;
     });
     if (_nameError != null || _emailError != null || _passwordError != null) {
       return;
     }
 
-    // TODO(auth-backend): AuthRepository.signup is a stub until the real
-    // API/flow is provided. The OTP step is still shown regardless of the
-    // stub's result, so the flow can be walked end-to-end before then —
-    // no account is actually created yet.
-    await ref
+    FocusScope.of(context).unfocus();
+    final created = await ref
         .read(signupControllerProvider.notifier)
         .submit(name: name, email: email, password: password);
 
-    if (!mounted) return;
-    context.push('/otp?email=${Uri.encodeQueryComponent(email)}');
+    // On failure the controller's errorMessage is shown under the button.
+    if (!mounted || !created) return;
+    final redirect = widget.redirect;
+    context.push(
+      '/otp?email=${Uri.encodeQueryComponent(email)}'
+      '${redirect == null ? '' : '&redirect=${Uri.encodeQueryComponent(redirect)}'}',
+    );
   }
 
   @override
@@ -101,7 +114,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AuthIconBadge().slideIn(RevealDirection.topStart, distance: 18),
+                    const AuthIconBadge().slideIn(
+                      RevealDirection.topStart,
+                      distance: 18,
+                    ),
 
                     Transform.translate(
                       offset: Offset(0, -15.h),
@@ -160,6 +176,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     ).slideIn(RevealDirection.bottom, delay: seq.next()),
                     SizedBox(height: 10.h),
 
+                    if (state.errorMessage != null) ...[
+                      Text(
+                        state.errorMessage!,
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: AppColors.error,
+                        ),
+                      ),
+                      SizedBox(height: 10.h),
+                    ],
                     SizedBox(
                       height: 50.h,
                       width: double.infinity,
@@ -232,8 +258,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () =>
-                                    context.pushReplacement('/login'),
+                                ..onTap = () => context.pushReplacement(
+                                  widget.redirect == null
+                                      ? '/login'
+                                      : '/login?redirect=${Uri.encodeQueryComponent(widget.redirect!)}',
+                                ),
                             ),
                           ],
                         ),
