@@ -8,6 +8,10 @@ class ApiEndpoints {
   /// UmmahAPI
   static const String _ummahBase = 'https://ummahapi.com/api';
 
+  /// Deen Companion backend (auth, groups)
+  static const String deenHost = 'deencompanion.dgexpense.com';
+  static const String _deenBase = 'https://$deenHost/api';
+
   /// Aladhan Prayer Times API
   static const String _aladhanBase = 'https://api.aladhan.com/v1';
 
@@ -196,4 +200,18 @@ class ApiEndpoints {
         )
         .toString();
   }
+
+  // ============================================================
+  // Deen Companion backend
+  // ============================================================
+
+  static const String health = '$_deenBase/health';
+  static const String authRegister = '$_deenBase/auth/register';
+  static const String authLogin = '$_deenBase/auth/login';
+  static const String authResendOtp = '$_deenBase/auth/resend-otp';
+  static const String authForgotPassword = '$_deenBase/auth/forgot-password';
+  static const String authResetPassword = '$_deenBase/auth/reset-password';
+  static const String authMe = '$_deenBase/auth/me';
+  static const String authAccount = '$_deenBase/auth/account';
+  static const String authVerifyEmail = '$_deenBase/auth/verify-email';
 }

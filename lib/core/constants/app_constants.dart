@@ -19,8 +19,8 @@ class AppConstants {
   /// right where each feature needs them.
   static const String authGateSeenKey = 'auth_gate_seen';
 
-  // Persisted signed-in identity (the auth backend is still a stub; these keep
-  // the session across launches once it starts returning real sessions).
+  // Persisted signed-in identity (the access token itself lives in secure
+  // storage — see TokenStorage).
   /// Set once the App Open ad has been shown; it is never shown again.
   static const String appOpenAdShownKey = 'app_open_ad_shown';
 
@@ -42,7 +42,8 @@ class AppConstants {
   static const String recentActivityBoxName = 'recent_activity_box';
   static const String settingsBoxName = 'settings_box';
   static const String dailyContentBoxName = 'daily_content_box';
-  static const String dailyNotificationEnabledKey = 'daily_notification_enabled';
+  static const String dailyNotificationEnabledKey =
+      'daily_notification_enabled';
   static const String reliabilityPromptedAtKey = 'reliability_prompted_at';
   static const String apiCacheBoxName =
       'api_cache_box'; // new — generic response cache

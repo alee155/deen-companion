@@ -2,7 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_constants.dart';
 import '../config/flavor_config.dart';
+import '../storage/token_storage.dart';
 import 'interceptors/api_key_interceptor.dart';
+import 'session_events.dart';
+import 'interceptors/auth_interceptor.dart';
 import 'interceptors/logging_interceptor.dart';
 
 final dioProvider = Provider<Dio>((ref) {
@@ -19,6 +22,13 @@ final dioProvider = Provider<Dio>((ref) {
   );
 
   dio.interceptors.add(ApiKeyInterceptor());
+  dio.interceptors.add(
+    AuthInterceptor(
+      ref.watch(tokenStorageProvider),
+      onUnauthorized: () =>
+          ref.read(unauthorizedEventProvider.notifier).state++,
+    ),
+  );
 
   if (FlavorConfig.instance.enableLogging) {
     dio.interceptors.add(LoggingInterceptor());
