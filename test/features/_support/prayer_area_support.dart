@@ -8,6 +8,8 @@ import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/core/storage/local_storage_service.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times.dart';
+import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times_bundle.dart';
+import 'package:deen_companion/features/prayer_times/presentation/providers/prayer_times_loader.dart';
 import 'package:deen_companion/features/prayer_times/domain/repositories/prayer_times_repository.dart';
 
 /// AppLogger.i asserts FlavorConfig exists; call once from setUpAll.
@@ -146,38 +148,170 @@ PrayerTimes pt(int day, {int fajr = 5}) => PrayerTimes(
   hijriDate: 'h',
 );
 
+/// A bundle around [days] (Karachi / Hanafi, Asia/Karachi).
+PrayerTimesBundle bundleOf(
+  List<PrayerTimes> days, {
+  List<String> lockedDates = const [],
+  bool unverified = false,
+}) => PrayerTimesBundle(
+  location: const PrayerLocation(
+    latitude: 31.52,
+    longitude: 74.36,
+    timezone: 'Asia/Karachi',
+  ),
+  method: const CalculationMethodInfo(
+    id: 1,
+    name: 'University of Islamic Sciences, Karachi',
+    school: 'hanafi',
+    schoolId: 1,
+  ),
+  days: [
+    for (final d in days)
+      PrayerTimesDay(
+        date:
+            '${d.fajr.year}-${d.fajr.month.toString().padLeft(2, '0')}-'
+            '${d.fajr.day.toString().padLeft(2, '0')}',
+        times: d,
+      ),
+  ],
+  lockedDates: lockedDates,
+  isUnverified: unverified,
+);
+
+/// In-memory [PrayerTimesRepository]. Tests either set [bundle] (what the
+/// cache holds) or the older `months` helper, which is flattened into a
+/// bundle so existing reminder / Do Not Disturb tests keep their shape.
 class FakePrayerRepo implements PrayerTimesRepository {
-  PrayerTimes? cached;
-  Result<PrayerTimes> fetchResult = Success(pt(30));
+  PrayerTimesBundle? bundle;
   final Map<int, Result<List<PrayerTimes>>> months = {};
-  final List<({int year, int month, int method, int school})> monthCalls = [];
-  int? lastMethod;
-  int? lastSchool;
-  int fetchCalls = 0;
+
+  Result<PrayerTimesBundle> guestResult = const Error(NetworkFailure());
+  Result<PrayerTimesBundle> putResult = const Error(NetworkFailure());
+  Result<PrayerTimesBundle> accountResult = const Error(NetworkFailure());
+  Result<SavedPrayerSettings> savedResult = const Success(
+    SavedPrayerSettings(),
+  );
+  Result<PrayerTimesBundle> monthResult = const Error(NetworkFailure());
+  Result<List<PrayerCity>> citiesResult = const Success([]);
+  Result<List<CalculationMethodOption>> methodsResult = const Success([]);
+
+  final List<String> calls = [];
+  ({int? method, int? school})? lastSent;
+  Coordinates? lastCoordinates;
 
   @override
-  PrayerTimes? getCachedPrayerTimesForLastKnownLocation() => cached;
-
-  @override
-  Future<Result<PrayerTimes>> fetchAndCachePrayerTimes({
-    required int method,
-    required int school,
-    bool forceRefresh = false,
-  }) async {
-    fetchCalls++;
-    lastMethod = method;
-    lastSchool = school;
-    return fetchResult;
+  PrayerTimesBundle? getCachedBundle() {
+    if (bundle != null) return bundle;
+    final days = <PrayerTimes>[];
+    for (final r in months.values) {
+      if (r case Success(:final data)) {
+        for (final d in data) {
+          if (!days.contains(d)) days.add(d);
+        }
+      }
+    }
+    if (days.isEmpty) return null;
+    days.sort((a, b) => a.fajr.compareTo(b.fajr));
+    return bundleOf(days);
   }
 
   @override
-  Future<Result<List<PrayerTimes>>> fetchMonthCalendar({
+  PrayerTimes? getCachedToday(DateTime now) {
+    final b = getCachedBundle();
+    return b == null || b.days.isEmpty ? null : b.days.first.times;
+  }
+
+  @override
+  Future<Result<PrayerTimesBundle>> fetchGuestTimes(
+    Coordinates coordinates, {
+    int? method,
+    int? school,
+    int days = 31,
+  }) async {
+    calls.add('guestTimes');
+    lastCoordinates = coordinates;
+    lastSent = (method: method, school: school);
+    return guestResult;
+  }
+
+  @override
+  Future<Result<PrayerTimesBundle>> fetchGuestMonth(
+    Coordinates coordinates, {
     required int year,
     required int month,
-    required int method,
-    required int school,
+    int? method,
+    int? school,
   }) async {
-    monthCalls.add((year: year, month: month, method: method, school: school));
-    return months[month] ?? const Error(NetworkFailure());
+    calls.add('guestMonth $year-$month');
+    lastSent = (method: method, school: school);
+    return monthResult;
+  }
+
+  @override
+  Future<Result<SavedPrayerSettings>> getSavedSettings() async {
+    calls.add('getSaved');
+    return savedResult;
+  }
+
+  @override
+  Future<Result<PrayerTimesBundle>> putLocation(
+    Coordinates coordinates, {
+    int? method,
+    int? school,
+  }) async {
+    calls.add('put');
+    lastCoordinates = coordinates;
+    lastSent = (method: method, school: school);
+    return putResult;
+  }
+
+  @override
+  Future<Result<PrayerTimesBundle>> fetchAccountTimes({int days = 31}) async {
+    calls.add('accountTimes');
+    return accountResult;
+  }
+
+  @override
+  Future<Result<PrayerTimesBundle>> fetchAccountMonth({
+    required int year,
+    required int month,
+  }) async {
+    calls.add('accountMonth $year-$month');
+    return monthResult;
+  }
+
+  @override
+  Future<Result<void>> clearAccountLocation() async => const Success(null);
+
+  @override
+  Future<Result<List<PrayerCity>>> searchCities(String query) async {
+    calls.add('cities $query');
+    return citiesResult;
+  }
+
+  @override
+  Future<Result<List<CalculationMethodOption>>> getMethods() async =>
+      methodsResult;
+
+  @override
+  Future<void> clearCache() async => calls.add('clearCache');
+}
+
+/// A loader that never touches location, auth or the network: [refresh]
+/// answers from the fake repository.
+class FakePrayerTimesLoader extends PrayerTimesLoader {
+  final FakePrayerRepo repo;
+  int refreshes = 0;
+  Result<PrayerTimesBundle>? result;
+
+  FakePrayerTimesLoader(super.ref, this.repo);
+
+  @override
+  Future<Result<PrayerTimesBundle>> refresh({bool force = false}) async {
+    refreshes++;
+    final fixed = result;
+    if (fixed != null) return fixed;
+    final cached = repo.getCachedBundle();
+    return cached == null ? const Error(NetworkFailure()) : Success(cached);
   }
 }

@@ -9,10 +9,13 @@ import '../models/auth_user_model.dart';
 /// `{success:false, statusCode, message}` (see [mapDioException]).
 /// The Bearer token is attached by the Dio `AuthInterceptor`, not here.
 abstract class AuthRemoteDataSource {
+  /// [timezone] is the device's IANA name; the backend defaults to `UTC`
+  /// without it, which breaks prayer-time validation.
   Future<AuthTokenResponseModel> register({
     required String name,
     required String email,
     required String password,
+    String? timezone,
   });
 
   Future<AuthTokenResponseModel> login({
@@ -35,6 +38,7 @@ abstract class AuthRemoteDataSource {
 
   /// `GET /auth/me` — `data` is the user object itself (not `{user}`).
   Future<AuthUserModel> getMe();
+
   Future<void> deleteAccount();
 }
 
@@ -47,10 +51,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    String? timezone,
   }) => _data(
     () => dio.post(
       ApiEndpoints.authRegister,
-      data: {'name': name, 'email': email, 'password': password},
+      data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        if (timezone != null) 'timezone': timezone,
+      },
     ),
     AuthTokenResponseModel.fromJson,
   );

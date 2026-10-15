@@ -7,8 +7,8 @@ import 'dnd_window.dart';
 class DndWindowPlanner {
   const DndWindowPlanner._();
 
-  /// How far ahead windows are armed. 28 days always touches at most two
-  /// calendar months, which is what the month-calendar loader fetches.
+  /// How far ahead windows are armed. 28 days fits inside the 31 days the
+  /// server hands out (and the app keeps) in one request.
   static const horizonDays = 28;
 
   static List<DndWindow> build(

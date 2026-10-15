@@ -43,6 +43,7 @@ dependencies:
   flutter_image_compress: ^2.5.1
   camera: ^0.12.1
   crop_your_image: ^2.0.1
+  flutter_timezone: ^5.1.1
 
 dev_dependencies:
   flutter_test:

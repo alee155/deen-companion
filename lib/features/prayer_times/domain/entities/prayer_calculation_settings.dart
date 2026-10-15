@@ -61,6 +61,13 @@ class PrayerCalculationSettings {
     school: AsrSchool.shafi,
   );
 
+  /// What Pakistan follows: the Karachi University of Islamic Sciences
+  /// angles, and the Hanafi Asr that most of the country prays by.
+  static const pakistan = PrayerCalculationSettings(
+    method: PrayerCalculationMethod.karachi,
+    school: AsrSchool.hanafi,
+  );
+
   PrayerCalculationSettings copyWith({
     PrayerCalculationMethod? method,
     AsrSchool? school,

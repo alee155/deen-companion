@@ -6,6 +6,7 @@ import 'package:deen_companion/features/prayer_reminders/data/prayer_alarm_chann
 import 'package:deen_companion/features/prayer_reminders/domain/prayer_reminder_prefs.dart';
 import 'package:deen_companion/features/prayer_reminders/presentation/providers/reminders_provider.dart';
 import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times.dart';
+import 'package:deen_companion/features/prayer_times/presentation/providers/prayer_times_loader.dart';
 import 'package:deen_companion/features/prayer_times/presentation/providers/prayer_times_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,6 +53,9 @@ void main() {
       overrides: [
         localStorageServiceProvider.overrideWithValue(storage),
         prayerTimesRepositoryProvider.overrideWithValue(repo),
+        prayerTimesLoaderProvider.overrideWith(
+          (ref) => FakePrayerTimesLoader(ref, repo),
+        ),
         prayerAlarmChannelProvider.overrideWithValue(channel),
       ],
     );

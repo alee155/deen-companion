@@ -10,6 +10,7 @@ import '../../../../core/location/location_service.dart';
 import '../../../../core/permissions/camera_permission_service.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../audio_player/domain/audio_track.dart';
+import '../../../prayer_logs/presentation/widgets/prayer_log_card.dart';
 import '../../../reliability_setup/domain/reliability_requirement.dart';
 import '../../../reliability_setup/presentation/providers/reliability_providers.dart';
 import '../../../reliability_setup/presentation/widgets/reliability_banner.dart';
@@ -153,6 +154,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     SizedBox(height: 22.h),
                     const ReliabilityBanner(),
+                    const PrayerLogCard(),
                     _SectionHeader(
                       title: 'Categories',
                       onSeeAll: () => context.push('/explore'),

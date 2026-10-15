@@ -2,8 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/storage/local_storage_service.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
+import '../../../prayer_times/presentation/providers/prayer_times_loader.dart'
+    show prayerTimesUpdatedProvider;
 import '../../../prayer_times/presentation/providers/upcoming_prayer_days.dart';
 import '../../data/prayer_alarm_channel.dart';
 import '../../domain/prayer_reminder_prefs.dart';
@@ -73,10 +76,42 @@ class ReminderSyncDisabled extends ReminderSyncResult {
 /// The native side re-arms whatever is still in the future (on boot, and via
 /// a 12-hour backstop worker) but never fetches prayer times itself — so Dart
 /// pushes a multi-day window and refreshes it whenever the app opens, the
-/// toggle changes, or the calculation settings change.
+/// toggle changes, or the prayer times themselves change (a new location,
+/// method or school, or the server recalculating): see
+/// [prayerTimesUpdatedProvider].
 class PrayerReminderService {
   final Ref ref;
-  const PrayerReminderService(this.ref);
+  PrayerReminderService(this.ref);
+
+  static const _tag = 'REMINDERS';
+
+  bool _resyncing = false;
+  bool _resyncAgain = false;
+
+  /// The prayer times changed: re-arm so the alarms match them. Overlapping
+  /// triggers collapse into one extra run, and nothing happens when the
+  /// feature is off.
+  Future<void> onTimesChanged() async {
+    FlowLog.log(
+      _tag,
+      'PRAYER TIMES CHANGED -> ${ref.read(remindersEnabledProvider) ? 're-arming the alarms' : 'reminders are off, nothing to re-arm'}',
+    );
+    if (_resyncing) {
+      _resyncAgain = true;
+      return;
+    }
+    _resyncing = true;
+    try {
+      do {
+        _resyncAgain = false;
+        await syncIfEnabled();
+      } while (_resyncAgain);
+    } catch (error, stackTrace) {
+      AppLogger.e('Prayer reminders re-arm failed', error, stackTrace);
+    } finally {
+      _resyncing = false;
+    }
+  }
 
   /// How far ahead to arm alarms. Long enough that a user who doesn't open
   /// the app for a few days still gets reminded, short enough that timings
@@ -85,6 +120,7 @@ class PrayerReminderService {
 
   Future<ReminderSyncResult> syncIfEnabled() async {
     if (!ref.read(remindersEnabledProvider)) {
+      FlowLog.log(_tag, 'SYNC SKIPPED: reminders are switched off');
       return const ReminderSyncDisabled();
     }
     return sync();
@@ -93,36 +129,55 @@ class PrayerReminderService {
   Future<ReminderSyncResult> sync() async {
     final channel = ref.read(prayerAlarmChannelProvider);
     final now = DateTime.now();
+    FlowLog.log(
+      _tag,
+      'SYNC STARTED -> getting the next $_windowDays days of times',
+    );
 
     final loaded = await loadUpcomingPrayerDays(
       ref,
       now: now,
       windowDays: _windowDays,
     );
-    if (loaded.error != null) return ReminderSyncFailed(loaded.error!);
+    if (loaded.error != null) {
+      FlowLog.error(_tag, 'SYNC FAILED: no prayer times', loaded.error);
+      return ReminderSyncFailed(loaded.error!);
+    }
     final days = loaded.days;
 
     final prefs = ref.read(prayerReminderPrefsProvider);
     if (!prefs.values.any((p) => p.enabled)) {
       // Every prayer switched off: nothing to arm, and anything armed
       // earlier must go.
+      FlowLog.log(_tag, 'NO PRAYER SELECTED -> CANCELLING ALL ALARMS');
       await channel.cancelAll();
       return const ReminderSyncScheduled(0, 0);
     }
 
     final entries = _buildEntries(days, now, prefs);
     if (entries.isEmpty) {
+      FlowLog.error(_tag, 'SYNC FAILED: no upcoming prayer to remind about');
       return const ReminderSyncFailed(
         "Couldn't work out any upcoming prayer times to remind you about.",
       );
     }
+    FlowLog.data(_tag, 'PLANNED ALARMS', {
+      'count': entries.length,
+      'first':
+          '${entries.first.prayerName} at ${entries.first.triggerAt.toIso8601String()}',
+      'last':
+          '${entries.last.prayerName} at ${entries.last.triggerAt.toIso8601String()}',
+      'snoozeOnFor': entries.where((e) => e.snoozeEnabled).length,
+    });
 
     final armed = await channel.pushSchedule(entries);
     if (armed == null) {
+      FlowLog.error(_tag, 'NATIVE SCHEDULER UNAVAILABLE on this device');
       return const ReminderSyncFailed(
         'Prayer reminders are not available on this device.',
       );
     }
+    FlowLog.log(_tag, 'NATIVE SCHEDULER ARMED $armed ALARMS');
 
     final dayCount = entries
         .map(
@@ -135,6 +190,7 @@ class PrayerReminderService {
   }
 
   Future<void> cancelAll() async {
+    FlowLog.log(_tag, 'CANCELLING ALL ALARMS (reminders switched off)');
     await ref.read(prayerAlarmChannelProvider).cancelAll();
   }
 
@@ -179,7 +235,10 @@ class PrayerReminderService {
 }
 
 final prayerReminderServiceProvider = Provider<PrayerReminderService>((ref) {
-  return PrayerReminderService(ref);
+  final service = PrayerReminderService(ref);
+  // The times the alarms were built from changed: re-arm.
+  ref.listen(prayerTimesUpdatedProvider, (_, _) => service.onTimesChanged());
+  return service;
 });
 
 // ── Per-prayer preferences ───────────────────────────────────────────────

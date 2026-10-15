@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/error/failures.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../../core/permissions/widgets/permission_request_sheet.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -15,6 +16,7 @@ import '../../../../shared/widgets/islamic_ornaments.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../domain/entities/prayer_times.dart';
 import '../providers/prayer_calculation_settings_provider.dart';
+import '../providers/prayer_times_loader.dart';
 import '../providers/prayer_times_provider.dart';
 import '../widgets/monthly_prayer_calendar.dart';
 import '../widgets/prayer_hero.dart';
@@ -90,6 +92,24 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(prayerTimesNotifierProvider);
+
+    // A method/school change that left some days as they were (a prayer is
+    // already logged on them): say so once, then reset.
+    ref.listen<List<String>>(lockedDatesNoticeProvider, (_, locked) {
+      if (locked.isEmpty) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              'Today’s times stay as they were; the change applies from '
+              'tomorrow.',
+            ),
+          ),
+        );
+      ref.read(lockedDatesNoticeProvider.notifier).state = const [];
+    });
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
@@ -288,6 +308,16 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
       ),
       SliverToBoxAdapter(
         child: Padding(
+          padding: EdgeInsets.fromLTRB(24.w, 4.h, 24.w, 0),
+          child: Text(
+            _sourceNote(),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11.5.sp, color: AppColors.textMuted),
+          ),
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: Padding(
           padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 0),
           child: const BannerAdWidget(
             margin: EdgeInsets.symmetric(vertical: 4),
@@ -453,6 +483,13 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
     ];
   }
 
+  /// How the shown times were calculated. Unverified fallback times say so.
+  String _sourceNote() {
+    final label = ref.watch(prayerSourceLabelProvider);
+    return label ??
+        'Calculated times — they will update once our server answers.';
+  }
+
   List<Widget> _errorSlivers(Object error) {
     return [
       SliverToBoxAdapter(
@@ -469,10 +506,22 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
       SliverPadding(
         padding: EdgeInsets.all(20.w),
         sliver: SliverToBoxAdapter(
-          child: FailureView(
-            failure: failureFrom(error),
-            onRetry: () =>
-                ref.read(prayerTimesNotifierProvider.notifier).refresh(),
+          child: Column(
+            children: [
+              FailureView(
+                failure: failureFrom(error),
+                onRetry: () =>
+                    ref.read(prayerTimesNotifierProvider.notifier).refresh(),
+              ),
+              if (error is LocationFailure) ...[
+                SizedBox(height: 8.h),
+                TextButton.icon(
+                  onPressed: () => context.push('/prayer-times/city'),
+                  icon: const Icon(Icons.location_city_rounded),
+                  label: const Text('Choose a city instead'),
+                ),
+              ],
+            ],
           ),
         ),
       ),

@@ -5,12 +5,14 @@ class AuthUserModel {
   final String name;
   final String email;
   final bool isEmailVerified;
+  final String? timezone;
 
   const AuthUserModel({
     required this.id,
     required this.name,
     required this.email,
     required this.isEmailVerified,
+    this.timezone,
   });
 
   factory AuthUserModel.fromJson(Map<String, dynamic> json) => AuthUserModel(
@@ -18,6 +20,7 @@ class AuthUserModel {
     name: json['name'] as String? ?? '',
     email: json['email'] as String,
     isEmailVerified: json['isEmailVerified'] as bool? ?? false,
+    timezone: json['timezone'] as String?,
   );
 
   AuthUser toEntity() => AuthUser(
@@ -25,6 +28,7 @@ class AuthUserModel {
     name: name,
     email: email,
     isEmailVerified: isEmailVerified,
+    timezone: timezone,
   );
 }
 

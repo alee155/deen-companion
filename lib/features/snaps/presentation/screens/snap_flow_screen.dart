@@ -66,8 +66,9 @@ class _SnapFlowScreenState extends ConsumerState<SnapFlowScreen> {
     final Widget body = switch (s.step) {
       SnapStep.capture => CaptureView(
         key: const ValueKey('capture'),
-        groupId: widget.groupId,
-        groupName: groupName,
+        title: groupName,
+        isProcessing: s.isProcessing,
+        onCaptured: _composer.onCaptured,
         onClose: _back,
       ),
       SnapStep.crop => CropView(
