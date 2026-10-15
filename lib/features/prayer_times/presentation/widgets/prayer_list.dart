@@ -27,6 +27,7 @@ class PrayerTimeline extends StatelessWidget {
               _Row(
                 name: rows[i].key,
                 time: rows[i].value,
+                clock: times.wallClock(rows[i].value),
                 passed: !rows[i].value.isAfter(t),
                 isCurrent: rows[i].key == current,
                 isNext: next.value == rows[i].value,
@@ -43,12 +44,16 @@ class PrayerTimeline extends StatelessWidget {
 class _Row extends StatelessWidget {
   final PrayerName name;
   final DateTime time;
+
+  /// [time] as the clock reading at the prayer location.
+  final DateTime clock;
   final bool passed, isCurrent, isNext, isLast;
   final Duration remaining;
 
   const _Row({
     required this.name,
     required this.time,
+    required this.clock,
     required this.passed,
     required this.isCurrent,
     required this.isNext,
@@ -208,7 +213,7 @@ class _Row extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      fmtClock(time),
+                      fmtClock(clock),
                       style: TextStyle(
                         fontSize: 16.sp,
                         fontWeight: FontWeight.w700,

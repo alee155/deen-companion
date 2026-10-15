@@ -9,22 +9,29 @@ import 'package:deen_companion/features/prayer_logs/domain/group_member_prayers.
 import 'package:deen_companion/features/prayer_logs/domain/prayer_log.dart';
 import 'package:deen_companion/features/prayer_logs/domain/prayer_logs_repository.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/providers/prayer_logs_providers.dart';
-import 'package:deen_companion/features/prayer_logs/presentation/providers/prayer_times_sync_service.dart';
+import 'package:deen_companion/features/prayer_times/presentation/providers/prayer_times_loader.dart';
 import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times.dart';
+import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times_bundle.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/in_memory_storage_service.dart';
+import '../../_support/prayer_area_support.dart';
 import '../../auth/_support/auth_fakes.dart';
 
-class _FakeSync extends PrayerTimesSyncService {
+/// Stands in for the real loader: counts refreshes and answers with a fixed
+/// result, never touching location, auth or the network.
+class _FakeLoader extends PrayerTimesLoader {
   int calls = 0;
-  final int result;
-  _FakeSync(super.ref, {this.result = 8});
+  final bool succeeds;
+  _FakeLoader(super.ref, {this.succeeds = true});
+
   @override
-  Future<int> sync() async {
+  Future<Result<PrayerTimesBundle>> refresh({bool force = false}) async {
     calls++;
-    return result;
+    return succeeds
+        ? Success(bundleOf([pt(14)]))
+        : const Error(NetworkFailure());
   }
 }
 
@@ -77,10 +84,10 @@ final _open = CurrentPrayerState(
 void main() {
   setUpAll(() => FlavorConfig(flavor: Flavor.dev, enableLogging: false));
 
-  ({ProviderContainer c, List<_FakeSync> syncs}) make(
+  ({ProviderContainer c, List<_FakeLoader> syncs}) make(
     _FakeLogs logs, {
     bool signedIn = true,
-    int syncResult = 8,
+    bool syncSucceeds = true,
   }) {
     final storage = InMemoryStorageService();
     if (signedIn) {
@@ -90,15 +97,15 @@ void main() {
         'u1',
       );
     }
-    final syncs = <_FakeSync>[];
+    final syncs = <_FakeLoader>[];
     final c = ProviderContainer(
       overrides: [
         localStorageServiceProvider.overrideWithValue(storage),
         authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
         tokenStorageProvider.overrideWithValue(MemoryTokens(access: 'tok')),
         prayerLogsRepositoryProvider.overrideWithValue(logs),
-        prayerTimesSyncServiceProvider.overrideWith((ref) {
-          final s = _FakeSync(ref, result: syncResult);
+        prayerTimesLoaderProvider.overrideWith((ref) {
+          final s = _FakeLoader(ref, succeeds: syncSucceeds);
           syncs.add(s);
           return s;
         }),
@@ -117,22 +124,28 @@ void main() {
     expect(t.syncs, isEmpty);
   });
 
-  test('not synced: syncs once, then asks the server again', () async {
-    final logs = _FakeLogs([Success(_empty), Success(_open)]);
-    final t = make(logs);
-    final s = await t.c.read(currentPrayerProvider.future);
-    expect(s.current, isNotNull);
-    expect(t.syncs.single.calls, 1);
-    expect(logs.calls, 2);
-  });
+  test(
+    'not synced: sends the location once, then asks the server again',
+    () async {
+      final logs = _FakeLogs([Success(_empty), Success(_open)]);
+      final t = make(logs);
+      final s = await t.c.read(currentPrayerProvider.future);
+      expect(s.current, isNotNull);
+      expect(t.syncs.single.calls, 1);
+      expect(logs.calls, 2);
+    },
+  );
 
-  test('not synced and nothing uploaded: no second request', () async {
-    final logs = _FakeLogs([Success(_empty)]);
-    final t = make(logs, syncResult: 0);
-    final s = await t.c.read(currentPrayerProvider.future);
-    expect(s.isNotSynced, isTrue);
-    expect(logs.calls, 1);
-  });
+  test(
+    'not synced and the location could not be sent: no second request',
+    () async {
+      final logs = _FakeLogs([Success(_empty)]);
+      final t = make(logs, syncSucceeds: false);
+      final s = await t.c.read(currentPrayerProvider.future);
+      expect(s.isNotSynced, isTrue);
+      expect(logs.calls, 1);
+    },
+  );
 
   test('failure surfaces as the provider error', () async {
     final t = make(_FakeLogs([const Error(NetworkFailure())]));

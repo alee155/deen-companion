@@ -9,11 +9,6 @@ import 'prayer_log_models.dart';
 
 /// `/api/prayers/*`. The Bearer token is attached by the Dio `AuthInterceptor`.
 abstract class PrayerLogsRemoteDataSource {
-  /// `PUT /prayers/times` — [days] are 1–8 entries from
-  /// `PrayerTimesSyncPayload.build`. A day that already has a log is locked:
-  /// the server answers 409 `PRAYER_DAY_LOCKED` and applies nothing.
-  Future<void> syncTimes(List<Map<String, String>> days);
-
   /// `POST /prayers/logs` — multipart with a single `file` field (JPEG, PNG
   /// or WebP, ≤ 5 MB). Nothing else is sent: the server picks the prayer from
   /// its own clock, so the client can't claim a different one.
@@ -49,15 +44,6 @@ abstract class PrayerLogsRemoteDataSource {
 class PrayerLogsRemoteDataSourceImpl implements PrayerLogsRemoteDataSource {
   final Dio dio;
   const PrayerLogsRemoteDataSourceImpl(this.dio);
-
-  @override
-  Future<void> syncTimes(List<Map<String, String>> days) async {
-    try {
-      await dio.put(ApiEndpoints.prayerTimesSync, data: {'days': days});
-    } on DioException catch (e) {
-      throw mapDioException(e);
-    }
-  }
 
   @override
   Future<PrayerLog> logPrayer(String imagePath) => _data(

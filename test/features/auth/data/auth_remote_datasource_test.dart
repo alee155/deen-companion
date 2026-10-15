@@ -97,19 +97,6 @@ void main() {
     expect(r.user.timezone, 'Asia/Karachi');
   });
 
-  test('updateTimezone patches the IANA name', () async {
-    when(
-      () => dio.patch(any(), data: any(named: 'data')),
-    ).thenAnswer((_) async => okResponse({'success': true}));
-    await ds.updateTimezone('Asia/Karachi');
-    verify(
-      () => dio.patch(
-        ApiEndpoints.userTimezone,
-        data: {'timezone': 'Asia/Karachi'},
-      ),
-    ).called(1);
-  });
-
   test('verifyEmail posts email + otp and parses the user', () async {
     stubPost({
       'success': true,

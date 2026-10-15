@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../profile/presentation/screens/settings_screen.dart';
+import '../providers/manual_city_provider.dart';
 import '../providers/prayer_calculation_settings_provider.dart';
 import '../providers/prayer_times_provider.dart';
 import 'calculation_settings_sheets.dart';
@@ -105,6 +106,16 @@ class _PrayerSettingsSheet extends ConsumerWidget {
               'Asr school',
               s.school.label,
               () => showAsrSchoolPicker(context, ref),
+            ),
+            tile(
+              Icons.location_city_rounded,
+              'Location',
+              ref.watch(manualCityProvider)?.label ??
+                  'Using your device location',
+              () {
+                Navigator.of(context).pop();
+                context.push('/prayer-times/city');
+              },
             ),
             tile(
               Icons.notifications_active_rounded,

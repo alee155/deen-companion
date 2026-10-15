@@ -106,10 +106,6 @@ class AuthRepositoryImpl implements AuthRepository {
       _guard('getCurrentUser', () async => (await remote.getMe()).toEntity());
 
   @override
-  Future<Result<void>> updateTimezone(String timezone) =>
-      _guard('updateTimezone', () => remote.updateTimezone(timezone));
-
-  @override
   Future<Result<void>> deleteAccount() => _guard('deleteAccount', () async {
     await remote.deleteAccount();
     await tokenStorage.clear();

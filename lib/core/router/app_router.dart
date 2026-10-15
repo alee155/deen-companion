@@ -5,6 +5,7 @@ import 'package:deen_companion/features/groups/presentation/screens/create_group
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/join_group_screen.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_log_flow_screen.dart';
+import 'package:deen_companion/features/prayer_times/presentation/screens/city_picker_screen.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_logs_screen.dart';
 import 'package:deen_companion/features/snaps/presentation/screens/snap_flow_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/groups_screen.dart';
@@ -150,6 +151,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/prayer-log/new',
         builder: (context, state) => const PrayerLogFlowScreen(),
+      ),
+      // City picker for prayer times (when location isn't shared).
+      GoRoute(
+        path: '/prayer-times/city',
+        builder: (context, state) => const CityPickerScreen(),
       ),
       // Group invite links. Android App Links (https://<host>/invite/<token>)
       // land here directly. Declared at the top level: no bottom nav.

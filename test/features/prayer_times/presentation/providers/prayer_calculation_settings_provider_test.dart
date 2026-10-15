@@ -14,8 +14,8 @@ void main() {
   late PaStorage storage;
 
   /// [quick] is the timezone-derived country and [country] what the device
-  /// location resolves to; both default to "unknown", so the world defaults
-  /// apply whatever timezone this machine is in.
+  /// location resolves to; both default to "unknown" so the result does not
+  /// depend on the machine's timezone.
   ProviderContainer make({String? quick, Future<String?> Function()? country}) {
     final c = ProviderContainer(
       overrides: [
@@ -34,208 +34,165 @@ void main() {
     storage.boxes[AppConstants.settingsBoxName] ?? {},
   );
 
-  /// Lets the notifier's background work (microtasks, storage writes) finish.
   Future<void> settle() =>
       Future<void>.delayed(const Duration(milliseconds: 20));
 
+  PrayerCalculationSettingsNotifier notifierOf(ProviderContainer c) =>
+      c.read(prayerCalculationSettingsProvider.notifier);
+
   setUp(() => storage = PaStorage());
 
-  test('defaults to the MWL / Shafi fallback when nothing stored', () {
-    final s = make().read(prayerCalculationSettingsProvider);
-    expect(s.method, PrayerCalculationMethod.muslimWorldLeague);
-    expect(s.school, AsrSchool.shafi);
-  });
-
-  test('restores stored ids', () {
-    storage.boxes[AppConstants.settingsBoxName] = {
-      'prayer_calculation_method': 1,
-      'prayer_asr_school': 1,
-    };
-    final s = make().read(prayerCalculationSettingsProvider);
-    expect(s.method, PrayerCalculationMethod.karachi);
-    expect(s.school, AsrSchool.hanafi);
-  });
-
-  test('unknown / retired ids (6, 99, -1) fall back instead of crashing', () {
-    for (final bad in [6, 99, -1]) {
-      storage.boxes[AppConstants.settingsBoxName] = {
-        'prayer_calculation_method': bad,
-        'prayer_asr_school': bad,
-      };
+  group('what is shown when nothing is decided', () {
+    test('unknown country follows the server default: Karachi / Hanafi', () {
       final s = make().read(prayerCalculationSettingsProvider);
-      expect(s.method, PrayerCalculationSettings.fallback.method);
-      expect(s.school, PrayerCalculationSettings.fallback.school);
-    }
-  });
+      expect(s.method, PrayerCalculationMethod.karachi);
+      expect(s.school, AsrSchool.hanafi);
+    });
 
-  test('setMethod updates state and persists only the method id', () async {
-    final c = make();
-    await c
-        .read(prayerCalculationSettingsProvider.notifier)
-        .setMethod(PrayerCalculationMethod.ummAlQura);
-    expect(
-      c.read(prayerCalculationSettingsProvider).method,
-      PrayerCalculationMethod.ummAlQura,
-    );
-    final box = storage.boxes[AppConstants.settingsBoxName]!;
-    expect(box['prayer_calculation_method'], 4);
-    expect(box.containsKey('prayer_asr_school'), isFalse);
-  });
+    test('a Pakistani timezone shows Karachi / Hanafi at once', () {
+      final s = make(quick: 'PK').read(prayerCalculationSettingsProvider);
+      expect(s.method, PrayerCalculationMethod.karachi);
+      expect(s.school, AsrSchool.hanafi);
+    });
 
-  test('setSchool keeps method and persists school id', () async {
-    final c = make();
-    final n = c.read(prayerCalculationSettingsProvider.notifier);
-    await n.setMethod(PrayerCalculationMethod.egyptian);
-    await n.setSchool(AsrSchool.hanafi);
-    final s = c.read(prayerCalculationSettingsProvider);
-    expect(s.method, PrayerCalculationMethod.egyptian);
-    expect(s.school, AsrSchool.hanafi);
-    expect(
-      storage.boxes[AppConstants.settingsBoxName]!['prayer_asr_school'],
-      1,
-    );
-  });
+    test('a known country outside Pakistan shows MWL / Shafi', () async {
+      final c = make(country: () async => 'AE');
+      c.read(prayerCalculationSettingsProvider);
+      await settle();
+      final s = c.read(prayerCalculationSettingsProvider);
+      expect(s.method, PrayerCalculationMethod.muslimWorldLeague);
+      expect(s.school, AsrSchool.shafi);
+    });
 
-  test('persisted choice survives a fresh container', () async {
-    final c1 = make();
-    await c1
-        .read(prayerCalculationSettingsProvider.notifier)
-        .setMethod(PrayerCalculationMethod.turkeyDiyanet);
-    final c2 = make();
-    expect(
-      c2.read(prayerCalculationSettingsProvider).method,
-      PrayerCalculationMethod.turkeyDiyanet,
-    );
-  });
-
-  group('regional defaults', () {
-    test(
-      'a Pakistani timezone starts on Karachi / Hanafi and saves both',
-      () async {
-        final c = make(quick: 'PK');
-        final s = c.read(prayerCalculationSettingsProvider);
-        expect(s.method, PrayerCalculationMethod.karachi);
-        expect(s.school, AsrSchool.hanafi);
-        await settle();
-        expect(saved()['prayer_calculation_method'], 1);
-        expect(saved()['prayer_asr_school'], 1);
-      },
-    );
-
-    test('only the unchosen setting gets the regional default', () async {
-      // Chose Hanafi already; the method is still unchosen.
-      storage.boxes[AppConstants.settingsBoxName] = {'prayer_asr_school': 1};
+    test('defaults are never saved', () async {
       final c = make(quick: 'PK');
+      c.read(prayerCalculationSettingsProvider);
+      await settle();
+      expect(saved(), isEmpty);
+      expect(notifierOf(c).choice.methodId, isNull);
+      expect(notifierOf(c).choice.schoolId, isNull);
+    });
+
+    test('a failed country lookup keeps the default', () async {
+      final c = make(country: () async => throw Exception('geocoder down'));
+      c.read(prayerCalculationSettingsProvider);
+      await settle();
       expect(
         c.read(prayerCalculationSettingsProvider).method,
         PrayerCalculationMethod.karachi,
       );
-      await settle();
-      expect(saved()['prayer_calculation_method'], 1);
+    });
+  });
 
-      // Chose Egyptian + Shafi on purpose: untouched.
+  group('stored decisions', () {
+    test('restores stored ids', () {
       storage.boxes[AppConstants.settingsBoxName] = {
         'prayer_calculation_method': 5,
         'prayer_asr_school': 0,
       };
-      final c2 = make(quick: 'PK');
-      final s = c2.read(prayerCalculationSettingsProvider);
+      final s = make(quick: 'PK').read(prayerCalculationSettingsProvider);
       expect(s.method, PrayerCalculationMethod.egyptian);
       expect(s.school, AsrSchool.shafi);
-      await settle();
-      expect(saved()['prayer_calculation_method'], 5);
-      expect(saved()['prayer_asr_school'], 0);
     });
 
-    test(
-      'a user-chosen method in Pakistan is kept, school still defaults',
-      () async {
+    test('unknown / retired ids (6, 99, -1) count as undecided', () {
+      for (final bad in [6, 99, -1]) {
         storage.boxes[AppConstants.settingsBoxName] = {
-          'prayer_calculation_method': 3,
+          'prayer_calculation_method': bad,
+          'prayer_asr_school': bad,
         };
-        final c = make(quick: 'PK');
-        final s = c.read(prayerCalculationSettingsProvider);
-        expect(s.method, PrayerCalculationMethod.muslimWorldLeague);
-        expect(s.school, AsrSchool.hanafi);
-      },
-    );
-
-    test(
-      'no timezone hint: location in Pakistan switches the defaults',
-      () async {
-        final c = make(country: () async => 'PK');
-        expect(
-          c.read(prayerCalculationSettingsProvider).method,
-          PrayerCalculationMethod.muslimWorldLeague,
-          reason: 'world defaults until the country is known',
-        );
-        await settle();
-        final s = c.read(prayerCalculationSettingsProvider);
-        expect(s.method, PrayerCalculationMethod.karachi);
-        expect(s.school, AsrSchool.hanafi);
-        expect(saved()['prayer_calculation_method'], 1);
-      },
-    );
-
-    test(
-      'another country keeps the world defaults and saves nothing',
-      () async {
-        final c = make(country: () async => 'AE');
-        await settle();
-        final s = c.read(prayerCalculationSettingsProvider);
-        expect(s.method, PrayerCalculationMethod.muslimWorldLeague);
-        expect(s.school, AsrSchool.shafi);
-        expect(saved(), isEmpty);
-      },
-    );
-
-    test(
-      'unknown country saves nothing, so it is retried next launch',
-      () async {
         final c = make();
-        await settle();
-        c.read(prayerCalculationSettingsProvider);
-        await settle();
-        expect(saved(), isEmpty);
-      },
-    );
+        final s = c.read(prayerCalculationSettingsProvider);
+        expect(s.method, PrayerCalculationSettings.pakistan.method);
+        expect(s.school, PrayerCalculationSettings.pakistan.school);
+        expect(notifierOf(c).choice.methodId, isNull);
+      }
+    });
 
-    test('a failed country lookup is ignored', () async {
-      final c = make(country: () async => throw Exception('geocoder down'));
+    test('a decision beats the regional default, per setting', () async {
+      storage.boxes[AppConstants.settingsBoxName] = {'prayer_asr_school': 0};
+      final c = make(country: () async => 'AE');
       c.read(prayerCalculationSettingsProvider);
       await settle();
-      expect(saved(), isEmpty);
-    });
-
-    test('a manual choice made while the country resolves wins', () async {
-      final gate = Completer<String?>();
-      final c = make(country: () => gate.future);
-      final n = c.read(prayerCalculationSettingsProvider.notifier);
-      await n.setMethod(PrayerCalculationMethod.egyptian);
-
-      gate.complete('PK');
-      await settle();
-
       final s = c.read(prayerCalculationSettingsProvider);
-      expect(s.method, PrayerCalculationMethod.egyptian);
-      expect(s.school, AsrSchool.hanafi, reason: 'the unchosen one defaults');
-      expect(saved()['prayer_calculation_method'], 5);
+      expect(s.school, AsrSchool.shafi, reason: 'chosen');
+      expect(s.method, PrayerCalculationMethod.muslimWorldLeague);
     });
+  });
 
+  group('user changes', () {
     test(
-      'later choices are never overridden by the regional default',
+      'setMethod updates state, saves only the method, flags a change',
       () async {
-        final c = make(quick: 'PK');
-        await settle();
-        await c
-            .read(prayerCalculationSettingsProvider.notifier)
-            .setSchool(AsrSchool.shafi);
-        final c2 = make(quick: 'PK');
+        final c = make();
+        await notifierOf(c).setMethod(PrayerCalculationMethod.ummAlQura);
         expect(
-          c2.read(prayerCalculationSettingsProvider).school,
-          AsrSchool.shafi,
+          c.read(prayerCalculationSettingsProvider).method,
+          PrayerCalculationMethod.ummAlQura,
         );
+        expect(saved()['prayer_calculation_method'], 4);
+        expect(saved().containsKey('prayer_asr_school'), isFalse);
+        expect(notifierOf(c).choice.changedByUser, isTrue);
       },
     );
+
+    test('each change bumps the revision so times refetch', () async {
+      final c = make();
+      expect(c.read(prayerSettingsRevisionProvider), 0);
+      await notifierOf(c).setMethod(PrayerCalculationMethod.egyptian);
+      await notifierOf(c).setSchool(AsrSchool.hanafi);
+      expect(c.read(prayerSettingsRevisionProvider), 2);
+    });
+
+    test('setSchool keeps the method and persists the school id', () async {
+      final c = make();
+      final n = notifierOf(c);
+      await n.setMethod(PrayerCalculationMethod.egyptian);
+      await n.setSchool(AsrSchool.hanafi);
+      final s = c.read(prayerCalculationSettingsProvider);
+      expect(s.method, PrayerCalculationMethod.egyptian);
+      expect(s.school, AsrSchool.hanafi);
+      expect(saved()['prayer_asr_school'], 1);
+    });
+
+    test('a choice survives a fresh container', () async {
+      final c1 = make();
+      await notifierOf(c1).setMethod(PrayerCalculationMethod.turkeyDiyanet);
+      final c2 = make();
+      expect(
+        c2.read(prayerCalculationSettingsProvider).method,
+        PrayerCalculationMethod.turkeyDiyanet,
+      );
+    });
+
+    test('markSynced clears the pending-change flag', () async {
+      final c = make();
+      await notifierOf(c).setSchool(AsrSchool.shafi);
+      await notifierOf(c).markSynced();
+      expect(notifierOf(c).choice.changedByUser, isFalse);
+      expect(notifierOf(c).choice.schoolId, 0, reason: 'the choice stays');
+    });
+  });
+
+  group('adopting the server values', () {
+    test(
+      'shows and saves them without flagging a change or refetching',
+      () async {
+        final c = make();
+        await notifierOf(c).adopt(methodId: 5, schoolId: 0);
+        final s = c.read(prayerCalculationSettingsProvider);
+        expect(s.method, PrayerCalculationMethod.egyptian);
+        expect(s.school, AsrSchool.shafi);
+        expect(saved()['prayer_calculation_method'], 5);
+        expect(notifierOf(c).choice.changedByUser, isFalse);
+        expect(c.read(prayerSettingsRevisionProvider), 0);
+      },
+    );
+
+    test('an id this app does not know is ignored', () async {
+      final c = make();
+      await notifierOf(c).adopt(methodId: 6, schoolId: 1);
+      expect(saved(), isEmpty);
+    });
   });
 }

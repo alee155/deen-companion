@@ -8,8 +8,9 @@ import '../../data/prayer_logs_repository_impl.dart';
 import '../../domain/current_prayer.dart';
 import '../../domain/group_member_prayers.dart';
 import '../../domain/prayer_log.dart';
+import '../../domain/prayer_log_failure.dart';
 import '../../domain/prayer_logs_repository.dart';
-import 'prayer_times_sync_service.dart';
+import '../../../prayer_times/presentation/providers/prayer_times_loader.dart';
 
 final prayerLogsRemoteDataSourceProvider = Provider<PrayerLogsRemoteDataSource>(
   (ref) => PrayerLogsRemoteDataSourceImpl(ref.watch(dioProvider)),
@@ -22,8 +23,9 @@ final prayerLogsRepositoryProvider = Provider<PrayerLogsRepository>(
 
 /// The home screen's prayer state (`GET /prayers/current`).
 ///
-/// If the server reports no times at all, they were never synced: sync them
-/// once and ask again. Guests have no backend state, so they get an empty one.
+/// If the server reports no times at all, no location was ever sent: send it
+/// (the server then calculates the times) and ask again. Guests have no
+/// backend state, so they get an empty one.
 class CurrentPrayerNotifier extends AsyncNotifier<CurrentPrayerState> {
   @override
   Future<CurrentPrayerState> build() async {
@@ -34,8 +36,8 @@ class CurrentPrayerNotifier extends AsyncNotifier<CurrentPrayerState> {
 
     var current = await _unwrap(repo.getCurrent());
     if (current.isNotSynced) {
-      final synced = await ref.read(prayerTimesSyncServiceProvider).sync();
-      if (synced > 0) current = await _unwrap(repo.getCurrent());
+      final loaded = await ref.read(prayerTimesLoaderProvider).refresh();
+      if (loaded is Success) current = await _unwrap(repo.getCurrent());
     }
     return current;
   }
@@ -102,10 +104,20 @@ class PrayerLogActions {
 
   /// Logs the open prayer with [imagePath]. On "already logged" the existing
   /// log is on the failure; the state is refreshed in that case too.
+  ///
+  /// If the server has no times for today yet, the location is sent once (it
+  /// then calculates them) and the log is retried once.
   Future<Result<PrayerLog>> log(String imagePath) async {
-    final result = await ref
-        .read(prayerLogsRepositoryProvider)
-        .logPrayer(imagePath);
+    final repo = ref.read(prayerLogsRepositoryProvider);
+    var result = await repo.logPrayer(imagePath);
+    if (result case Error(:final failure)
+        when failure is PrayerLogFailure &&
+            failure.code == PrayerLogErrorCode.timesNotSynced) {
+      final loaded = await ref
+          .read(prayerTimesLoaderProvider)
+          .refresh(force: true);
+      if (loaded is Success) result = await repo.logPrayer(imagePath);
+    }
     // A new log, a duplicate, and a closed window all mean the screen's idea
     // of "what is open" is stale.
     await _refresh();

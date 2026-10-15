@@ -39,8 +39,6 @@ abstract class AuthRemoteDataSource {
   /// `GET /auth/me` — `data` is the user object itself (not `{user}`).
   Future<AuthUserModel> getMe();
 
-  /// `PATCH /users/me/timezone` — [timezone] must be a valid IANA name.
-  Future<void> updateTimezone(String timezone);
   Future<void> deleteAccount();
 }
 
@@ -128,11 +126,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<AuthUserModel> getMe() =>
       _data(() => dio.get(ApiEndpoints.authMe), AuthUserModel.fromJson);
-
-  @override
-  Future<void> updateTimezone(String timezone) => _ack(
-    () => dio.patch(ApiEndpoints.userTimezone, data: {'timezone': timezone}),
-  );
 
   @override
   Future<void> deleteAccount() =>

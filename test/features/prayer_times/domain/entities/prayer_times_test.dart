@@ -12,6 +12,7 @@ PrayerTimes _day() => PrayerTimes(
 );
 
 void main() {
+  wallClockAndNextFajrTests();
   group('PrayerTimes.nextPrayer', () {
     final t = _day();
 
@@ -121,6 +122,72 @@ void main() {
       expect(b.school, s.school);
       expect(b.method, PrayerCalculationMethod.karachi);
       expect(s.copyWith().method, s.method);
+    });
+  });
+}
+
+void wallClockAndNextFajrTests() {
+  group('server-backed times', () {
+    // 04:44 PKT on 14 Oct is 23:44 UTC on the 13th.
+    PrayerTimes pk({Duration? offset = const Duration(hours: 5)}) =>
+        PrayerTimes(
+          fajr: DateTime.utc(2026, 10, 13, 23, 44),
+          dhuhr: DateTime.utc(2026, 10, 14, 6, 49),
+          asr: DateTime.utc(2026, 10, 14, 10, 54),
+          maghrib: DateTime.utc(2026, 10, 14, 12, 32),
+          isha: DateTime.utc(2026, 10, 14, 13, 53),
+          hijriDate: '3 Jumādá al-ūlá 1448 AH',
+          utcOffset: offset,
+        );
+
+    test('wallClock shows the prayer location\'s clock, not the phone\'s', () {
+      final t = pk();
+      final fajr = t.wallClock(t.fajr);
+      expect((fajr.hour, fajr.minute), (4, 44));
+      expect(fajr.day, 14, reason: 'the local date, not the UTC date');
+      final asr = t.wallClock(t.asr);
+      expect((asr.hour, asr.minute), (15, 54));
+    });
+
+    test('a half-hour offset is respected', () {
+      final t = pk(offset: const Duration(hours: 5, minutes: 30));
+      final isha = t.wallClock(t.isha);
+      expect((isha.hour, isha.minute), (19, 23));
+    });
+
+    test('without an offset it falls back to the device zone', () {
+      final local = DateTime(2026, 10, 14, 4, 44);
+      final t = PrayerTimes(
+        fajr: local,
+        dhuhr: DateTime(2026, 10, 14, 12),
+        asr: DateTime(2026, 10, 14, 15),
+        maghrib: DateTime(2026, 10, 14, 18),
+        isha: DateTime(2026, 10, 14, 19),
+        hijriDate: '',
+      );
+      expect(t.wallClock(local), local);
+    });
+
+    test('after Isha the next prayer is the real next-day Fajr', () {
+      final tomorrowFajr = DateTime.utc(2026, 10, 14, 23, 45);
+      final t = PrayerTimes(
+        fajr: DateTime.utc(2026, 10, 13, 23, 44),
+        dhuhr: DateTime.utc(2026, 10, 14, 6, 49),
+        asr: DateTime.utc(2026, 10, 14, 10, 54),
+        maghrib: DateTime.utc(2026, 10, 14, 12, 32),
+        isha: DateTime.utc(2026, 10, 14, 13, 53),
+        hijriDate: '',
+        nextFajr: tomorrowFajr,
+      );
+      final next = t.nextPrayer(DateTime.utc(2026, 10, 14, 15));
+      expect(next.key, PrayerName.fajr);
+      expect(next.value, tomorrowFajr, reason: 'not today\'s Fajr + 24 h');
+    });
+
+    test('without a known next Fajr it keeps the 24 hour estimate', () {
+      final t = pk();
+      final next = t.nextPrayer(DateTime.utc(2026, 10, 14, 15));
+      expect(next.value, t.fajr.add(const Duration(days: 1)));
     });
   });
 }

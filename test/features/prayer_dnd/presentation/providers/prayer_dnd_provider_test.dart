@@ -6,6 +6,7 @@ import 'package:deen_companion/features/prayer_dnd/domain/dnd_settings.dart';
 import 'package:deen_companion/features/prayer_dnd/domain/dnd_window.dart';
 import 'package:deen_companion/features/prayer_dnd/presentation/providers/prayer_dnd_provider.dart';
 import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times.dart';
+import 'package:deen_companion/features/prayer_times/presentation/providers/prayer_times_loader.dart';
 import 'package:deen_companion/features/prayer_times/presentation/providers/prayer_times_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,6 +39,9 @@ void main() {
       overrides: [
         localStorageServiceProvider.overrideWithValue(storage),
         prayerTimesRepositoryProvider.overrideWithValue(repo),
+        prayerTimesLoaderProvider.overrideWith(
+          (ref) => FakePrayerTimesLoader(ref, repo),
+        ),
         prayerDndChannelProvider.overrideWithValue(channel),
       ],
     );

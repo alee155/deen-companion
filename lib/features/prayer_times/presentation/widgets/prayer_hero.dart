@@ -154,7 +154,7 @@ class PrayerHero extends ConsumerWidget {
     return Column(
       children: [
         Text(
-          DateFormat('EEEE, d MMMM').format(t),
+          DateFormat('EEEE, d MMMM').format(times.wallClock(t)),
           style: TextStyle(
             fontSize: 18.sp,
             fontWeight: FontWeight.w700,
@@ -162,17 +162,18 @@ class PrayerHero extends ConsumerWidget {
           ),
         ).slideIn(RevealDirection.top),
         SizedBox(height: 2.h),
-        Text(
-          times.hijriDate,
-          style: TextStyle(
-            fontSize: 13.sp,
-            color: AppColors.goldLight,
-            letterSpacing: 0.3,
+        if (times.hijriDate.isNotEmpty)
+          Text(
+            times.hijriDate,
+            style: TextStyle(
+              fontSize: 13.sp,
+              color: AppColors.goldLight,
+              letterSpacing: 0.3,
+            ),
+          ).slideIn(
+            RevealDirection.bottom,
+            delay: const Duration(milliseconds: 70),
           ),
-        ).slideIn(
-          RevealDirection.bottom,
-          delay: const Duration(milliseconds: 70),
-        ),
       ],
     );
   }
@@ -318,7 +319,7 @@ class PrayerHero extends ConsumerWidget {
                 ),
                 SizedBox(height: 2.h),
                 AnimatedText(
-                  'at ${fmtClock(next.value)}',
+                  'at ${fmtClock(times.wallClock(next.value))}',
                   style: TextStyle(
                     fontSize: 13.sp,
                     color: Colors.white.withValues(alpha: 0.75),

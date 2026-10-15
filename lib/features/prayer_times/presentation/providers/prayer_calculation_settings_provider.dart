@@ -11,122 +11,161 @@ final quickCountryProvider = Provider<String?>(
   (ref) => DateTime.now().timeZoneName == 'PKT' ? 'PK' : null,
 );
 
-/// Method and Asr school, chosen by the user.
+/// What the user (or their account) has actually decided, as opposed to the
+/// default shown while nothing is decided. Null means "not decided".
+class PrayerSettingsChoice {
+  final int? methodId;
+  final int? schoolId;
+
+  /// The user changed method or school and the server has not been told yet.
+  final bool changedByUser;
+
+  const PrayerSettingsChoice({
+    this.methodId,
+    this.schoolId,
+    this.changedByUser = false,
+  });
+}
+
+/// Bumped each time the user picks a method or school, so prayer times
+/// refetch (and tell the server) for that change and for nothing else.
+final prayerSettingsRevisionProvider = StateProvider<int>((ref) => 0);
+
+/// Method and Asr school.
 ///
-/// Until the user picks one, it follows where the device is: in Pakistan the
-/// defaults are Karachi (University of Islamic Sciences) and Hanafi Asr;
-/// anywhere else, or when the country is unknown, Muslim World League and
-/// Shafi. The regional default is saved the moment it is known, through the
-/// same path as a manual choice, so it never silently changes later. Each of
-/// the two settings is handled on its own: someone who only picked Hanafi
-/// still gets the regional method.
+/// The backend calculates the times, so these are only sent when they are
+/// the user's own choice (see `MethodSendRule`). Until then the screen shows
+/// the default the server will apply — Karachi + Hanafi in Pakistan or where
+/// the country is unknown, Muslim World League + Shafi elsewhere — and once a
+/// request succeeds the server's actual values are adopted, so a second phone
+/// on the same account shows what the account saved instead of overwriting
+/// it. Defaults are never saved: only a choice or an adoption is.
 class PrayerCalculationSettingsNotifier
     extends Notifier<PrayerCalculationSettings> {
   static const _methodKey = 'prayer_calculation_method';
   static const _schoolKey = 'prayer_asr_school';
+  static const _changedKey = 'prayer_settings_changed';
 
   bool _disposed = false;
 
   @override
   PrayerCalculationSettings build() {
     ref.onDispose(() => _disposed = true);
-    final storage = ref.read(localStorageServiceProvider);
 
-    final storedMethodId = storage.get<int>(
-      AppConstants.settingsBoxName,
-      _methodKey,
-    );
-    final storedSchoolId = storage.get<int>(
-      AppConstants.settingsBoxName,
-      _schoolKey,
-    );
+    final choice = this.choice;
+    final method = _methodFor(choice.methodId);
+    final school = _schoolFor(choice.schoolId);
 
-    PrayerCalculationMethod? method;
-    for (final m in PrayerCalculationMethod.values) {
-      if (m.id == storedMethodId) {
-        method = m;
-        break;
-      }
-    }
-    AsrSchool? school;
-    for (final s in AsrSchool.values) {
-      if (s.id == storedSchoolId) {
-        school = s;
-        break;
-      }
+    PrayerCalculationSettings fallbackFor(String? country) =>
+        _isOutsidePakistan(country)
+        ? PrayerCalculationSettings.fallback
+        : PrayerCalculationSettings.pakistan;
+
+    if (method != null && school != null) {
+      return PrayerCalculationSettings(method: method, school: school);
     }
 
-    if (method == null || school == null) {
-      // The timezone answers instantly, so a Pakistani user never sees (or
-      // fetches) the world defaults first.
-      if (ref.read(quickCountryProvider) == 'PK') {
-        method ??= PrayerCalculationSettings.pakistan.method;
-        school ??= PrayerCalculationSettings.pakistan.school;
-        Future.microtask(() => _applyPakistanDefaults(updateState: false));
-      } else {
-        Future.microtask(_resolveFromLocation);
-      }
-    }
-
+    // The timezone answers instantly; the device location can follow.
+    final quick = ref.read(quickCountryProvider);
+    if (quick == null) Future.microtask(_refineDefaultFromLocation);
+    final defaults = fallbackFor(quick);
     return PrayerCalculationSettings(
-      method: method ?? PrayerCalculationSettings.fallback.method,
-      school: school ?? PrayerCalculationSettings.fallback.school,
+      method: method ?? defaults.method,
+      school: school ?? defaults.school,
     );
   }
 
-  /// Where the timezone said nothing: ask where the device actually is. An
-  /// unknown answer (no location yet, geocoder offline) is retried on the
-  /// next launch rather than saved.
-  Future<void> _resolveFromLocation() async {
+  PrayerSettingsChoice get choice {
+    final storage = ref.read(localStorageServiceProvider);
+    int? id(String key) => storage.get<int>(AppConstants.settingsBoxName, key);
+    return PrayerSettingsChoice(
+      // Unknown or retired ids count as "not decided".
+      methodId: _methodFor(id(_methodKey))?.id,
+      schoolId: _schoolFor(id(_schoolKey))?.id,
+      changedByUser:
+          storage.get<bool>(AppConstants.settingsBoxName, _changedKey) ?? false,
+    );
+  }
+
+  static bool _isOutsidePakistan(String? country) =>
+      country != null && country.isNotEmpty && country.toUpperCase() != 'PK';
+
+  /// Once the device country is known, fix up whichever setting is still an
+  /// undecided default. Never touches a decision.
+  Future<void> _refineDefaultFromLocation() async {
     final String? country;
     try {
       country = await ref.read(deviceCountryCodeProvider.future);
     } catch (_) {
-      return; // unknown: tried again on the next launch
+      return; // unknown: the Pakistan/server default stays
     }
-    if (_disposed || country != 'PK') return;
-    await _applyPakistanDefaults(updateState: true);
+    if (_disposed || !_isOutsidePakistan(country)) return;
+
+    final choice = this.choice;
+    state = state.copyWith(
+      method: choice.methodId == null
+          ? PrayerCalculationSettings.fallback.method
+          : null,
+      school: choice.schoolId == null
+          ? PrayerCalculationSettings.fallback.school
+          : null,
+    );
   }
 
-  /// Saves Karachi / Hanafi for whichever of the two the user has not chosen.
-  /// Re-reads storage first: a manual choice made meanwhile always wins.
-  Future<void> _applyPakistanDefaults({required bool updateState}) async {
-    if (_disposed) return;
-    final storage = ref.read(localStorageServiceProvider);
-    const defaults = PrayerCalculationSettings.pakistan;
-
-    var next = state;
-    if (storage.get<int>(AppConstants.settingsBoxName, _methodKey) == null) {
-      await storage.put(
-        AppConstants.settingsBoxName,
-        _methodKey,
-        defaults.method.id,
-      );
-      next = next.copyWith(method: defaults.method);
+  static PrayerCalculationMethod? _methodFor(int? id) {
+    for (final m in PrayerCalculationMethod.values) {
+      if (m.id == id) return m;
     }
-    if (storage.get<int>(AppConstants.settingsBoxName, _schoolKey) == null) {
-      await storage.put(
-        AppConstants.settingsBoxName,
-        _schoolKey,
-        defaults.school.id,
-      );
-      next = next.copyWith(school: defaults.school);
-    }
-    if (updateState && !_disposed) state = next;
+    return null;
   }
 
+  static AsrSchool? _schoolFor(int? id) {
+    for (final s in AsrSchool.values) {
+      if (s.id == id) return s;
+    }
+    return null;
+  }
+
+  /// The user picked a method. Remembered, and flagged so the server hears
+  /// about it on the next refresh.
   Future<void> setMethod(PrayerCalculationMethod method) async {
     state = state.copyWith(method: method);
-    await ref
-        .read(localStorageServiceProvider)
-        .put(AppConstants.settingsBoxName, _methodKey, method.id);
+    await _store(_methodKey, method.id, changed: true);
+    ref.read(prayerSettingsRevisionProvider.notifier).state++;
   }
 
   Future<void> setSchool(AsrSchool school) async {
     state = state.copyWith(school: school);
-    await ref
-        .read(localStorageServiceProvider)
-        .put(AppConstants.settingsBoxName, _schoolKey, school.id);
+    await _store(_schoolKey, school.id, changed: true);
+    ref.read(prayerSettingsRevisionProvider.notifier).state++;
+  }
+
+  /// The server's values are the truth (the account's saved choice, or what
+  /// it applied): show and remember them. Not a user change, so nothing is
+  /// sent back.
+  Future<void> adopt({required int methodId, required int schoolId}) async {
+    final method = _methodFor(methodId);
+    final school = _schoolFor(schoolId);
+    if (method == null || school == null) return;
+    if (!_disposed) {
+      state = PrayerCalculationSettings(method: method, school: school);
+    }
+    final storage = ref.read(localStorageServiceProvider);
+    await storage.put(AppConstants.settingsBoxName, _methodKey, methodId);
+    await storage.put(AppConstants.settingsBoxName, _schoolKey, schoolId);
+  }
+
+  /// The server has the user's change.
+  Future<void> markSynced() => ref
+      .read(localStorageServiceProvider)
+      .put(AppConstants.settingsBoxName, _changedKey, false);
+
+  Future<void> _store(String key, int id, {required bool changed}) async {
+    final storage = ref.read(localStorageServiceProvider);
+    await storage.put(AppConstants.settingsBoxName, key, id);
+    if (changed) {
+      await storage.put(AppConstants.settingsBoxName, _changedKey, true);
+    }
   }
 }
 

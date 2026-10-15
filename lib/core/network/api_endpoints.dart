@@ -212,13 +212,21 @@ class ApiEndpoints {
   static const String authForgotPassword = '$_deenBase/auth/forgot-password';
   static const String authResetPassword = '$_deenBase/auth/reset-password';
   static const String authMe = '$_deenBase/auth/me';
-  static const String userTimezone = '$_deenBase/users/me/timezone'; // PATCH
+  // Prayer times served by the backend. Guest routes need no token (they take
+  // an X-Device-Id header instead); the account routes use the Bearer token.
+  static const String guestPrayerTimes = '$_deenBase/prayer-times';
+  static const String guestPrayerTimesMonth = '$_deenBase/prayer-times/month';
+  static const String prayerCities = '$_deenBase/prayer-times/cities';
+  static const String prayerMethods = '$_deenBase/prayer-times/methods';
+  static const String accountPrayerTimes = '$_deenBase/prayers/times';
+  static const String accountPrayerTimesMonth =
+      '$_deenBase/prayers/times/month';
+  static const String prayerLocation = '$_deenBase/prayers/location';
   static const String prayerCurrent = '$_deenBase/prayers/current';
   static const String prayerLogs = '$_deenBase/prayers/logs';
   static String prayerLog(String id) =>
       '$_deenBase/prayers/logs/${Uri.encodeComponent(id)}';
   static const String prayerLogsRange = '$_deenBase/prayers/logs/range';
-  static const String prayerTimesSync = '$_deenBase/prayers/times'; // PUT
   static const String groups = '$_deenBase/groups';
   static String group(String id) => '$_deenBase/groups/$id';
   static String invitePreview(String token) =>

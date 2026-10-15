@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/prayer_calculation_settings.dart';
 import '../providers/prayer_calculation_settings_provider.dart';
+import '../providers/prayer_times_loader.dart';
 
 Future<void> showCalculationMethodPicker(BuildContext context, WidgetRef ref) {
   final current = ref.read(prayerCalculationSettingsProvider).method;
@@ -49,33 +50,45 @@ Future<void> showCalculationMethodPicker(BuildContext context, WidgetRef ref) {
                 ),
                 SizedBox(height: 8.h),
                 Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    itemCount: PrayerCalculationMethod.values.length,
-                    itemBuilder: (context, index) {
-                      final method = PrayerCalculationMethod.values[index];
-                      final isSelected = method == current;
-                      return ListTile(
-                        title: Text(
-                          method.label,
-                          style: AppTypography.bodyLarge.copyWith(
-                            color: AppColors.inkText,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w400,
-                          ),
-                        ),
-                        trailing: isSelected
-                            ? Icon(
-                                Icons.check_circle,
-                                color: AppColors.emeraldInk,
-                              )
-                            : null,
-                        onTap: () {
-                          ref
-                              .read(prayerCalculationSettingsProvider.notifier)
-                              .setMethod(method);
-                          Navigator.of(context).pop();
+                  child: Consumer(
+                    builder: (context, ref, _) {
+                      final options =
+                          ref.watch(prayerMethodOptionsProvider).valueOrNull ??
+                          [
+                            for (final m in PrayerCalculationMethod.values)
+                              (method: m, label: m.label),
+                          ];
+                      return ListView.builder(
+                        controller: scrollController,
+                        itemCount: options.length,
+                        itemBuilder: (context, index) {
+                          final method = options[index].method;
+                          final isSelected = method == current;
+                          return ListTile(
+                            title: Text(
+                              options[index].label,
+                              style: AppTypography.bodyLarge.copyWith(
+                                color: AppColors.inkText,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                            trailing: isSelected
+                                ? Icon(
+                                    Icons.check_circle,
+                                    color: AppColors.emeraldInk,
+                                  )
+                                : null,
+                            onTap: () {
+                              ref
+                                  .read(
+                                    prayerCalculationSettingsProvider.notifier,
+                                  )
+                                  .setMethod(method);
+                              Navigator.of(context).pop();
+                            },
+                          );
                         },
                       );
                     },

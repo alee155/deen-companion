@@ -274,7 +274,7 @@ class _DayCard extends StatelessWidget {
                     ),
                     SizedBox(height: 2.h),
                     Text(
-                      _fmt(entry.value),
+                      _fmt(day.wallClock(entry.value)),
                       style: AppTypography.caption.copyWith(
                         color: AppColors.inkText,
                         fontWeight: FontWeight.w700,

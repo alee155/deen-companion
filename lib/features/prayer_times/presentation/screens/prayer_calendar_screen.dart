@@ -144,18 +144,20 @@ class _DayRow extends StatelessWidget {
           SizedBox(
             width: 38.w,
             child: Text(
-              '${day.fajr.day}',
+              '${day.wallClock(day.fajr).day}',
               style: AppTypography.titleMedium.copyWith(
                 color: isToday ? AppColors.emeraldInk : AppColors.inkText,
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          Expanded(child: _TimeChip('Fajr', _fmt(day.fajr))),
-          Expanded(child: _TimeChip('Dhuhr', _fmt(day.dhuhr))),
-          Expanded(child: _TimeChip('Asr', _fmt(day.asr))),
-          Expanded(child: _TimeChip('Maghrib', _fmt(day.maghrib))),
-          Expanded(child: _TimeChip('Isha', _fmt(day.isha))),
+          Expanded(child: _TimeChip('Fajr', _fmt(day.wallClock(day.fajr)))),
+          Expanded(child: _TimeChip('Dhuhr', _fmt(day.wallClock(day.dhuhr)))),
+          Expanded(child: _TimeChip('Asr', _fmt(day.wallClock(day.asr)))),
+          Expanded(
+            child: _TimeChip('Maghrib', _fmt(day.wallClock(day.maghrib))),
+          ),
+          Expanded(child: _TimeChip('Isha', _fmt(day.wallClock(day.isha)))),
         ],
       ),
     );

@@ -55,15 +55,27 @@ class PrayerTimesBundle extends Equatable {
   /// filled by `PUT /prayers/location`.
   final List<String> lockedDates;
 
+  /// True for times taken straight from Aladhan because the server could not
+  /// be reached and nothing was cached. They are never saved, and are replaced
+  /// by server times as soon as the server answers.
+  final bool isUnverified;
+
   const PrayerTimesBundle({
     required this.location,
     required this.method,
     required this.days,
     this.lockedDates = const [],
+    this.isUnverified = false,
   });
 
   @override
-  List<Object?> get props => [location, method, days, lockedDates];
+  List<Object?> get props => [
+    location,
+    method,
+    days,
+    lockedDates,
+    isUnverified,
+  ];
 }
 
 /// One calendar day of the bundle: its `yyyy-MM-dd` date and the times.
