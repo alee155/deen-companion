@@ -9,6 +9,8 @@ import '../../../../core/theme/app_motion.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
+import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
+import '../../../prayer_logs/presentation/widgets/group_prayers_section.dart';
 import '../../domain/entities/group_detail.dart';
 import '../../domain/entities/member_snap_stats.dart';
 import '../providers/groups_providers.dart';
@@ -225,6 +227,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       edgeOffset: 90.h,
       onRefresh: () async {
         ref.invalidate(groupDetailProvider(g.id));
+        ref.invalidate(groupPrayersProvider);
         await ref.read(groupDetailProvider(g.id).future);
       },
       child: CustomScrollView(
@@ -239,6 +242,12 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
               myRole: g.roleOf(myId),
               onInvite: () =>
                   showInviteGroupSheet(context, group: g, isAdmin: isAdmin),
+            ),
+          ),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 0),
+            sliver: SliverToBoxAdapter(
+              child: GroupPrayersSection(groupId: g.id),
             ),
           ),
           SliverPadding(

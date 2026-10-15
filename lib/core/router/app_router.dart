@@ -4,6 +4,8 @@ import 'package:deen_companion/features/favorites/presentation/screens/favorites
 import 'package:deen_companion/features/groups/presentation/screens/create_group_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/join_group_screen.dart';
+import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_log_flow_screen.dart';
+import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_logs_screen.dart';
 import 'package:deen_companion/features/snaps/presentation/screens/snap_flow_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/groups_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/profile_screen.dart';
@@ -138,6 +140,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/groups/:groupId/snap',
         builder: (context, state) =>
             SnapFlowScreen(groupId: state.pathParameters['groupId']!),
+      ),
+      // Prayer log: the day view, and the camera flow that logs the open
+      // prayer. Top level: no bottom nav.
+      GoRoute(
+        path: '/prayer-log',
+        builder: (context, state) => const PrayerLogsScreen(),
+      ),
+      GoRoute(
+        path: '/prayer-log/new',
+        builder: (context, state) => const PrayerLogFlowScreen(),
       ),
       // Group invite links. Android App Links (https://<host>/invite/<token>)
       // land here directly. Declared at the top level: no bottom nav.

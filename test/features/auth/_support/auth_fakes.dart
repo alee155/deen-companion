@@ -86,6 +86,15 @@ class FakeAuthRepository implements AuthRepository {
     return signupResult;
   }
 
+  Result<void> updateTimezoneResult = const Success(null);
+  final List<String> timezoneUpdates = [];
+
+  @override
+  Future<Result<void>> updateTimezone(String timezone) async {
+    timezoneUpdates.add(timezone);
+    return updateTimezoneResult;
+  }
+
   @override
   Future<Result<AuthSession>> verifyOtp({
     required String email,

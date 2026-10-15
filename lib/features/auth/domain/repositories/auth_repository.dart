@@ -47,6 +47,9 @@ abstract class AuthRepository {
   /// The signed-in user's current profile (requires the access token).
   Future<Result<AuthUser>> getCurrentUser();
 
+  /// Tells the backend the user's IANA timezone (`Asia/Karachi`).
+  Future<Result<void>> updateTimezone(String timezone);
+
   /// Permanently deletes the signed-in account and clears local tokens.
   Future<Result<void>> deleteAccount();
 }

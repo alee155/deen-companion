@@ -61,6 +61,55 @@ void main() {
     ).called(1);
   });
 
+  test('register sends the device timezone when given', () async {
+    stubPost({
+      'success': true,
+      'data': {'accessToken': 'tok', 'user': _user},
+    });
+    await ds.register(
+      name: 'Alee',
+      email: 'a@b.c',
+      password: 'pw',
+      timezone: 'Asia/Karachi',
+    );
+    verify(
+      () => dio.post(
+        ApiEndpoints.authRegister,
+        data: {
+          'name': 'Alee',
+          'email': 'a@b.c',
+          'password': 'pw',
+          'timezone': 'Asia/Karachi',
+        },
+      ),
+    ).called(1);
+  });
+
+  test('user timezone is parsed when present', () async {
+    stubPost({
+      'success': true,
+      'data': {
+        'accessToken': 'tok',
+        'user': {..._user, 'timezone': 'Asia/Karachi'},
+      },
+    });
+    final r = await ds.register(name: 'n', email: 'a@b.c', password: 'pw');
+    expect(r.user.timezone, 'Asia/Karachi');
+  });
+
+  test('updateTimezone patches the IANA name', () async {
+    when(
+      () => dio.patch(any(), data: any(named: 'data')),
+    ).thenAnswer((_) async => okResponse({'success': true}));
+    await ds.updateTimezone('Asia/Karachi');
+    verify(
+      () => dio.patch(
+        ApiEndpoints.userTimezone,
+        data: {'timezone': 'Asia/Karachi'},
+      ),
+    ).called(1);
+  });
+
   test('verifyEmail posts email + otp and parses the user', () async {
     stubPost({
       'success': true,

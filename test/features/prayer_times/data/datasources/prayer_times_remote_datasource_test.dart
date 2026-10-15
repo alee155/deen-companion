@@ -1,3 +1,4 @@
+import 'package:deen_companion/core/config/flavor_config.dart';
 import 'package:deen_companion/core/error/exceptions.dart';
 import 'package:deen_companion/core/location/location_service.dart';
 import 'package:deen_companion/features/prayer_times/data/datasources/prayer_times_remote_datasource.dart';
@@ -26,6 +27,9 @@ Map<String, dynamic> _entry(String gdate, String fajr) => {
 };
 
 void main() {
+  // The data source logs its request parameters.
+  setUpAll(() => FlavorConfig(flavor: Flavor.dev, enableLogging: false));
+
   late _MockDio dio;
   late PrayerTimesRemoteDataSourceImpl ds;
   const coords = Coordinates(latitude: 31.5, longitude: 74.3);

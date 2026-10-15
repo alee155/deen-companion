@@ -1,6 +1,7 @@
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/storage/token_storage.dart';
+import '../../../../core/timezone/device_timezone.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../../../core/utils/logger.dart';
 import '../../domain/entities/auth_session.dart';
@@ -13,7 +14,15 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remote;
   final TokenStorage tokenStorage;
 
-  const AuthRepositoryImpl({required this.remote, required this.tokenStorage});
+  /// Sent on signup so a new account starts in the user's own timezone
+  /// instead of the backend's `UTC` default.
+  final DeviceTimezone? deviceTimezone;
+
+  const AuthRepositoryImpl({
+    required this.remote,
+    required this.tokenStorage,
+    this.deviceTimezone,
+  });
 
   @override
   Future<Result<AuthUser>> login({
@@ -41,6 +50,7 @@ class AuthRepositoryImpl implements AuthRepository {
       name: name,
       email: email,
       password: password,
+      timezone: await deviceTimezone?.iana(),
     );
     // Parked, not active: the user isn't signed in until the OTP checks out.
     await tokenStorage.savePendingToken(res.accessToken);
@@ -94,6 +104,10 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Result<AuthUser>> getCurrentUser() =>
       _guard('getCurrentUser', () async => (await remote.getMe()).toEntity());
+
+  @override
+  Future<Result<void>> updateTimezone(String timezone) =>
+      _guard('updateTimezone', () => remote.updateTimezone(timezone));
 
   @override
   Future<Result<void>> deleteAccount() => _guard('deleteAccount', () async {

@@ -212,6 +212,13 @@ class ApiEndpoints {
   static const String authForgotPassword = '$_deenBase/auth/forgot-password';
   static const String authResetPassword = '$_deenBase/auth/reset-password';
   static const String authMe = '$_deenBase/auth/me';
+  static const String userTimezone = '$_deenBase/users/me/timezone'; // PATCH
+  static const String prayerCurrent = '$_deenBase/prayers/current';
+  static const String prayerLogs = '$_deenBase/prayers/logs';
+  static String prayerLog(String id) =>
+      '$_deenBase/prayers/logs/${Uri.encodeComponent(id)}';
+  static const String prayerLogsRange = '$_deenBase/prayers/logs/range';
+  static const String prayerTimesSync = '$_deenBase/prayers/times'; // PUT
   static const String groups = '$_deenBase/groups';
   static String group(String id) => '$_deenBase/groups/$id';
   static String invitePreview(String token) =>
@@ -222,6 +229,8 @@ class ApiEndpoints {
       '$_deenBase/groups/$groupId/members/$userId';
   static String groupLeave(String groupId) =>
       '$_deenBase/groups/$groupId/leave';
+  static String groupPrayers(String id) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/prayers';
   static String groupInvite(String id) => '$_deenBase/groups/$id/invite';
   static String groupInviteReset(String id) =>
       '$_deenBase/groups/$id/invite/reset';

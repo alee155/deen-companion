@@ -10,17 +10,27 @@ import 'shutter_button.dart';
 import 'snap_chrome.dart';
 
 /// Step 1: live camera. Everything except local gestures (pinch, tap ring)
-/// goes through [snapCameraControllerProvider].
+/// goes through [snapCameraControllerProvider]. Shared by the group snap flow
+/// and the prayer-log flow: the owner supplies what happens with the photo.
 class CaptureView extends ConsumerStatefulWidget {
-  final String groupId;
-  final String groupName;
+  /// Shown in the top pill (a group name, or the prayer being logged).
+  final String title;
+  final IconData titleIcon;
+
+  /// True while the owner is still working on the last capture.
+  final bool isProcessing;
+
+  /// Called with the captured file's path.
+  final ValueChanged<String> onCaptured;
   final VoidCallback onClose;
 
   const CaptureView({
     super.key,
-    required this.groupId,
-    required this.groupName,
+    required this.title,
+    required this.onCaptured,
     required this.onClose,
+    this.titleIcon = Icons.groups_rounded,
+    this.isProcessing = false,
   });
 
   @override
@@ -64,16 +74,13 @@ class _CaptureViewState extends ConsumerState<CaptureView> {
     Future<void>.delayed(const Duration(milliseconds: 120), () {
       if (mounted) setState(() => _flashFrame = false);
     });
-    await ref
-        .read(snapComposerProvider(widget.groupId).notifier)
-        .onCaptured(path);
+    widget.onCaptured(path);
   }
 
   @override
   Widget build(BuildContext context) {
     final cam = ref.watch(snapCameraControllerProvider);
-    final composer = ref.watch(snapComposerProvider(widget.groupId));
-    final busy = cam.isCapturing || composer.isProcessing;
+    final busy = cam.isCapturing || widget.isProcessing;
 
     return SnapBackdrop(
       child: SafeArea(
@@ -91,8 +98,8 @@ class _CaptureViewState extends ConsumerState<CaptureView> {
                   Expanded(
                     child: Center(
                       child: SnapPill(
-                        icon: Icons.groups_rounded,
-                        text: widget.groupName,
+                        icon: widget.titleIcon,
+                        text: widget.title,
                       ),
                     ),
                   ),

@@ -1,5 +1,6 @@
 import 'package:deen_companion/core/error/exceptions.dart';
 import 'package:deen_companion/core/error/failures.dart';
+import 'package:deen_companion/core/timezone/device_timezone.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/auth/data/datasources/auth_remote_datasource.dart';
 import 'package:deen_companion/features/auth/data/models/auth_user_model.dart';
@@ -11,6 +12,13 @@ import 'package:mocktail/mocktail.dart';
 import '../_support/auth_fakes.dart';
 
 class _MockRemote extends Mock implements AuthRemoteDataSource {}
+
+class _FixedTimezone implements DeviceTimezone {
+  final String? id;
+  const _FixedTimezone(this.id);
+  @override
+  Future<String?> iana() async => id;
+}
 
 AuthUserModel _user({bool verified = false}) => AuthUserModel(
   id: 'u1',
@@ -39,6 +47,7 @@ void main() {
       name: any(named: 'name'),
       email: any(named: 'email'),
       password: any(named: 'password'),
+      timezone: any(named: 'timezone'),
     ),
   );
 
@@ -57,6 +66,26 @@ void main() {
   );
 
   group('signup', () {
+    test('sends the device timezone to register', () async {
+      repo = AuthRepositoryImpl(
+        remote: remote,
+        tokenStorage: tokens,
+        deviceTimezone: const _FixedTimezone('Asia/Karachi'),
+      );
+      stubRegister().thenAnswer(
+        (_) async => AuthTokenResponseModel(accessToken: 'tok', user: _user()),
+      );
+      await repo.signup(name: 'Alee', email: 'a@b.c', password: 'pw');
+      verify(
+        () => remote.register(
+          name: 'Alee',
+          email: 'a@b.c',
+          password: 'pw',
+          timezone: 'Asia/Karachi',
+        ),
+      ).called(1);
+    });
+
     test('parks the token as pending and does not activate it', () async {
       stubRegister().thenAnswer(
         (_) async => AuthTokenResponseModel(accessToken: 'tok', user: _user()),

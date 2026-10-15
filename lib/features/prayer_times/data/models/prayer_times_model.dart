@@ -2,6 +2,7 @@ import '../../domain/entities/prayer_times.dart';
 
 class PrayerTimesModel {
   final DateTime fajr;
+  final DateTime? sunrise;
   final DateTime dhuhr;
   final DateTime asr;
   final DateTime maghrib;
@@ -10,6 +11,7 @@ class PrayerTimesModel {
 
   const PrayerTimesModel({
     required this.fajr,
+    this.sunrise,
     required this.dhuhr,
     required this.asr,
     required this.maghrib,
@@ -42,6 +44,7 @@ class PrayerTimesModel {
 
     return PrayerTimesModel(
       fajr: parseTime('Fajr'),
+      sunrise: timings['Sunrise'] == null ? null : parseTime('Sunrise'),
       dhuhr: parseTime('Dhuhr'),
       asr: parseTime('Asr'),
       maghrib: parseTime('Maghrib'),
@@ -55,6 +58,9 @@ class PrayerTimesModel {
   factory PrayerTimesModel.fromJson(Map<String, dynamic> json) {
     return PrayerTimesModel(
       fajr: DateTime.parse(json['fajr'] as String),
+      sunrise: json['sunrise'] == null
+          ? null
+          : DateTime.parse(json['sunrise'] as String),
       dhuhr: DateTime.parse(json['dhuhr'] as String),
       asr: DateTime.parse(json['asr'] as String),
       maghrib: DateTime.parse(json['maghrib'] as String),
@@ -65,6 +71,7 @@ class PrayerTimesModel {
 
   Map<String, dynamic> toJson() => {
     'fajr': fajr.toIso8601String(),
+    if (sunrise != null) 'sunrise': sunrise!.toIso8601String(),
     'dhuhr': dhuhr.toIso8601String(),
     'asr': asr.toIso8601String(),
     'maghrib': maghrib.toIso8601String(),
@@ -74,6 +81,7 @@ class PrayerTimesModel {
 
   PrayerTimes toEntity() => PrayerTimes(
     fajr: fajr,
+    sunrise: sunrise,
     dhuhr: dhuhr,
     asr: asr,
     maghrib: maghrib,

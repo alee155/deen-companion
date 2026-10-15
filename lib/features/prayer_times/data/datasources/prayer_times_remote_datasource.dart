@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/location/location_service.dart';
+import '../../../../core/utils/logger.dart';
 import '../models/prayer_times_model.dart';
 
 abstract class PrayerTimesRemoteDataSource {
@@ -31,6 +32,10 @@ class PrayerTimesRemoteDataSourceImpl implements PrayerTimesRemoteDataSource {
     required int method,
     required int school,
   }) async {
+    AppLogger.i(
+      'Aladhan timings: lat=${coordinates.latitude} lng=${coordinates.longitude} '
+      'method=$method school=$school',
+    );
     try {
       final response = await dio.get(
         'https://api.aladhan.com/v1/timings/${DateTime.now().millisecondsSinceEpoch ~/ 1000}',
@@ -57,6 +62,10 @@ class PrayerTimesRemoteDataSourceImpl implements PrayerTimesRemoteDataSource {
     required int method,
     required int school,
   }) async {
+    AppLogger.i(
+      'Aladhan calendar $year/$month: lat=${coordinates.latitude} '
+      'lng=${coordinates.longitude} method=$method school=$school',
+    );
     try {
       final response = await dio.get(
         'https://api.aladhan.com/v1/calendar/$year/$month',

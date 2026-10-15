@@ -10,11 +10,16 @@ class AuthUser {
   final String email;
   final bool isEmailVerified;
 
+  /// IANA name the backend has stored. Accounts default to `UTC` until the
+  /// app sets it; null when the response didn't include one.
+  final String? timezone;
+
   const AuthUser({
     required this.id,
     required this.name,
     required this.email,
     required this.isEmailVerified,
+    this.timezone,
   });
 
   AuthSession toSession() => AuthSession(userId: id, email: email, name: name);

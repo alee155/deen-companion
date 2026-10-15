@@ -23,6 +23,9 @@ ProviderContainer makeContainer(FakePrayerRepo repo, {PaStorage? storage}) {
       localStorageServiceProvider.overrideWithValue(storage ?? PaStorage()),
       prayerTimesRepositoryProvider.overrideWithValue(repo),
       locationRecoveryProvider.overrideWith(_NoRecovery.new),
+      // World defaults, whatever timezone the test machine is in.
+      quickCountryProvider.overrideWithValue(null),
+      deviceCountryCodeProvider.overrideWith((ref) async => null),
     ],
   );
   addTearDown(c.dispose);
