@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/cache/hive_cache_store.dart';
@@ -59,6 +60,13 @@ class PrayerPlace {
   const PrayerPlace({required this.coordinates, this.countryCode, this.city});
 }
 
+/// Goes up each time a refresh brought prayer times that differ from what was
+/// cached (new location, new method or school, the server recalculated, a
+/// different account). Everything armed from prayer times — reminders, Do Not
+/// Disturb, the daily notification — listens to this and re-arms, so a
+/// schedule never stays built on times that have since changed.
+final prayerTimesUpdatedProvider = StateProvider<int>((ref) => 0);
+
 /// Raised after a method/school change when some days could not change
 /// because a prayer is already logged on them. The screen shows a short
 /// notice and resets it.
@@ -114,6 +122,8 @@ class PrayerTimesLoader {
     final settings = ref.read(prayerCalculationSettingsProvider.notifier);
     final choice = settings.choice;
     final signedIn = ref.read(authSessionProvider).isAuthenticated;
+    // What the cache held before, to tell afterwards whether anything changed.
+    final before = ref.read(prayerTimesRepositoryProvider).getCachedBundle();
     FlowLog.data(_tag, 'STEP 2 - who and what the user chose', {
       'signedIn': signedIn,
       'chosenMethod': choice.methodId ?? 'not chosen',
@@ -163,6 +173,7 @@ class PrayerTimesLoader {
                 r.bundle.lockedDates;
           }
         }
+        _announceIfChanged(before, r.bundle);
         return Success(r.bundle);
       },
       failure: (f) async {
@@ -170,6 +181,20 @@ class PrayerTimesLoader {
         return Error(f);
       },
     );
+  }
+
+  /// Tells reminders, Do Not Disturb and the daily notification that the times
+  /// they were armed from have changed.
+  void _announceIfChanged(PrayerTimesBundle? before, PrayerTimesBundle after) {
+    final changed = before == null || !listEquals(before.days, after.days);
+    FlowLog.log(
+      _tag,
+      changed
+          ? 'TIMES CHANGED (${before == null ? 'nothing cached before' : 'differ from the cache'}) '
+                '-> TELLING REMINDERS, DND AND THE DAILY NOTIFICATION TO RE-ARM'
+          : 'TIMES UNCHANGED -> alarms stay as they are',
+    );
+    if (changed) ref.read(prayerTimesUpdatedProvider.notifier).state++;
   }
 
   /// The picked city, else the device location (throws [LocationFailure]).

@@ -297,6 +297,81 @@ void main() {
     });
   });
 
+  group(
+    'times-updated signal (re-arms reminders, DND, daily notification)',
+    () {
+      int signal(ProviderContainer c) => c.read(prayerTimesUpdatedProvider);
+
+      test('the first times ever fetched raise it', () async {
+        final c = make();
+        await loader(c).refresh();
+        expect(signal(c), 1);
+      });
+
+      test('identical times (same as the cache) do not', () async {
+        repo.bundle = bundleOf([pt(14)]);
+        repo.guestResult = Success(bundleOf([pt(14)]));
+        final c = make();
+        await loader(c).refresh();
+        expect(signal(c), 0);
+      });
+
+      test('different times raise it', () async {
+        repo.bundle = bundleOf([pt(14)]);
+        repo.guestResult = Success(bundleOf([pt(14, fajr: 4)]));
+        final c = make();
+        await loader(c).refresh();
+        expect(signal(c), 1);
+      });
+
+      test('a different number of days raises it', () async {
+        repo.bundle = bundleOf([pt(14)]);
+        repo.guestResult = Success(bundleOf([pt(14), pt(15)]));
+        final c = make();
+        await loader(c).refresh();
+        expect(signal(c), 1);
+      });
+
+      test('only the locked-days list changing does not', () async {
+        repo.bundle = bundleOf([pt(14)]);
+        repo.guestResult = Success(
+          bundleOf([pt(14)], lockedDates: ['2026-09-14']),
+        );
+        final c = make();
+        await loader(c).refresh();
+        expect(signal(c), 0);
+      });
+
+      test('a failed refresh does not', () async {
+        repo.guestResult = const Error(NetworkFailure());
+        final c = make();
+        await loader(c).refresh();
+        expect(signal(c), 0);
+      });
+
+      test('a location problem does not', () async {
+        location.error = locErr(LocationErrorKind.serviceDisabled);
+        final c = make();
+        await loader(c).refresh();
+        expect(signal(c), 0);
+      });
+
+      test('unverified fallback times that differ raise it', () async {
+        repo.guestResult = Success(bundleOf([pt(14)], unverified: true));
+        final c = make();
+        await loader(c).refresh();
+        expect(signal(c), 1);
+      });
+
+      test('two joined refreshes raise it once', () async {
+        final c = make();
+        final l = loader(c);
+        await Future.wait([l.refresh(), l.refresh()]);
+        expect(signal(c), 1);
+      });
+    },
+  );
+
   group('sign-out', () {
     test('drops the cached days, but keeps the picked city', () async {
       final c = ProviderContainer(

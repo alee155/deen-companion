@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/permissions/notification_permission_service.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../../core/utils/logger.dart';
-import '../../../prayer_times/presentation/providers/prayer_calculation_settings_provider.dart';
+import '../../../prayer_times/presentation/providers/prayer_times_loader.dart'
+    show prayerTimesUpdatedProvider;
 import '../../../prayer_times/presentation/providers/upcoming_prayer_days.dart';
 import '../../data/daily_notification_scheduler.dart';
 import '../../data/daily_content_store.dart';
@@ -25,6 +27,8 @@ import 'daily_content_providers.dart';
 class DailyNotificationService with WidgetsBindingObserver {
   final Ref ref;
   DailyNotificationService(this.ref);
+
+  static const _tag = 'DAILY NOTIFICATION';
 
   bool _started = false;
   bool _syncing = false;
@@ -121,8 +125,13 @@ class DailyNotificationService with WidgetsBindingObserver {
     final permitted = await ref
         .read(notificationPermissionServiceProvider)
         .isGranted();
+    FlowLog.log(
+      _tag,
+      'SYNC STARTED: feature ${enabled ? 'on' : 'off'}, notification permission ${permitted ? 'granted' : 'missing'}',
+    );
 
     if (!enabled || !permitted) {
+      FlowLog.log(_tag, 'NOT ARMING -> CANCELLING WHATEVER IS ARMED');
       await _scheduler.cancelAll();
       await _replaceFutureSlots(now, const []);
       return;
@@ -137,6 +146,10 @@ class DailyNotificationService with WidgetsBindingObserver {
     if (loaded.days.isEmpty) {
       // No prayer times (offline, no location yet): keep whatever is already
       // armed rather than cancelling a working schedule.
+      FlowLog.log(
+        _tag,
+        'NO PRAYER TIMES (${loaded.error ?? 'none available'}) -> KEEPING THE ARMED SCHEDULE UNCHANGED',
+      );
       AppLogger.i('Daily notification: no prayer times — schedule unchanged');
       return;
     }
@@ -171,7 +184,22 @@ class DailyNotificationService with WidgetsBindingObserver {
         ),
     ];
 
+    FlowLog.data(
+      _tag,
+      'PLANNED NOTIFICATIONS (Fajr + ${config.offsetAfterFajr.inMinutes} min)',
+      {
+        'days': entries.length,
+        if (entries.isNotEmpty)
+          'first': entries.first.triggerAt.toIso8601String(),
+        if (entries.isNotEmpty)
+          'last': entries.last.triggerAt.toIso8601String(),
+      },
+    );
     final armed = await _scheduler.scheduleAll(entries);
+    FlowLog.log(
+      _tag,
+      'ARMED ${armed.length} OF ${entries.length} NOTIFICATIONS',
+    );
 
     await _replaceFutureSlots(now, [
       for (final e in entries.where((e) => armed.contains(e.id)))
@@ -290,8 +318,16 @@ final dailyNotificationServiceProvider = Provider<DailyNotificationService>((
   ref,
 ) {
   final service = DailyNotificationService(ref);
-  // Prayer-time inputs changed (method / school) → Fajr moved → re-arm.
-  ref.listen(prayerCalculationSettingsProvider, (_, _) => service.sync());
+  // The prayer times changed (new location, method or school, or the server
+  // recalculated) → Fajr moved → re-arm. This waits for the refreshed times
+  // rather than the settings state, which changes before the server answers.
+  ref.listen(prayerTimesUpdatedProvider, (_, _) {
+    FlowLog.log(
+      'DAILY NOTIFICATION',
+      'PRAYER TIMES CHANGED -> re-arming (Fajr moved)',
+    );
+    service.sync();
+  });
   // Toggled in Settings.
   ref.listen(dailyNotificationEnabledProvider, (_, _) => service.sync());
   ref.onDispose(service.dispose);

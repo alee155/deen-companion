@@ -237,7 +237,9 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
     String? next;
     if (times != null) {
       final n = times.nextPrayer(DateTime.now());
-      next = '${prayerLabels[n.key]} ${DateFormat('h:mm a').format(n.value)}';
+      // The clock at the prayer location, like every prayer screen.
+      next =
+          '${prayerLabels[n.key]} ${DateFormat('h:mm a').format(times.wallClock(n.value))}';
     }
     return FeatureHero(
       title: 'Prayer Reminders',

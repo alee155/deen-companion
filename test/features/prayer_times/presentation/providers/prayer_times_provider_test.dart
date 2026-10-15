@@ -1,6 +1,7 @@
 import 'package:deen_companion/core/di/providers.dart';
 import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/core/location/location_service.dart';
+import 'package:deen_companion/core/location/location_status.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
 import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
@@ -348,6 +349,108 @@ void main() {
       );
       expect(r.error, isNull);
       expect(r.days, hasLength(2));
+    });
+
+    test(
+      'a method change the server has not confirmed forces a refresh',
+      () async {
+        repo.bundle = bundleOf([for (var i = 0; i < 9; i++) dayFromNow(i)]);
+        final c = make();
+        await c
+            .read(prayerCalculationSettingsProvider.notifier)
+            .setMethod(PrayerCalculationMethod.egyptian);
+        final r = await loadUpcomingPrayerDays(
+          c.read(_refProvider),
+          now: DateTime.now(),
+          windowDays: 7,
+        );
+        expect(
+          loader.refreshes,
+          1,
+          reason: 'the cache still has the old times',
+        );
+        expect(r.error, isNull);
+      },
+    );
+
+    test('once confirmed, the cache is trusted again', () async {
+      repo.bundle = bundleOf([for (var i = 0; i < 9; i++) dayFromNow(i)]);
+      final c = make();
+      c.read(prayerTimesLoaderProvider); // a fresh fake loader for this test
+      final settings = c.read(prayerCalculationSettingsProvider.notifier);
+      await settings.setMethod(PrayerCalculationMethod.egyptian);
+      await settings.markSynced();
+      await loadUpcomingPrayerDays(
+        c.read(_refProvider),
+        now: DateTime.now(),
+        windowDays: 7,
+      );
+      expect(loader.refreshes, 0);
+    });
+
+    test('unverified fallback times (never cached) are still used', () async {
+      final c = make();
+      final ref = c.read(_refProvider);
+      c.read(prayerTimesLoaderProvider);
+      loader.result = Success(
+        _unverified([for (var i = 0; i < 8; i++) dayFromNow(i)]),
+      );
+      final r = await loadUpcomingPrayerDays(
+        ref,
+        now: DateTime.now(),
+        windowDays: 7,
+      );
+      expect(r.error, isNull);
+      expect(r.days, hasLength(8));
+    });
+
+    test('days come from the fresh bundle, not the stale cache', () async {
+      repo.bundle = bundleOf([dayFromNow(0, fajrHour: 5)]);
+      final c = make();
+      final ref = c.read(_refProvider);
+      c.read(prayerTimesLoaderProvider);
+      loader.result = Success(
+        bundleOf([for (var i = 0; i < 8; i++) dayFromNow(i, fajrHour: 4)]),
+      );
+      final r = await loadUpcomingPrayerDays(
+        ref,
+        now: DateTime.now(),
+        windowDays: 7,
+      );
+      expect(r.days.first.fajr.hour, 4);
+      expect(r.days, hasLength(8));
+    });
+
+    test(
+      'no location and no cache: the error points at the city picker',
+      () async {
+        final c = make();
+        final ref = c.read(_refProvider);
+        c.read(prayerTimesLoaderProvider);
+        loader.result = Error(
+          LocationFailure(LocationErrorKind.permissionDenied),
+        );
+        final r = await loadUpcomingPrayerDays(
+          ref,
+          now: DateTime.now(),
+          windowDays: 7,
+        );
+        expect(r.days, isEmpty);
+        expect(r.error, contains('choose a city in Prayer settings'));
+      },
+    );
+
+    test('a plain network error keeps its own message', () async {
+      final c = make();
+      final ref = c.read(_refProvider);
+      c.read(prayerTimesLoaderProvider);
+      loader.result = const Error(NetworkFailure());
+      final r = await loadUpcomingPrayerDays(
+        ref,
+        now: DateTime.now(),
+        windowDays: 7,
+      );
+      expect(r.error, isNot(contains('city')));
     });
 
     test('a failed refresh with an empty cache is an error message', () async {

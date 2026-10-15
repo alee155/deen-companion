@@ -2,8 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/storage/local_storage_service.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
+import '../../../prayer_times/presentation/providers/prayer_times_loader.dart'
+    show prayerTimesUpdatedProvider;
 import '../../../prayer_times/presentation/providers/upcoming_prayer_days.dart';
 import '../../data/prayer_dnd_channel.dart';
 import '../../domain/dnd_settings.dart';
@@ -112,13 +115,16 @@ final dndSettingsProvider = NotifierProvider<DndSettingsNotifier, DndSettings>(
   DndSettingsNotifier.new,
 );
 
-/// The next occurrence of each prayer, from the same cached month calendars
-/// the rest of the app uses. Drives the times shown next to each prayer.
+/// The next occurrence of each prayer, from the same cached days the rest of
+/// the app uses. Drives the times shown next to each prayer, so each value is
+/// the clock reading at the prayer location (what the user sees on the prayer
+/// screens), not the phone's zone.
 final dndUpcomingTimesProvider =
     FutureProvider.autoDispose<Map<PrayerName, DateTime>>((ref) async {
       final now = DateTime.now();
       final loaded = await loadUpcomingPrayerDays(ref, now: now, windowDays: 2);
-      final result = <PrayerName, DateTime>{};
+      // The instant decides which occurrence is next; the clock is for display.
+      final next = <PrayerName, ({DateTime instant, DateTime clock})>{};
       for (final day in loaded.days) {
         final times = {
           PrayerName.fajr: day.fajr,
@@ -129,13 +135,13 @@ final dndUpcomingTimesProvider =
         };
         for (final e in times.entries) {
           if (!e.value.isAfter(now)) continue;
-          final current = result[e.key];
-          if (current == null || e.value.isBefore(current)) {
-            result[e.key] = e.value;
+          final current = next[e.key];
+          if (current == null || e.value.isBefore(current.instant)) {
+            next[e.key] = (instant: e.value, clock: day.wallClock(e.value));
           }
         }
       }
-      return result;
+      return {for (final e in next.entries) e.key: e.value.clock};
     });
 
 sealed class DndSyncResult {
@@ -167,10 +173,41 @@ class DndSyncDisabled extends DndSyncResult {
 /// and whenever settings change.
 class PrayerDndService {
   final Ref ref;
-  const PrayerDndService(this.ref);
+  PrayerDndService(this.ref);
+
+  static const _tag = 'DND';
+
+  bool _resyncing = false;
+  bool _resyncAgain = false;
+
+  /// The prayer times changed: re-plan the windows so they match. Overlapping
+  /// triggers collapse into one extra run; nothing happens when DND is off.
+  Future<void> onTimesChanged() async {
+    final enabled = ref.read(dndSettingsProvider).enabled;
+    FlowLog.log(
+      _tag,
+      'PRAYER TIMES CHANGED -> ${enabled ? 're-planning the DND windows' : 'DND is off, nothing to re-plan'}',
+    );
+    if (_resyncing) {
+      _resyncAgain = true;
+      return;
+    }
+    _resyncing = true;
+    try {
+      do {
+        _resyncAgain = false;
+        await syncIfEnabled();
+      } while (_resyncAgain);
+    } catch (error, stackTrace) {
+      AppLogger.e('Prayer DND re-plan failed', error, stackTrace);
+    } finally {
+      _resyncing = false;
+    }
+  }
 
   Future<DndSyncResult> syncIfEnabled() async {
     if (!ref.read(dndSettingsProvider).enabled) {
+      FlowLog.log(_tag, 'SYNC SKIPPED: Do Not Disturb is switched off');
       return const DndSyncDisabled();
     }
     return sync();
@@ -180,7 +217,12 @@ class PrayerDndService {
     final settings = ref.read(dndSettingsProvider);
     final channel = ref.read(prayerDndChannelProvider);
 
+    FlowLog.log(
+      _tag,
+      'SYNC STARTED: ${settings.configuredCount} prayer(s) have a duration',
+    );
     if (settings.configuredCount == 0) {
+      FlowLog.log(_tag, 'NO PRAYER HAS A DURATION -> CANCELLING ALL WINDOWS');
       await channel.cancelAll();
       return const DndSyncNothingConfigured();
     }
@@ -191,22 +233,42 @@ class PrayerDndService {
       now: now,
       windowDays: DndWindowPlanner.horizonDays,
     );
-    if (loaded.error != null) return DndSyncFailed(loaded.error!);
+    if (loaded.error != null) {
+      FlowLog.error(_tag, 'SYNC FAILED: no prayer times', loaded.error);
+      return DndSyncFailed(loaded.error!);
+    }
 
     final windows = DndWindowPlanner.build(loaded.days, settings, now);
+    FlowLog.data(_tag, 'PLANNED WINDOWS', {
+      'count': windows.length,
+      if (windows.isNotEmpty)
+        'first':
+            '${windows.first.prayerName} ${windows.first.start.toIso8601String()} -> ${windows.first.end.toIso8601String()}',
+      if (windows.isNotEmpty)
+        'last':
+            '${windows.last.prayerName} ${windows.last.start.toIso8601String()}',
+    });
     final armed = await channel.pushSchedule(windows);
     if (armed == null) {
+      FlowLog.error(_tag, 'NATIVE SCHEDULER UNAVAILABLE on this device');
       return const DndSyncFailed(
         'Prayer Do Not Disturb is not available on this device.',
       );
     }
+    FlowLog.log(_tag, 'NATIVE SCHEDULER ARMED $armed WINDOWS');
     AppLogger.i('Prayer DND: armed $armed windows');
     return DndSyncScheduled(armed);
   }
 
-  Future<void> cancelAll() => ref.read(prayerDndChannelProvider).cancelAll();
+  Future<void> cancelAll() {
+    FlowLog.log(_tag, 'CANCELLING ALL DND WINDOWS');
+    return ref.read(prayerDndChannelProvider).cancelAll();
+  }
 }
 
-final prayerDndServiceProvider = Provider<PrayerDndService>(
-  (ref) => PrayerDndService(ref),
-);
+final prayerDndServiceProvider = Provider<PrayerDndService>((ref) {
+  final service = PrayerDndService(ref);
+  // The times the windows were planned from changed: re-plan.
+  ref.listen(prayerTimesUpdatedProvider, (_, _) => service.onTimesChanged());
+  return service;
+});
