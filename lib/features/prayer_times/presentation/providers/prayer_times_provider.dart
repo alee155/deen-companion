@@ -5,6 +5,7 @@ import '../../../../core/cache/cache_first_stream_notifier.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../domain/prayer_day_selector.dart';
 import '../../domain/entities/prayer_times.dart';
@@ -25,6 +26,32 @@ export 'prayer_times_loader.dart'
 class PrayerTimesNotifier extends CacheFirstStreamNotifier<PrayerTimes> {
   @override
   PrayerTimes? readCache() {
+    // Why a rebuild (and so a refetch) happens, in plain words.
+    ref.listen(prayerSettingsRevisionProvider, (_, _) {
+      FlowLog.log(
+        _tag,
+        'TRIGGER: the user changed method/school -> refetching',
+      );
+    });
+    ref.listen(manualCityProvider, (_, city) {
+      FlowLog.log(
+        _tag,
+        'TRIGGER: city ${city == null ? 'cleared' : 'picked: ${city.name}'} -> refetching',
+      );
+    });
+    ref.listen(locationRecoveryProvider, (_, _) {
+      FlowLog.log(
+        _tag,
+        'TRIGGER: location became available again -> refetching',
+      );
+    });
+    ref.listen(authSessionProvider.select((s) => s.isAuthenticated), (_, now) {
+      FlowLog.log(
+        _tag,
+        'TRIGGER: ${now ? 'signed in' : 'signed out'} -> refetching '
+        '(${now ? 'account' : 'guest'} times)',
+      );
+    });
     // Watched, so each of these refetches by itself:
     // - the user picked a method or school (and the server must hear it);
     // - a city was picked or cleared;
@@ -34,9 +61,30 @@ class PrayerTimesNotifier extends CacheFirstStreamNotifier<PrayerTimes> {
     ref.watch(manualCityProvider);
     ref.watch(locationRecoveryProvider);
     ref.watch(authSessionProvider.select((s) => s.isAuthenticated));
-    return ref
+    FlowLog.log(
+      _tag,
+      'SCREEN WANTS TODAY\'S TIMES -> showing the cache first, then asking the server',
+    );
+    final cached = ref
         .read(prayerTimesRepositoryProvider)
         .getCachedToday(DateTime.now());
+    FlowLog.log(
+      _tag,
+      cached == null
+          ? 'NO CACHE: the screen shows a loading state'
+          : 'CACHE SHOWN: fajr ${_hm(cached, cached.fajr)} · dhuhr ${_hm(cached, cached.dhuhr)} · '
+                'asr ${_hm(cached, cached.asr)} · maghrib ${_hm(cached, cached.maghrib)} · '
+                'isha ${_hm(cached, cached.isha)}',
+    );
+    return cached;
+  }
+
+  static const _tag = 'TODAY TIMES';
+
+  /// `04:44` at the prayer location (what the user sees).
+  static String _hm(PrayerTimes t, DateTime instant) {
+    final c = t.wallClock(instant);
+    return '${c.hour.toString().padLeft(2, '0')}:${c.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -45,11 +93,27 @@ class PrayerTimesNotifier extends CacheFirstStreamNotifier<PrayerTimes> {
     return result.when(
       success: (bundle) {
         final today = todayOf(bundle.days, DateTime.now());
-        return today == null
-            ? const Error<PrayerTimes>(ServerFailure())
-            : Success(today);
+        if (today == null) {
+          FlowLog.error(_tag, 'THE SERVER SENT NO DAYS');
+          return const Error<PrayerTimes>(ServerFailure());
+        }
+        FlowLog.log(
+          _tag,
+          'SCREEN UPDATED WITH SERVER TIMES: fajr ${_hm(today, today.fajr)} · '
+          'dhuhr ${_hm(today, today.dhuhr)} · asr ${_hm(today, today.asr)} · '
+          'maghrib ${_hm(today, today.maghrib)} · isha ${_hm(today, today.isha)} '
+          '(offset ${today.utcOffset})',
+        );
+        return Success(today);
       },
-      failure: (f) => Error(f),
+      failure: (f) {
+        FlowLog.error(
+          _tag,
+          'COULD NOT GET FRESH TIMES (the cache stays if there is one)',
+          f.message,
+        );
+        return Error(f);
+      },
     );
   }
 
@@ -89,6 +153,11 @@ class PrayerCalendarNotifier
       authSessionProvider.select((s) => s.isAuthenticated),
     );
     final repo = ref.read(prayerTimesRepositoryProvider);
+    FlowLog.log(
+      'CALENDAR',
+      'OPENING ${arg.year}-${arg.month.toString().padLeft(2, '0')} as '
+          '${signedIn ? 'signed-in account' : 'guest'}',
+    );
 
     final Result<PrayerTimesBundle> result;
     if (signedIn) {
@@ -112,8 +181,14 @@ class PrayerCalendarNotifier
       );
     }
     return result.when(
-      success: (bundle) => [for (final d in bundle.days) d.times],
-      failure: (f) => throw f,
+      success: (bundle) {
+        FlowLog.log('CALENDAR', 'MONTH LOADED: ${bundle.days.length} days');
+        return [for (final d in bundle.days) d.times];
+      },
+      failure: (f) {
+        FlowLog.error('CALENDAR', 'MONTH FAILED', f.message);
+        throw f;
+      },
     );
   }
 }

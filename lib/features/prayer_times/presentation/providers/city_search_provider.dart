@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../domain/entities/prayer_times_bundle.dart';
 import '../../domain/prayer_times_failure.dart';
 import 'prayer_times_loader.dart';
@@ -56,14 +57,32 @@ class CitySearchController extends AutoDisposeNotifier<CitySearchState> {
       return;
     }
     state = CitySearchState(query: query, status: CitySearchStatus.loading);
+    FlowLog.log(
+      'CITY SEARCH',
+      'TYPED "$query" -> waiting ${debounce.inMilliseconds} ms before searching',
+    );
     _timer = Timer(debounce, () => _search(query, ticket));
   }
 
   Future<void> _search(String query, int ticket) async {
+    FlowLog.log('CITY SEARCH', 'SEARCHING FOR "$query"');
     final result = await ref
         .read(prayerTimesRepositoryProvider)
         .searchCities(query);
-    if (ticket != _latest) return; // the user kept typing
+    if (ticket != _latest) {
+      FlowLog.log(
+        'CITY SEARCH',
+        'ANSWER FOR "$query" DROPPED (the user kept typing)',
+      );
+      return;
+    }
+    FlowLog.log(
+      'CITY SEARCH',
+      result.when(
+        success: (cities) => 'RESULTS FOR "$query": ${cities.length} found',
+        failure: (f) => 'SEARCH FAILED: ${f.message}',
+      ),
+    );
     state = result.when(
       success: (cities) => CitySearchState(
         query: query,

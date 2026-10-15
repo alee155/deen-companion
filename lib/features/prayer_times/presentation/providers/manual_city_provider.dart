@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/providers.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../domain/entities/prayer_times_bundle.dart';
 
 /// The city the user picked instead of sharing their location. While one is
@@ -31,6 +32,12 @@ class ManualCityNotifier extends Notifier<PrayerCity?> {
   }
 
   Future<void> select(PrayerCity city) async {
+    FlowLog.data('CITY', 'USER PICKED A CITY', {
+      'city': city.label,
+      'latitude': city.latitude,
+      'longitude': city.longitude,
+      'timezone': city.timezone,
+    });
     state = city;
     await ref
         .read(localStorageServiceProvider)
@@ -47,6 +54,7 @@ class ManualCityNotifier extends Notifier<PrayerCity?> {
 
   /// Back to the device location.
   Future<void> clear() async {
+    FlowLog.log('CITY', 'PICKED CITY CLEARED -> BACK TO THE DEVICE LOCATION');
     state = null;
     await ref
         .read(localStorageServiceProvider)

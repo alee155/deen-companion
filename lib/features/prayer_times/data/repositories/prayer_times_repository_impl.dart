@@ -5,6 +5,7 @@ import '../../../../core/error/failures.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../../core/network/network_info.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../../core/utils/logger.dart';
 import '../../domain/entities/prayer_times.dart';
 import '../../domain/entities/prayer_times_bundle.dart';
@@ -20,6 +21,8 @@ import '../models/server_prayer_times_models.dart';
 /// reminders to keep working offline. One entry, not a history.
 const _bundleKey = 'prayer_times_bundle';
 const _monthPrefix = 'prayer_times_month_';
+
+const _tag = 'REPOSITORY';
 
 class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
   final PrayerTimesRemoteDataSource remote;
@@ -39,14 +42,20 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
   @override
   PrayerTimesBundle? getCachedBundle() {
     try {
-      return cacheStore
-          .read<PrayerTimesBundleModel>(
-            _bundleKey,
-            PrayerTimesBundleModel.fromJson,
-          )
-          ?.data
-          .toEntity();
+      final cached = cacheStore.read<PrayerTimesBundleModel>(
+        _bundleKey,
+        PrayerTimesBundleModel.fromJson,
+      );
+      final bundle = cached?.data.toEntity();
+      FlowLog.log(
+        _tag,
+        bundle == null
+            ? 'CACHE READ: nothing cached yet'
+            : 'CACHE READ: ${bundle.days.length} days, saved ${cached!.fetchedAt}',
+      );
+      return bundle;
     } catch (e, st) {
+      FlowLog.error(_tag, 'CACHE UNREADABLE, ignoring it', e);
       // A cache written by an older build must never break the screen.
       AppLogger.e('PrayerTimes: unreadable cache ignored', e, st);
       return null;
@@ -59,11 +68,21 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
     return bundle == null ? null : todayOf(bundle.days, now);
   }
 
-  Future<void> _cacheBundle(PrayerTimesBundleModel model) => cacheStore
-      .save<PrayerTimesBundleModel>(_bundleKey, model, (m) => m.toJson());
+  Future<void> _cacheBundle(PrayerTimesBundleModel model) {
+    FlowLog.log(
+      _tag,
+      'CACHE SAVED: ${(model.raw['days'] as List).length} days',
+    );
+    return cacheStore.save<PrayerTimesBundleModel>(
+      _bundleKey,
+      model,
+      (m) => m.toJson(),
+    );
+  }
 
   @override
   Future<void> clearCache() async {
+    FlowLog.log(_tag, 'CACHE CLEARED (bundle and cached months)');
     final storage = cacheStore.storage;
     const box = AppConstants.apiCacheBoxName;
     final keys = storage
@@ -179,6 +198,7 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
       case Success(:final data):
         if (cache) await _cacheBundle(data);
         if (monthKey != null) {
+          FlowLog.log(_tag, 'MONTH CACHED: $monthKey');
           await cacheStore.save<PrayerTimesBundleModel>(
             monthKey,
             data,
@@ -189,14 +209,31 @@ class PrayerTimesRepositoryImpl implements PrayerTimesRepository {
       case Error(:final failure):
         if (monthKey != null) {
           final cached = _readMonth(monthKey);
-          if (cached != null) return Success(cached);
+          if (cached != null) {
+            FlowLog.log(
+              _tag,
+              'MONTH REQUEST FAILED (${failure.message}) -> SHOWING THE CACHED MONTH',
+            );
+            return Success(cached);
+          }
         }
         if (fallbackFor != null &&
             _serverUnreachable(failure) &&
             getCachedBundle() == null) {
+          FlowLog.log(
+            _tag,
+            'SERVER UNREACHABLE (${failure.message}) AND NOTHING CACHED -> TRYING ALADHAN DIRECTLY',
+          );
           final unverified = await fallbackFor(failure);
-          if (unverified != null) return Success(unverified);
+          if (unverified != null) {
+            FlowLog.log(
+              _tag,
+              'ALADHAN FALLBACK USED: ${unverified.days.length} days, UNVERIFIED, not saved',
+            );
+            return Success(unverified);
+          }
         }
+        FlowLog.error(_tag, 'REQUEST FAILED', failure.message);
         return Error(failure);
     }
   }

@@ -10,6 +10,7 @@ import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/network_info.dart';
 import '../../../../core/di/providers.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../data/datasources/aladhan_fallback_datasource.dart';
 import '../../data/datasources/prayer_times_remote_datasource.dart';
@@ -79,22 +80,46 @@ class PrayerTimesLoader {
   /// a pending settings change is never skipped: [force] starts a new one.
   Future<Result<PrayerTimesBundle>> refresh({bool force = false}) {
     final running = _inFlight;
-    if (running != null && !force) return running;
+    if (running != null && !force) {
+      FlowLog.log(
+        _tag,
+        'REFRESH ALREADY RUNNING -> JOINING IT (no second request)',
+      );
+      return running;
+    }
+    FlowLog.log(_tag, force ? 'REFRESH STARTED (forced)' : 'REFRESH STARTED');
     final next = _run().whenComplete(() => _inFlight = null);
     return _inFlight = next;
   }
+
+  static const _tag = 'PRAYER TIMES';
 
   Future<Result<PrayerTimesBundle>> _run() async {
     final PrayerPlace place;
     try {
       place = await resolvePlace();
     } on LocationFailure catch (f) {
+      FlowLog.error(_tag, 'NO LOCATION AVAILABLE (${f.kind.name})', f.message);
       return Error(f);
     }
+    FlowLog.data(_tag, 'STEP 1 - place resolved', {
+      'source': place.city != null
+          ? 'picked city: ${place.city!.name}'
+          : 'device location',
+      'latitude': place.coordinates.latitude,
+      'longitude': place.coordinates.longitude,
+      'country': place.countryCode ?? 'unknown',
+    });
 
     final settings = ref.read(prayerCalculationSettingsProvider.notifier);
     final choice = settings.choice;
     final signedIn = ref.read(authSessionProvider).isAuthenticated;
+    FlowLog.data(_tag, 'STEP 2 - who and what the user chose', {
+      'signedIn': signedIn,
+      'chosenMethod': choice.methodId ?? 'not chosen',
+      'chosenSchool': choice.schoolId ?? 'not chosen',
+      'changeNotSentYet': choice.changedByUser,
+    });
 
     final result = await ref
         .read(refreshPrayerTimesProvider)
@@ -111,7 +136,16 @@ class PrayerTimesLoader {
 
     return result.when(
       success: (r) async {
+        FlowLog.log(
+          _tag,
+          'STEP 3 - TIMES RECEIVED: ${r.bundle.days.length} days'
+          '${r.bundle.isUnverified ? ' (UNVERIFIED Aladhan fallback)' : ''}',
+        );
         if (r.adoptSettings) {
+          FlowLog.data(_tag, 'adopting the server settings', {
+            'method': '${r.bundle.method.id} ${r.bundle.method.name}',
+            'school': r.bundle.method.school,
+          });
           await settings.adopt(
             methodId: r.bundle.method.id,
             schoolId: r.bundle.method.schoolId,
@@ -120,13 +154,21 @@ class PrayerTimesLoader {
         if (r.settingsApplied) {
           await settings.markSynced();
           if (choice.changedByUser && r.bundle.lockedDates.isNotEmpty) {
+            FlowLog.data(
+              _tag,
+              'SOME DAYS WERE LOCKED (a prayer is already logged) - showing the notice',
+              r.bundle.lockedDates,
+            );
             ref.read(lockedDatesNoticeProvider.notifier).state =
                 r.bundle.lockedDates;
           }
         }
         return Success(r.bundle);
       },
-      failure: (f) async => Error(f),
+      failure: (f) async {
+        FlowLog.error(_tag, 'REFRESH FAILED', f.message);
+        return Error(f);
+      },
     );
   }
 
@@ -134,6 +176,7 @@ class PrayerTimesLoader {
   Future<PrayerPlace> resolvePlace() async {
     final city = ref.read(manualCityProvider);
     if (city != null) {
+      FlowLog.log(_tag, 'USING THE PICKED CITY: ${city.label} (GPS not asked)');
       return PrayerPlace(
         coordinates: Coordinates(
           latitude: city.latitude,
@@ -143,6 +186,7 @@ class PrayerTimesLoader {
         city: city,
       );
     }
+    FlowLog.log(_tag, 'ASKING THE DEVICE FOR ITS LOCATION');
     final Coordinates coordinates;
     try {
       coordinates = await ref

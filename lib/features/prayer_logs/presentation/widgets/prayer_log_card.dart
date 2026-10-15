@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
@@ -83,11 +84,19 @@ class _PrayerLogCardState extends ConsumerState<PrayerLogCard>
 
   Future<void> _log() async {
     HapticFeedback.selectionClick();
+    FlowLog.log('HOME PRAYER', 'USER TAPPED LOG -> opening the camera flow');
     final logged = await context.push<bool>('/prayer-log/new');
+    FlowLog.log(
+      'HOME PRAYER',
+      logged == true
+          ? 'CAMERA FLOW CLOSED: prayer logged'
+          : 'CAMERA FLOW CLOSED: nothing logged',
+    );
     if (logged == true && mounted) _toast('Prayer logged');
   }
 
   Future<void> _undo(CurrentPrayer current) async {
+    FlowLog.log('HOME PRAYER', 'USER TAPPED UNDO -> asking to confirm');
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -107,6 +116,10 @@ class _PrayerLogCardState extends ConsumerState<PrayerLogCard>
           ),
         ],
       ),
+    );
+    FlowLog.log(
+      'HOME PRAYER',
+      confirmed == true ? 'UNDO CONFIRMED' : 'UNDO CANCELLED (kept the log)',
     );
     if (confirmed != true || current.logId == null || !mounted) return;
     final result = await ref

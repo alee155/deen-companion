@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/usecase/usecase.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../snaps/domain/entities/snap_draft.dart';
 import '../../../snaps/presentation/providers/snap_providers.dart';
 import '../../domain/prayer_log.dart';
@@ -87,7 +88,10 @@ class PrayerLogComposerController
     return const PrayerLogComposerState();
   }
 
+  static const _tag = 'LOG FLOW';
+
   Future<void> onCaptured(String path) async {
+    FlowLog.log(_tag, 'STEP 1 - PHOTO CAPTURED -> preparing it for cropping');
     _tempPaths.add(path);
     state = state.copyWith(isProcessing: true, clearError: true);
     final result = await ref
@@ -95,6 +99,7 @@ class PrayerLogComposerController
         .prepareForEditing(path);
     switch (result) {
       case Success(:final data):
+        FlowLog.log(_tag, 'STEP 2 - READY TO CROP (${data.length} bytes)');
         state = state.copyWith(
           step: PrayerLogStep.crop,
           source: data,
@@ -110,6 +115,10 @@ class PrayerLogComposerController
 
   /// Cropped: show the confirm step straight away and compress meanwhile.
   Future<void> onCropped(Uint8List bytes) async {
+    FlowLog.log(
+      _tag,
+      'STEP 3 - CROPPED (${bytes.length} bytes) -> compressing for upload',
+    );
     state = state.copyWith(
       step: PrayerLogStep.confirm,
       cropped: bytes,
@@ -123,6 +132,11 @@ class PrayerLogComposerController
     if (state.cropped != bytes) return;
     switch (result) {
       case Success(:final data):
+        FlowLog.log(
+          _tag,
+          'STEP 4 - COMPRESSED: ${data.originalBytes} -> ${data.compressedBytes} bytes '
+          '(limit 5 MB). Ready to log.',
+        );
         _tempPaths.add(data.path);
         state = state.copyWith(prepared: data, isProcessing: false);
       case Error(:final failure):
@@ -133,7 +147,10 @@ class PrayerLogComposerController
     }
   }
 
-  void retake() => state = const PrayerLogComposerState();
+  void retake() {
+    FlowLog.log(_tag, 'RETAKE -> starting over from the camera');
+    state = const PrayerLogComposerState();
+  }
 
   void recrop() => state = state.copyWith(
     step: PrayerLogStep.crop,
@@ -144,7 +161,11 @@ class PrayerLogComposerController
   /// Uploads the photo. True when the prayer is now logged — including when
   /// the server says it already was, since the user's goal is met either way.
   Future<bool> submit() async {
-    if (!state.canSubmit) return false;
+    if (!state.canSubmit) {
+      FlowLog.log(_tag, 'SUBMIT IGNORED: the photo is not ready yet');
+      return false;
+    }
+    FlowLog.log(_tag, 'STEP 5 - USER TAPPED LOG -> uploading');
     state = state.copyWith(isSubmitting: true, clearError: true);
     final result = await ref
         .read(prayerLogActionsProvider)
@@ -156,6 +177,10 @@ class PrayerLogComposerController
       case Error(:final failure):
         if (failure is PrayerLogFailure &&
             failure.code == PrayerLogErrorCode.alreadyLogged) {
+          FlowLog.log(
+            _tag,
+            'ALREADY LOGGED -> treated as done, showing the existing log',
+          );
           state = state.copyWith(
             isSubmitting: false,
             logged: failure.existingLog,

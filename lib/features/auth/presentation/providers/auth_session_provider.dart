@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/providers.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../../core/utils/logger.dart';
 import '../../domain/entities/auth_session.dart';
 import 'auth_providers.dart';
@@ -21,7 +22,14 @@ class AuthSessionNotifier extends Notifier<AuthSession> {
 
     final storage = ref.read(localStorageServiceProvider);
     final userId = storage.get<String>(_box, AppConstants.authUserIdKey);
-    if (userId == null) return const AuthSession.guest();
+    if (userId == null) {
+      FlowLog.log('AUTH', 'NO SAVED SESSION -> GUEST');
+      return const AuthSession.guest();
+    }
+    FlowLog.log(
+      'AUTH',
+      'SAVED SESSION RESTORED (user ${FlowLog.mask(userId)}) -> checking it with the server',
+    );
     Future.microtask(_validateOnLaunch);
     return AuthSession(
       userId: userId,
@@ -70,6 +78,10 @@ class AuthSessionNotifier extends Notifier<AuthSession> {
 
   Future<void> signIn(AuthSession session) async {
     if (!session.isAuthenticated) return;
+    FlowLog.log(
+      'AUTH',
+      'USER AUTHENTICATED SUCCESSFULLY (user ${FlowLog.mask(session.userId ?? '')})',
+    );
     state = session;
     final storage = ref.read(localStorageServiceProvider);
     await storage.put(_box, AppConstants.authUserIdKey, session.userId);
@@ -81,6 +93,10 @@ class AuthSessionNotifier extends Notifier<AuthSession> {
   }
 
   Future<void> signOut() async {
+    FlowLog.log(
+      'AUTH',
+      'SIGNED OUT -> NOW A GUEST (token and saved profile cleared)',
+    );
     state = const AuthSession.guest();
     await ref.read(tokenStorageProvider).clear();
     final storage = ref.read(localStorageServiceProvider);

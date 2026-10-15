@@ -4,6 +4,7 @@ import 'package:deen_companion/features/favorites/presentation/screens/favorites
 import 'package:deen_companion/features/groups/presentation/screens/create_group_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/join_group_screen.dart';
+import 'package:deen_companion/core/utils/flow_log.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_log_flow_screen.dart';
 import 'package:deen_companion/features/prayer_times/presentation/screens/city_picker_screen.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_logs_screen.dart';
@@ -60,7 +61,7 @@ String? safeRedirect(String? raw) =>
     (raw != null && raw.startsWith('/') && !raw.startsWith('//')) ? raw : null;
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/splash',
     debugLogDiagnostics: kDebugMode,
     routes: [
@@ -364,4 +365,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  _traceNavigation(router);
+  return router;
 });
+
+/// Prints each screen change (push, pop or go) in the terminal:
+/// `[NAVIGATION] SCREEN: /  ->  /prayer-log/new`. Only the path is shown, and
+/// an invite link's token is hidden.
+void _traceNavigation(GoRouter router) {
+  String? previous;
+  String where() {
+    final uri = router.routerDelegate.currentConfiguration.uri;
+    final path = uri.path;
+    return path.startsWith('/invite/') ? '/invite/***' : path;
+  }
+
+  router.routerDelegate.addListener(() {
+    final now = where();
+    if (now == previous) return;
+    FlowLog.log('NAVIGATION', 'SCREEN: ${previous ?? '(start)'}  ->  $now');
+    previous = now;
+  });
+}

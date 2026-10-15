@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../constants/app_constants.dart';
 import '../storage/local_storage_service.dart';
+import '../utils/flow_log.dart';
 
 /// A random id created once per install and sent as `X-Device-Id` on the
 /// guest prayer-times calls. The backend rate-limits per device, so phones
@@ -25,9 +26,13 @@ class DeviceIdStore {
     if (cached != null) return cached;
 
     final stored = storage.get<String>(AppConstants.settingsBoxName, _key);
-    if (stored != null && stored.isNotEmpty) return _cached = stored;
+    if (stored != null && stored.isNotEmpty) {
+      FlowLog.log('DEVICE', 'DEVICE ID LOADED (${FlowLog.mask(stored)})');
+      return _cached = stored;
+    }
 
     final created = generate(_random);
+    FlowLog.log('DEVICE', 'NEW DEVICE ID CREATED (${FlowLog.mask(created)})');
     await storage.put(AppConstants.settingsBoxName, _key, created);
     return _cached = created;
   }

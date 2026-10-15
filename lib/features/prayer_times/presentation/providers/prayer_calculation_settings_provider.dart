@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/providers.dart';
 import '../../../../core/location/location_service.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../domain/entities/prayer_calculation_settings.dart';
 
 /// A country code known without any permission or network — a Pakistani
@@ -45,6 +46,7 @@ class PrayerCalculationSettingsNotifier
   static const _methodKey = 'prayer_calculation_method';
   static const _schoolKey = 'prayer_asr_school';
   static const _changedKey = 'prayer_settings_changed';
+  static const _tag = 'SETTINGS';
 
   bool _disposed = false;
 
@@ -69,6 +71,11 @@ class PrayerCalculationSettingsNotifier
     final quick = ref.read(quickCountryProvider);
     if (quick == null) Future.microtask(_refineDefaultFromLocation);
     final defaults = fallbackFor(quick);
+    FlowLog.data(_tag, 'nothing decided yet, showing the default', {
+      'country': quick ?? 'unknown',
+      'method': defaults.method.label,
+      'school': defaults.school.label,
+    });
     return PrayerCalculationSettings(
       method: method ?? defaults.method,
       school: school ?? defaults.school,
@@ -129,12 +136,20 @@ class PrayerCalculationSettingsNotifier
   /// The user picked a method. Remembered, and flagged so the server hears
   /// about it on the next refresh.
   Future<void> setMethod(PrayerCalculationMethod method) async {
+    FlowLog.log(
+      _tag,
+      'USER PICKED METHOD: ${method.id} ${method.label} -> will be sent to the server',
+    );
     state = state.copyWith(method: method);
     await _store(_methodKey, method.id, changed: true);
     ref.read(prayerSettingsRevisionProvider.notifier).state++;
   }
 
   Future<void> setSchool(AsrSchool school) async {
+    FlowLog.log(
+      _tag,
+      'USER PICKED ASR SCHOOL: ${school.id} ${school.label} -> will be sent to the server',
+    );
     state = state.copyWith(school: school);
     await _store(_schoolKey, school.id, changed: true);
     ref.read(prayerSettingsRevisionProvider.notifier).state++;
@@ -146,7 +161,17 @@ class PrayerCalculationSettingsNotifier
   Future<void> adopt({required int methodId, required int schoolId}) async {
     final method = _methodFor(methodId);
     final school = _schoolFor(schoolId);
-    if (method == null || school == null) return;
+    if (method == null || school == null) {
+      FlowLog.log(
+        _tag,
+        'SERVER SETTINGS IGNORED: unknown id $methodId/$schoolId',
+      );
+      return;
+    }
+    FlowLog.log(
+      _tag,
+      'ADOPTED SERVER SETTINGS: method ${method.id} ${method.label}, school ${school.label}',
+    );
     if (!_disposed) {
       state = PrayerCalculationSettings(method: method, school: school);
     }
@@ -156,9 +181,12 @@ class PrayerCalculationSettingsNotifier
   }
 
   /// The server has the user's change.
-  Future<void> markSynced() => ref
-      .read(localStorageServiceProvider)
-      .put(AppConstants.settingsBoxName, _changedKey, false);
+  Future<void> markSynced() {
+    FlowLog.log(_tag, 'USER CHANGE REACHED THE SERVER (no longer pending)');
+    return ref
+        .read(localStorageServiceProvider)
+        .put(AppConstants.settingsBoxName, _changedKey, false);
+  }
 
   Future<void> _store(String key, int id, {required bool changed}) async {
     final storage = ref.read(localStorageServiceProvider);

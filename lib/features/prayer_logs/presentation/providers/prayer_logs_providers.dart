@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_client.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../data/prayer_logs_remote_datasource.dart';
 import '../../data/prayer_logs_repository_impl.dart';
@@ -30,23 +31,48 @@ class CurrentPrayerNotifier extends AsyncNotifier<CurrentPrayerState> {
   @override
   Future<CurrentPrayerState> build() async {
     if (!ref.watch(authSessionProvider).isAuthenticated) {
+      FlowLog.log(_tag, 'GUEST: no prayer log, nothing to ask the server');
       return CurrentPrayerState(now: DateTime.now());
     }
     final repo = ref.read(prayerLogsRepositoryProvider);
 
+    FlowLog.log(_tag, 'ASKING THE SERVER WHICH PRAYER IS OPEN NOW');
     var current = await _unwrap(repo.getCurrent());
     if (current.isNotSynced) {
+      FlowLog.log(
+        _tag,
+        'SERVER HAS NO TIMES FOR THIS ACCOUNT -> SENDING THE LOCATION, then asking again',
+      );
       final loaded = await ref.read(prayerTimesLoaderProvider).refresh();
       if (loaded is Success) current = await _unwrap(repo.getCurrent());
     }
+    _describe(current);
     return current;
+  }
+
+  static const _tag = 'HOME PRAYER';
+
+  static void _describe(CurrentPrayerState s) {
+    final c = s.current;
+    FlowLog.data(_tag, 'SERVER ANSWER', {
+      'open': c == null
+          ? 'no prayer open'
+          : '${c.prayer.name} (day ${c.date}, ends ${c.endsAt.toUtc().toIso8601String()})',
+      'logged': c?.logged,
+      'next': s.next == null
+          ? 'none'
+          : '${s.next!.prayer.name} at ${s.next!.startsAt.toUtc().toIso8601String()}',
+      'timesNeverSet': s.isNotSynced,
+    });
   }
 
   /// Re-reads from the server without flashing a loading state.
   Future<void> refresh() async {
+    FlowLog.log(_tag, 'REFRESHING THE HOME STATE (no loading flash)');
     state = await AsyncValue.guard(
       () => _unwrap(ref.read(prayerLogsRepositoryProvider).getCurrent()),
     );
+    state.whenData(_describe);
   }
 }
 
@@ -60,9 +86,18 @@ final currentPrayerProvider =
 final prayerLogsProvider = FutureProvider.autoDispose
     .family<List<PrayerLog>, String?>((ref, date) async {
       if (!ref.watch(authSessionProvider).isAuthenticated) return const [];
-      return _unwrap(
+      FlowLog.log(
+        'CHECKLIST',
+        'LOADING LOGS FOR ${date ?? 'TODAY (the server decides the date)'}',
+      );
+      final logs = await _unwrap(
         ref.read(prayerLogsRepositoryProvider).getLogs(date: date),
       );
+      FlowLog.log(
+        'CHECKLIST',
+        '${logs.length} LOGGED: ${logs.map((l) => l.prayer.name).join(', ')}',
+      );
+      return logs;
     });
 
 /// The group feed for one prayer-day; a null date means the user's today.
@@ -71,11 +106,19 @@ typedef GroupFeedKey = ({String groupId, String? date});
 final groupPrayersProvider = FutureProvider.autoDispose
     .family<List<GroupMemberPrayers>, GroupFeedKey>((ref, key) async {
       if (!ref.watch(authSessionProvider).isAuthenticated) return const [];
-      return _unwrap(
+      FlowLog.log(
+        'GROUP FEED',
+        'LOADING group ${key.groupId} for ${key.date ?? 'today'}',
+      );
+      final feed = await _unwrap(
         ref
             .read(prayerLogsRepositoryProvider)
             .getGroupPrayers(key.groupId, date: key.date),
       );
+      FlowLog.data('GROUP FEED', 'MEMBERS', [
+        for (final m in feed) '${m.displayName}: ${m.loggedCount}/5',
+      ]);
+      return feed;
     });
 
 /// A date span (≤ 62 days), `yyyy-MM-dd` both ends.
@@ -108,16 +151,39 @@ class PrayerLogActions {
   /// If the server has no times for today yet, the location is sent once (it
   /// then calculates them) and the log is retried once.
   Future<Result<PrayerLog>> log(String imagePath) async {
+    const tag = 'LOG PRAYER';
     final repo = ref.read(prayerLogsRepositoryProvider);
+    FlowLog.log(
+      tag,
+      'UPLOADING THE PHOTO (the server decides which prayer this is)',
+    );
     var result = await repo.logPrayer(imagePath);
     if (result case Error(:final failure)
         when failure is PrayerLogFailure &&
             failure.code == PrayerLogErrorCode.timesNotSynced) {
+      FlowLog.log(
+        tag,
+        'SERVER SAID PRAYER_TIMES_NOT_SYNCED -> SENDING THE LOCATION, then retrying once',
+      );
       final loaded = await ref
           .read(prayerTimesLoaderProvider)
           .refresh(force: true);
       if (loaded is Success) result = await repo.logPrayer(imagePath);
     }
+    result.when(
+      success: (log) => FlowLog.data(tag, 'LOGGED', {
+        'prayer': log.prayer.name,
+        'day': log.date,
+        'points': log.points,
+        'status': log.status.name,
+        'hasPhoto': log.snapUrl != null,
+      }),
+      failure: (f) => FlowLog.error(
+        tag,
+        f is PrayerLogFailure ? 'REJECTED (${f.code.name})' : 'FAILED',
+        f.message,
+      ),
+    );
     // A new log, a duplicate, and a closed window all mean the screen's idea
     // of "what is open" is stale.
     await _refresh();
@@ -125,14 +191,26 @@ class PrayerLogActions {
   }
 
   Future<Result<void>> undo(String logId) async {
+    FlowLog.log('UNDO', 'DELETING LOG ${FlowLog.mask(logId)}');
     final result = await ref
         .read(prayerLogsRepositoryProvider)
         .deleteLog(logId);
+    FlowLog.log(
+      'UNDO',
+      result.when(
+        success: (_) => 'LOG REMOVED (the photo is deleted too)',
+        failure: (f) => 'NOT REMOVED: ${f.message}',
+      ),
+    );
     await _refresh();
     return result;
   }
 
   Future<void> _refresh() async {
+    FlowLog.log(
+      'LOG PRAYER',
+      'REFRESHING home state, checklist and group feed',
+    );
     ref.invalidate(prayerLogsProvider);
     ref.invalidate(prayerLogsRangeProvider);
     ref.invalidate(groupPrayersProvider);

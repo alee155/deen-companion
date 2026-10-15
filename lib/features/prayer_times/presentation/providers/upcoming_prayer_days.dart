@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/flow_log.dart';
 import '../../domain/entities/prayer_times.dart';
 import 'prayer_times_loader.dart';
 
@@ -29,6 +30,11 @@ Future<UpcomingPrayerDays> loadUpcomingPrayerDays(
   var days = fromCache();
   final covered =
       days.isNotEmpty && !_dateOnly(days.last.fajr).isBefore(needUntil);
+  FlowLog.log(
+    'UPCOMING DAYS',
+    'REMINDERS/DND NEED $windowDays DAYS AHEAD: ${days.length} cached -> '
+        '${covered ? 'cache is enough, no request' : 'not enough, refreshing from the server'}',
+  );
   if (covered) return (days: days, error: null);
 
   final result = await ref.read(prayerTimesLoaderProvider).refresh();

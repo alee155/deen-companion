@@ -3,6 +3,7 @@ import '../../../../core/error/exceptions.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/api_error_mapper.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../models/server_prayer_times_models.dart';
 import '../../domain/entities/prayer_times_bundle.dart';
 
@@ -207,9 +208,11 @@ class PrayerTimesRemoteDataSourceImpl implements PrayerTimesRemoteDataSource {
       return parse(body['data']);
     } on DioException catch (e) {
       throw mapDioException(e);
-    } on TypeError {
+    } on TypeError catch (e) {
+      FlowLog.error('PRAYER API', 'RESPONSE HAD AN UNEXPECTED SHAPE', e);
       throw const ServerException();
-    } on FormatException {
+    } on FormatException catch (e) {
+      FlowLog.error('PRAYER API', 'RESPONSE COULD NOT BE PARSED', e);
       throw const ServerException();
     }
   }

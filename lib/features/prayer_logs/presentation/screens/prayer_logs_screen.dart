@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
 import '../../domain/prayer_log.dart';
@@ -40,6 +41,10 @@ class _PrayerLogsScreenState extends ConsumerState<PrayerLogsScreen> {
       final next = DateTime(_day.year, _day.month, _day.day + days);
       _day = next.isAfter(_today) ? _today : next;
     });
+    FlowLog.log(
+      'CHECKLIST',
+      'USER MOVED TO ${_isToday ? 'TODAY' : _wire.format(_day)}',
+    );
   }
 
   String get _title => _isToday
