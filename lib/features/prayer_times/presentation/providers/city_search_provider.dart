@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/failures.dart';
-import '../../../../core/usecase/usecase.dart';
 import '../../../../core/utils/flow_log.dart';
 import '../../domain/entities/prayer_times_bundle.dart';
 import '../../domain/prayer_times_failure.dart';

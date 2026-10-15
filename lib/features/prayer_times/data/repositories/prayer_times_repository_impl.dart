@@ -14,7 +14,6 @@ import '../../domain/prayer_times_failure.dart';
 import '../../domain/repositories/prayer_times_repository.dart';
 import '../datasources/aladhan_fallback_datasource.dart';
 import '../datasources/prayer_times_remote_datasource.dart';
-import '../models/prayer_times_model.dart';
 import '../models/server_prayer_times_models.dart';
 
 /// The last bundle fetched from the server: up to 31 days, enough for

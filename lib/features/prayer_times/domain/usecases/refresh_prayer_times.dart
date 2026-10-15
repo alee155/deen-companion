@@ -2,7 +2,6 @@ import '../../../../core/error/failures.dart';
 import '../../../../core/location/geo_distance.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../../core/utils/flow_log.dart';
-import '../../../../core/utils/flow_log.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../entities/prayer_times_bundle.dart';
 import '../method_send_rule.dart';
