@@ -47,7 +47,9 @@ void main() {
 
   group('info caching', () {
     test('fetch caches; fresh cache (<90d) avoids network', () async {
-      when(() => remote.getInfo()).thenAnswer((_) async => ZakatInfoModel.fromJson(infoJson()));
+      when(
+        () => remote.getInfo(),
+      ).thenAnswer((_) async => ZakatInfoModel.fromJson(infoJson()));
       expect(repo.getCachedInfo(), isNull);
       await repo.fetchAndCacheInfo();
       expect(repo.getCachedInfo()!.hawl, 'one year');
@@ -56,7 +58,9 @@ void main() {
     });
 
     test('forceRefresh and >90d staleness both refetch', () async {
-      when(() => remote.getInfo()).thenAnswer((_) async => ZakatInfoModel.fromJson(infoJson()));
+      when(
+        () => remote.getInfo(),
+      ).thenAnswer((_) async => ZakatInfoModel.fromJson(infoJson()));
       storage.seed('zakat_info', infoJson(), age: const Duration(days: 91));
       await repo.fetchAndCacheInfo();
       await repo.fetchAndCacheInfo(forceRefresh: true);
@@ -92,9 +96,13 @@ void main() {
           silverPricePerGram: any(named: 'silverPricePerGram'),
         ),
       ).thenAnswer((_) async => ZakatNisabModel.fromJson(nisabJson()));
-      final n = data(await repo.fetchNisab(goldPricePerGram: 70, silverPricePerGram: 0.9));
+      final n = data(
+        await repo.fetchNisab(goldPricePerGram: 70, silverPricePerGram: 0.9),
+      );
       expect(n.gold.monetaryValue, 6000.5);
-      verify(() => remote.getNisab(goldPricePerGram: 70, silverPricePerGram: 0.9)).called(1);
+      verify(
+        () => remote.getNisab(goldPricePerGram: 70, silverPricePerGram: 0.9),
+      ).called(1);
     });
 
     test('offline / server / unexpected', () async {
@@ -142,7 +150,15 @@ void main() {
         ),
       );
       final j = sent!.toJson();
-      for (final k in ['cash', 'gold_grams', 'silver_grams', 'stocks', 'business_goods', 'other_investments', 'liabilities']) {
+      for (final k in [
+        'cash',
+        'gold_grams',
+        'silver_grams',
+        'stocks',
+        'business_goods',
+        'other_investments',
+        'liabilities',
+      ]) {
         expect(j[k], 0, reason: k);
       }
     });
@@ -171,18 +187,35 @@ void main() {
     test('every include flag maps to its own field', () async {
       await repo.calculate(
         const ZakatCalculationInput(
-          includeCash: true, cash: 1,
-          includeGold: true, goldGrams: 2,
-          includeSilver: true, silverGrams: 3,
-          includeStocks: true, stocks: 4,
-          includeBusinessGoods: true, businessGoods: 5,
-          includeOtherInvestments: true, otherInvestments: 6,
-          includeLiabilities: true, liabilities: 7,
+          includeCash: true,
+          cash: 1,
+          includeGold: true,
+          goldGrams: 2,
+          includeSilver: true,
+          silverGrams: 3,
+          includeStocks: true,
+          stocks: 4,
+          includeBusinessGoods: true,
+          businessGoods: 5,
+          includeOtherInvestments: true,
+          otherInvestments: 6,
+          includeLiabilities: true,
+          liabilities: 7,
         ),
       );
       final j = sent!.toJson();
-      expect([j['cash'], j['gold_grams'], j['silver_grams'], j['stocks'], j['business_goods'], j['other_investments'], j['liabilities']],
-          [1, 2, 3, 4, 5, 6, 7]);
+      expect(
+        [
+          j['cash'],
+          j['gold_grams'],
+          j['silver_grams'],
+          j['stocks'],
+          j['business_goods'],
+          j['other_investments'],
+          j['liabilities'],
+        ],
+        [1, 2, 3, 4, 5, 6, 7],
+      );
     });
 
     test('nisab standard and optional prices are forwarded', () async {
@@ -213,27 +246,49 @@ void main() {
   group('calculate / agriculture: failures', () {
     test('offline short-circuits before the datasource', () async {
       network.connected = false;
-      expect(failure(await repo.calculate(const ZakatCalculationInput())), isA<NetworkFailure>());
-      expect(failure(await repo.calculateAgriculture(100, WaterSource.rain)), isA<NetworkFailure>());
+      expect(
+        failure(await repo.calculate(const ZakatCalculationInput())),
+        isA<NetworkFailure>(),
+      );
+      expect(
+        failure(await repo.calculateAgriculture(100, WaterSource.rain)),
+        isA<NetworkFailure>(),
+      );
       verifyNever(() => remote.calculate(any()));
       verifyNever(() => remote.calculateAgriculture(any()));
     });
 
-    test('server errors keep their message; null message uses default', () async {
-      when(() => remote.calculate(any())).thenThrow(const ServerException('bad input'));
-      expect(failure(await repo.calculate(const ZakatCalculationInput())).message, 'bad input');
-      when(() => remote.calculateAgriculture(any())).thenThrow(const ServerException());
-      expect(
-        failure(await repo.calculateAgriculture(1, WaterSource.rain)).message,
-        const ServerFailure().message,
-      );
-    });
+    test(
+      'server errors keep their message; null message uses default',
+      () async {
+        when(
+          () => remote.calculate(any()),
+        ).thenThrow(const ServerException('bad input'));
+        expect(
+          failure(await repo.calculate(const ZakatCalculationInput())).message,
+          'bad input',
+        );
+        when(
+          () => remote.calculateAgriculture(any()),
+        ).thenThrow(const ServerException());
+        expect(
+          failure(await repo.calculateAgriculture(1, WaterSource.rain)).message,
+          const ServerFailure().message,
+        );
+      },
+    );
 
     test('unexpected errors', () async {
       when(() => remote.calculate(any())).thenThrow(StateError('x'));
-      expect(failure(await repo.calculate(const ZakatCalculationInput())), isA<UnexpectedFailure>());
+      expect(
+        failure(await repo.calculate(const ZakatCalculationInput())),
+        isA<UnexpectedFailure>(),
+      );
       when(() => remote.calculateAgriculture(any())).thenThrow(StateError('x'));
-      expect(failure(await repo.calculateAgriculture(1, WaterSource.rain)), isA<UnexpectedFailure>());
+      expect(
+        failure(await repo.calculateAgriculture(1, WaterSource.rain)),
+        isA<UnexpectedFailure>(),
+      );
     });
   });
 
@@ -242,9 +297,13 @@ void main() {
       ZakatAgricultureRequestModel? sent;
       when(() => remote.calculateAgriculture(any())).thenAnswer((inv) async {
         sent = inv.positionalArguments.single as ZakatAgricultureRequestModel;
-        return ZakatAgricultureResponseModel.fromJson(agriJson(water: 'irrigation'));
+        return ZakatAgricultureResponseModel.fromJson(
+          agriJson(water: 'irrigation'),
+        );
       });
-      final r = data(await repo.calculateAgriculture(2500.5, WaterSource.irrigation));
+      final r = data(
+        await repo.calculateAgriculture(2500.5, WaterSource.irrigation),
+      );
       expect(sent!.toJson(), {'value': 2500.5, 'water_source': 'irrigation'});
       expect(r.waterSource, WaterSource.irrigation);
       await repo.calculateAgriculture(1, WaterSource.rain);

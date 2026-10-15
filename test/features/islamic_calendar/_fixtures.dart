@@ -13,8 +13,13 @@ Map<String, dynamic> gregorianJson({
   'year': year,
 };
 
-Map<String, dynamic> hijriJson({int day = 1, int month = 1, int year = 1448}) => {
-  'date': '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
+Map<String, dynamic> hijriJson({
+  int day = 1,
+  int month = 1,
+  int year = 1448,
+}) => {
+  'date':
+      '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
   'formatted': '$day Muharram $year AH',
   'day': day,
   'month': month,

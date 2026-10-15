@@ -9,8 +9,10 @@ import '../../_fixtures.dart';
 
 class _MockDio extends Mock implements Dio {}
 
-Response<dynamic> _ok(Object? data) =>
-    Response(requestOptions: RequestOptions(path: ''), data: data);
+Response<dynamic> _ok(Object? data) => Response(
+  requestOptions: RequestOptions(path: ''),
+  data: data,
+);
 
 Map<String, dynamic> _env(Object data) => {
   'success': true,
@@ -18,8 +20,10 @@ Map<String, dynamic> _env(Object data) => {
   'data': data,
 };
 
-DioException _dioErr() =>
-    DioException(requestOptions: RequestOptions(path: ''), message: 'down');
+DioException _dioErr() => DioException(
+  requestOptions: RequestOptions(path: ''),
+  message: 'down',
+);
 
 void main() {
   late _MockDio dio;
@@ -30,27 +34,41 @@ void main() {
   });
 
   test('getTodayHijri hits today endpoint and unwraps', () async {
-    when(() => dio.get(any())).thenAnswer((_) async => _ok(_env(conversionJson())));
+    when(
+      () => dio.get(any()),
+    ).thenAnswer((_) async => _ok(_env(conversionJson())));
     final m = await ds.getTodayHijri();
     expect(m.hijri.year, 1448);
     verify(() => dio.get(ApiEndpoints.todayHijri)).called(1);
   });
 
   test('getHijriDate (g2h) builds the endpoint from y/m/d', () async {
-    when(() => dio.get(any())).thenAnswer((_) async => _ok(_env(conversionJson())));
+    when(
+      () => dio.get(any()),
+    ).thenAnswer((_) async => _ok(_env(conversionJson())));
     await ds.getHijriDate(2026, 6, 16);
-    verify(() => dio.get(ApiEndpoints.hijriDate(year: 2026, month: 6, day: 16))).called(1);
+    verify(
+      () => dio.get(ApiEndpoints.hijriDate(year: 2026, month: 6, day: 16)),
+    ).called(1);
   });
 
   test('getGregorianDate (h2g) builds the endpoint from y/m/d', () async {
-    when(() => dio.get(any())).thenAnswer((_) async => _ok(_env(conversionJson())));
+    when(
+      () => dio.get(any()),
+    ).thenAnswer((_) async => _ok(_env(conversionJson())));
     await ds.getGregorianDate(1448, 1, 1);
-    verify(() => dio.get(ApiEndpoints.gregorianDate(year: 1448, month: 1, day: 1))).called(1);
+    verify(
+      () => dio.get(ApiEndpoints.gregorianDate(year: 1448, month: 1, day: 1)),
+    ).called(1);
   });
 
   test('getIslamicMonths unwraps data.months', () async {
     when(() => dio.get(any())).thenAnswer(
-      (_) async => _ok(_env({'months': [monthJson(1), monthJson(2)]})),
+      (_) async => _ok(
+        _env({
+          'months': [monthJson(1), monthJson(2)],
+        }),
+      ),
     );
     final months = await ds.getIslamicMonths();
     expect(months.map((m) => m.number), [1, 2]);
@@ -62,7 +80,9 @@ void main() {
   });
 
   test('getIslamicEvents parses the bundle', () async {
-    when(() => dio.get(any())).thenAnswer((_) async => _ok(_env(eventsBundleJson())));
+    when(
+      () => dio.get(any()),
+    ).thenAnswer((_) async => _ok(_env(eventsBundleJson())));
     final b = await ds.getIslamicEvents();
     expect(b.events, hasLength(2));
   });
@@ -79,7 +99,9 @@ void main() {
     for (final call in calls) {
       await expectLater(
         call(),
-        throwsA(isA<ServerException>().having((e) => e.message, 'message', 'down')),
+        throwsA(
+          isA<ServerException>().having((e) => e.message, 'message', 'down'),
+        ),
       );
     }
   });

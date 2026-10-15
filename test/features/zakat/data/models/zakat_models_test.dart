@@ -55,20 +55,29 @@ void main() {
       expect(m.rate, '2.5%');
     });
 
-    test('toEntity maps standard strings: silver -> silver, anything else -> gold', () {
-      expect(
-        ZakatCalculateResponseModel.fromJson(calcJson(standard: 'silver')).toEntity().nisabStandard,
-        NisabStandard.silver,
-      );
-      expect(
-        ZakatCalculateResponseModel.fromJson(calcJson(standard: 'gold')).toEntity().nisabStandard,
-        NisabStandard.gold,
-      );
-      expect(
-        ZakatCalculateResponseModel.fromJson(calcJson(standard: 'platinum')).toEntity().nisabStandard,
-        NisabStandard.gold,
-      );
-    });
+    test(
+      'toEntity maps standard strings: silver -> silver, anything else -> gold',
+      () {
+        expect(
+          ZakatCalculateResponseModel.fromJson(
+            calcJson(standard: 'silver'),
+          ).toEntity().nisabStandard,
+          NisabStandard.silver,
+        );
+        expect(
+          ZakatCalculateResponseModel.fromJson(
+            calcJson(standard: 'gold'),
+          ).toEntity().nisabStandard,
+          NisabStandard.gold,
+        );
+        expect(
+          ZakatCalculateResponseModel.fromJson(
+            calcJson(standard: 'platinum'),
+          ).toEntity().nisabStandard,
+          NisabStandard.gold,
+        );
+      },
+    );
 
     test('below-nisab result keeps aboveNisab=false and the zero due', () {
       final j = calcJson(above: false)..['zakat_due'] = 0;
@@ -77,24 +86,36 @@ void main() {
       expect(e.zakatDue, 0);
     });
 
-    test('fractional gram thresholds (API drift) fail loudly, not silently', () {
-      final j = calcJson()..['nisab_gold_grams'] = 87.48;
-      expect(() => ZakatCalculateResponseModel.fromJson(j), throwsA(isA<TypeError>()));
-    });
+    test(
+      'fractional gram thresholds (API drift) fail loudly, not silently',
+      () {
+        final j = calcJson()..['nisab_gold_grams'] = 87.48;
+        expect(
+          () => ZakatCalculateResponseModel.fromJson(j),
+          throwsA(isA<TypeError>()),
+        );
+      },
+    );
 
     test('missing breakdown / null above_nisab throw', () {
       expect(
-        () => ZakatCalculateResponseModel.fromJson(calcJson()..remove('breakdown')),
+        () => ZakatCalculateResponseModel.fromJson(
+          calcJson()..remove('breakdown'),
+        ),
         throwsA(isA<TypeError>()),
       );
       expect(
-        () => ZakatCalculateResponseModel.fromJson(calcJson()..['above_nisab'] = null),
+        () => ZakatCalculateResponseModel.fromJson(
+          calcJson()..['above_nisab'] = null,
+        ),
         throwsA(isA<TypeError>()),
       );
     });
 
     test('breakdown entity preserves every field', () {
-      final b = ZakatCalculateResponseModel.fromJson(calcJson()).toEntity().breakdown;
+      final b = ZakatCalculateResponseModel.fromJson(
+        calcJson(),
+      ).toEntity().breakdown;
       expect(b.goldValue, 5000.5);
       expect(b.businessGoods, 2500);
       expect(b.grossWealth - b.liabilities, b.netZakatableWealth);
@@ -104,22 +125,31 @@ void main() {
   group('Agriculture', () {
     test('request json', () {
       expect(
-        const ZakatAgricultureRequestModel(value: 5000.25, waterSource: 'irrigation').toJson(),
+        const ZakatAgricultureRequestModel(
+          value: 5000.25,
+          waterSource: 'irrigation',
+        ).toJson(),
         {'value': 5000.25, 'water_source': 'irrigation'},
       );
     });
 
     test('response water source mapping', () {
       expect(
-        ZakatAgricultureResponseModel.fromJson(agriJson(water: 'irrigation')).toEntity().waterSource,
+        ZakatAgricultureResponseModel.fromJson(
+          agriJson(water: 'irrigation'),
+        ).toEntity().waterSource,
         WaterSource.irrigation,
       );
       expect(
-        ZakatAgricultureResponseModel.fromJson(agriJson(water: 'rain')).toEntity().waterSource,
+        ZakatAgricultureResponseModel.fromJson(
+          agriJson(water: 'rain'),
+        ).toEntity().waterSource,
         WaterSource.rain,
       );
       expect(
-        ZakatAgricultureResponseModel.fromJson(agriJson(water: 'mixed')).toEntity().waterSource,
+        ZakatAgricultureResponseModel.fromJson(
+          agriJson(water: 'mixed'),
+        ).toEntity().waterSource,
         WaterSource.rain,
       );
     });
@@ -129,7 +159,8 @@ void main() {
       expect(m.value, 1000.0);
       expect(m.zakatDue, 100.0);
       expect(
-        () => ZakatAgricultureResponseModel.fromJson(agriJson()..remove('rate')),
+        () =>
+            ZakatAgricultureResponseModel.fromJson(agriJson()..remove('rate')),
         throwsA(isA<TypeError>()),
       );
     });
@@ -185,11 +216,17 @@ void main() {
     });
 
     test('integer monetary value coerces to double', () {
-      expect(ZakatNisabModel.fromJson(nisabJson(goldValue: 6000)).gold.monetaryValue, 6000.0);
+      expect(
+        ZakatNisabModel.fromJson(nisabJson(goldValue: 6000)).gold.monetaryValue,
+        6000.0,
+      );
     });
 
     test('string monetary value throws', () {
-      expect(() => ZakatNisabModel.fromJson(nisabJson(goldValue: '6000')), throwsA(isA<TypeError>()));
+      expect(
+        () => ZakatNisabModel.fromJson(nisabJson(goldValue: '6000')),
+        throwsA(isA<TypeError>()),
+      );
     });
 
     test('toEntity', () {

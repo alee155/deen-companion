@@ -15,9 +15,7 @@ List<String> _tokenize(String text) =>
 /// without normalizing first, a word that reads identically to a human gets
 /// flagged as "different" purely over a diacritic, burying the handful of
 /// genuinely different words in noise.
-final _diacriticsPattern = RegExp(
-  r'[ؐ-ًؚ-ٰٟۖ-ۭࣔ-ࣣ࣡-ࣿ]',
-);
+final _diacriticsPattern = RegExp(r'[ؐ-ًؚ-ٰٟۖ-ۭࣔ-ࣣ࣡-ࣿ]');
 
 String _normalize(String word) => word.replaceAll(_diacriticsPattern, '');
 

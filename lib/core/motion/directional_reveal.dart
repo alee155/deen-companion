@@ -152,12 +152,14 @@ class _DirectionalTextRevealState extends State<DirectionalTextReveal>
         !box.hasSize) {
       return false;
     }
-    final horizontal = axisDirectionToAxis(scrollable.axisDirection) ==
-        Axis.horizontal;
+    final horizontal =
+        axisDirectionToAxis(scrollable.axisDirection) == Axis.horizontal;
     final origin = box.localToGlobal(Offset.zero, ancestor: viewport);
     final start = horizontal ? origin.dx : origin.dy;
     final extent = horizontal ? box.size.width : box.size.height;
-    final viewportExtent = horizontal ? viewport.size.width : viewport.size.height;
+    final viewportExtent = horizontal
+        ? viewport.size.width
+        : viewport.size.height;
     // Trigger when the element is comfortably inside the leading 92%.
     return start < viewportExtent * 0.92 && start + extent > 0;
   }
@@ -268,7 +270,8 @@ class RevealSequence {
   }) {
     final i = _index++;
     final dir = direction ?? directionAt(i);
-    final vertical = dir == RevealDirection.top || dir == RevealDirection.bottom;
+    final vertical =
+        dir == RevealDirection.top || dir == RevealDirection.bottom;
     return DirectionalTextReveal(
       key: key,
       direction: dir,

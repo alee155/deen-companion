@@ -52,7 +52,10 @@ class MotionScope extends StatelessWidget {
   Widget build(BuildContext context) {
     final disabled = MediaQuery.disableAnimationsOf(context);
     final effective = disabled ? MotionLevel.reduced : level;
-    return _MotionInherited(spec: MotionSpec(level: effective), child: child);
+    return _MotionInherited(
+      spec: MotionSpec(level: effective),
+      child: child,
+    );
   }
 }
 

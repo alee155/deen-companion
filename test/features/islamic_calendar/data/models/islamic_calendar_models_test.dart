@@ -89,7 +89,10 @@ void main() {
       expect(b.currentDate.hijri.year, 1448);
       expect(b.nextEvent.name, 'Ashura');
       expect(b.nextEvent.hijriDateFormatted, '10 Muharram 1448');
-      expect(b.events.map((e) => e.name), ['Islamic New Year', 'Ramadan begins']);
+      expect(b.events.map((e) => e.name), [
+        'Islamic New Year',
+        'Ramadan begins',
+      ]);
       expect(b.events[1].month, 9);
     });
 
@@ -100,13 +103,19 @@ void main() {
 
     test('missing next_event throws', () {
       final j = eventsBundleJson()..remove('next_event');
-      expect(() => IslamicEventsBundleModel.fromJson(j), throwsA(isA<TypeError>()));
+      expect(
+        () => IslamicEventsBundleModel.fromJson(j),
+        throwsA(isA<TypeError>()),
+      );
     });
 
     test('event missing description throws', () {
       final j = eventsBundleJson();
       ((j['events'] as List).first as Map).remove('description');
-      expect(() => IslamicEventsBundleModel.fromJson(j), throwsA(isA<TypeError>()));
+      expect(
+        () => IslamicEventsBundleModel.fromJson(j),
+        throwsA(isA<TypeError>()),
+      );
     });
 
     test('toJson round trip is lossless', () {

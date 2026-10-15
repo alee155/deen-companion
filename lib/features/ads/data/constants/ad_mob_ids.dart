@@ -35,9 +35,7 @@ class AdMobIds {
   static const String prodInterstitial = String.fromEnvironment(
     'ADMOB_INTERSTITIAL_ID',
   );
-  static const String prodAppOpen = String.fromEnvironment(
-    'ADMOB_APP_OPEN_ID',
-  );
+  static const String prodAppOpen = String.fromEnvironment('ADMOB_APP_OPEN_ID');
 
   // ── Google's public test ad units ─────────────────────────────────
   // Safe to ship, always fill, always show a creative clearly labelled

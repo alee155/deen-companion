@@ -47,7 +47,9 @@ class FakeCalendarRepo implements IslamicCalendarRepository {
   bool? lastForceG2h;
 
   @override
-  Future<Result<HijriConversion>> fetchTodayHijri({bool forceRefresh = false}) async {
+  Future<Result<HijriConversion>> fetchTodayHijri({
+    bool forceRefresh = false,
+  }) async {
     calls.add('today');
     lastForceToday = forceRefresh;
     return todayResult;
@@ -55,7 +57,11 @@ class FakeCalendarRepo implements IslamicCalendarRepository {
 
   @override
   Future<Result<HijriConversion>> convertGregorianToHijri(
-    int year, int month, int day, {bool forceRefresh = false}) async {
+    int year,
+    int month,
+    int day, {
+    bool forceRefresh = false,
+  }) async {
     calls.add('g2h');
     lastG2h = (y: year, m: month, d: day);
     lastForceG2h = forceRefresh;
@@ -64,7 +70,11 @@ class FakeCalendarRepo implements IslamicCalendarRepository {
 
   @override
   Future<Result<HijriConversion>> convertHijriToGregorian(
-    int year, int month, int day, {bool forceRefresh = false}) async {
+    int year,
+    int month,
+    int day, {
+    bool forceRefresh = false,
+  }) async {
     calls.add('h2g');
     lastH2g = (y: year, m: month, d: day);
     return h2gResult;
@@ -75,14 +85,18 @@ class FakeCalendarRepo implements IslamicCalendarRepository {
   @override
   List<IslamicMonth>? getCachedMonths() => cachedMonths;
   @override
-  Future<Result<List<IslamicMonth>>> fetchAndCacheMonths({bool forceRefresh = false}) async => monthsResult;
+  Future<Result<List<IslamicMonth>>> fetchAndCacheMonths({
+    bool forceRefresh = false,
+  }) async => monthsResult;
 
   IslamicEventsBundle? cachedEvents;
   Result<IslamicEventsBundle> eventsResult = const Error(NetworkFailure());
   @override
   IslamicEventsBundle? getCachedEvents() => cachedEvents;
   @override
-  Future<Result<IslamicEventsBundle>> fetchAndCacheEvents({bool forceRefresh = false}) async => eventsResult;
+  Future<Result<IslamicEventsBundle>> fetchAndCacheEvents({
+    bool forceRefresh = false,
+  }) async => eventsResult;
   @override
   HijriConversion? getCachedTodayHijri() => null;
 }
@@ -164,23 +178,29 @@ void main() {
       }
     });
 
-    test('a manual choice made while the default resolves is not overwritten', () async {
-      final c = make(country: 'PK');
-      c.read(hijriAdjustmentProvider);
-      // Simulate the user tapping before the geocoder answers.
-      storage.boxes[box] = {'hijri_date_adjustment': 1};
-      await settle();
-      expect(storage.boxes[box]!['hijri_date_adjustment'], 1);
-    });
+    test(
+      'a manual choice made while the default resolves is not overwritten',
+      () async {
+        final c = make(country: 'PK');
+        c.read(hijriAdjustmentProvider);
+        // Simulate the user tapping before the geocoder answers.
+        storage.boxes[box] = {'hijri_date_adjustment': 1};
+        await settle();
+        expect(storage.boxes[box]!['hijri_date_adjustment'], 1);
+      },
+    );
 
-    test('non-Pakistan country with no stored value persists Automatic (0)', () async {
-      // The PKT-timezone shortcut would pre-empt this on a machine in PKT.
-      final inPkt = DateTime.now().timeZoneName == 'PKT';
-      final c = make(country: 'GB');
-      c.read(hijriAdjustmentProvider);
-      await settle();
-      expect(storage.boxes[box]!['hijri_date_adjustment'], inPkt ? -1 : 0);
-    });
+    test(
+      'non-Pakistan country with no stored value persists Automatic (0)',
+      () async {
+        // The PKT-timezone shortcut would pre-empt this on a machine in PKT.
+        final inPkt = DateTime.now().timeZoneName == 'PKT';
+        final c = make(country: 'GB');
+        c.read(hijriAdjustmentProvider);
+        await settle();
+        expect(storage.boxes[box]!['hijri_date_adjustment'], inPkt ? -1 : 0);
+      },
+    );
   });
 
   group('TodayHijriNotifier', () {
@@ -203,10 +223,10 @@ void main() {
       expect(repo.calls, ['g2h']);
       expect(repo.lastForceG2h, isTrue);
       final got = DateTime(repo.lastG2h!.y, repo.lastG2h!.m, repo.lastG2h!.d);
-      expect(
-        [DateTime(before.year, before.month, before.day), DateTime(after.year, after.month, after.day)],
-        contains(got),
-      );
+      expect([
+        DateTime(before.year, before.month, before.day),
+        DateTime(after.year, after.month, after.day),
+      ], contains(got));
     });
 
     test('offset +1 converts tomorrow', () async {
@@ -215,7 +235,10 @@ void main() {
       await c.read(todayHijriNotifierProvider.future);
       final t = DateTime.now().add(const Duration(days: 1));
       final got = DateTime(repo.lastG2h!.y, repo.lastG2h!.m, repo.lastG2h!.d);
-      expect(got.difference(DateTime(t.year, t.month, t.day)).inDays.abs(), lessThanOrEqualTo(1));
+      expect(
+        got.difference(DateTime(t.year, t.month, t.day)).inDays.abs(),
+        lessThanOrEqualTo(1),
+      );
       expect(got.isAfter(DateTime.now()), isTrue);
     });
 
@@ -252,67 +275,103 @@ void main() {
     test('offset 0 returns the API result untouched', () async {
       storage.boxes[box] = {'hijri_date_adjustment': 0};
       final c = make();
-      await c.read(dateConverterNotifierProvider.notifier).convertGregorianToHijri(DateTime(2026, 3, 1));
+      await c
+          .read(dateConverterNotifierProvider.notifier)
+          .convertGregorianToHijri(DateTime(2026, 3, 1));
       final v = c.read(dateConverterNotifierProvider).value!;
       expect(v.gregorian.formatted, 'api formatted');
       expect(repo.lastG2h, (y: 2026, m: 3, d: 1));
     });
 
-    test('offset -1 queries the day before but keeps the picked Gregorian date', () async {
-      storage.boxes[box] = {'hijri_date_adjustment': -1};
-      final c = make();
-      await c.read(dateConverterNotifierProvider.notifier).convertGregorianToHijri(DateTime(2026, 3, 1));
-      expect(repo.lastG2h, (y: 2026, m: 2, d: 28));
-      final v = c.read(dateConverterNotifierProvider).value!;
-      expect(v.gregorian.date, '2026-03-01');
-      expect(v.gregorian.day, 1);
-      expect(v.gregorian.month, 3);
-      expect(v.gregorian.monthName, 'March');
-      expect(v.gregorian.dayOfWeek, 'Sunday');
-      expect(v.gregorian.formatted, 'Sunday, March 01, 2026');
-      expect(v.hijri.day, 9); // hijri comes from the shifted lookup
-      expect(v.note, 'note');
-    });
+    test(
+      'offset -1 queries the day before but keeps the picked Gregorian date',
+      () async {
+        storage.boxes[box] = {'hijri_date_adjustment': -1};
+        final c = make();
+        await c
+            .read(dateConverterNotifierProvider.notifier)
+            .convertGregorianToHijri(DateTime(2026, 3, 1));
+        expect(repo.lastG2h, (y: 2026, m: 2, d: 28));
+        final v = c.read(dateConverterNotifierProvider).value!;
+        expect(v.gregorian.date, '2026-03-01');
+        expect(v.gregorian.day, 1);
+        expect(v.gregorian.month, 3);
+        expect(v.gregorian.monthName, 'March');
+        expect(v.gregorian.dayOfWeek, 'Sunday');
+        expect(v.gregorian.formatted, 'Sunday, March 01, 2026');
+        expect(v.hijri.day, 9); // hijri comes from the shifted lookup
+        expect(v.note, 'note');
+      },
+    );
 
-    test('offset +1 across a leap-day and year boundary shifts correctly', () async {
-      storage.boxes[box] = {'hijri_date_adjustment': 1};
-      final c = make();
-      await c.read(dateConverterNotifierProvider.notifier).convertGregorianToHijri(DateTime(2027, 12, 31));
-      expect(repo.lastG2h, (y: 2028, m: 1, d: 1));
-      await c.read(dateConverterNotifierProvider.notifier).convertGregorianToHijri(DateTime(2028, 2, 28));
-      expect(repo.lastG2h, (y: 2028, m: 2, d: 29));
-    });
+    test(
+      'offset +1 across a leap-day and year boundary shifts correctly',
+      () async {
+        storage.boxes[box] = {'hijri_date_adjustment': 1};
+        final c = make();
+        await c
+            .read(dateConverterNotifierProvider.notifier)
+            .convertGregorianToHijri(DateTime(2027, 12, 31));
+        expect(repo.lastG2h, (y: 2028, m: 1, d: 1));
+        await c
+            .read(dateConverterNotifierProvider.notifier)
+            .convertGregorianToHijri(DateTime(2028, 2, 28));
+        expect(repo.lastG2h, (y: 2028, m: 2, d: 29));
+      },
+    );
 
     test('failure surfaces as AsyncError holding the Failure', () async {
       storage.boxes[box] = {'hijri_date_adjustment': 0};
       repo.g2hResult = const Error(ServerFailure());
       final c = make();
-      await c.read(dateConverterNotifierProvider.notifier).convertGregorianToHijri(DateTime(2026, 1, 1));
+      await c
+          .read(dateConverterNotifierProvider.notifier)
+          .convertGregorianToHijri(DateTime(2026, 1, 1));
       final s = c.read(dateConverterNotifierProvider);
       expect(s.hasError, isTrue);
       expect(s.error, isA<ServerFailure>());
     });
 
-    test('hijri -> gregorian passes values through (no offset applied)', () async {
-      storage.boxes[box] = {'hijri_date_adjustment': -1};
-      final c = make();
-      await c.read(dateConverterNotifierProvider.notifier).convertHijriToGregorian(1448, 9, 1);
-      expect(repo.lastH2g, (y: 1448, m: 9, d: 1));
-      expect(c.read(dateConverterNotifierProvider).value!.hijri.day, 3);
-    });
+    test(
+      'hijri -> gregorian passes values through (no offset applied)',
+      () async {
+        storage.boxes[box] = {'hijri_date_adjustment': -1};
+        final c = make();
+        await c
+            .read(dateConverterNotifierProvider.notifier)
+            .convertHijriToGregorian(1448, 9, 1);
+        expect(repo.lastH2g, (y: 1448, m: 9, d: 1));
+        expect(c.read(dateConverterNotifierProvider).value!.hijri.day, 3);
+      },
+    );
 
     test('hijri -> gregorian failure', () async {
       repo.h2gResult = const Error(NetworkFailure());
       final c = make();
-      await c.read(dateConverterNotifierProvider.notifier).convertHijriToGregorian(1448, 9, 1);
-      expect(c.read(dateConverterNotifierProvider).error, isA<NetworkFailure>());
+      await c
+          .read(dateConverterNotifierProvider.notifier)
+          .convertHijriToGregorian(1448, 9, 1);
+      expect(
+        c.read(dateConverterNotifierProvider).error,
+        isA<NetworkFailure>(),
+      );
     });
   });
 
   group('cache-first notifiers', () {
     test('months: cached first, then fresh', () async {
-      const m1 = IslamicMonth(number: 1, nameEnglish: 'a', nameArabic: 'a', significance: 's');
-      const m2 = IslamicMonth(number: 2, nameEnglish: 'b', nameArabic: 'b', significance: 's');
+      const m1 = IslamicMonth(
+        number: 1,
+        nameEnglish: 'a',
+        nameArabic: 'a',
+        significance: 's',
+      );
+      const m2 = IslamicMonth(
+        number: 2,
+        nameEnglish: 'b',
+        nameArabic: 'b',
+        significance: 's',
+      );
       repo.cachedMonths = [m1];
       repo.monthsResult = const Success([m1, m2]);
       final c = make();

@@ -25,7 +25,9 @@ void main() {
     ReliabilityStatus status(Map<ReliabilityRequirement, bool> m) => m;
 
     test('all granted -> nothing missing', () {
-      final s = status({for (final r in ReliabilityRequirement.values) r: true});
+      final s = status({
+        for (final r in ReliabilityRequirement.values) r: true,
+      });
       expect(s.missing, isEmpty);
       expect(s.allGranted, isTrue);
     });

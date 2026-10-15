@@ -53,7 +53,8 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
     _decided = true;
 
     final motion = MotionScope.of(context);
-    if (motion.reduced || Scrollable.recommendDeferredLoadingForContext(context)) {
+    if (motion.reduced ||
+        Scrollable.recommendDeferredLoadingForContext(context)) {
       return; // show immediately
     }
 
@@ -92,7 +93,8 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
     if (fade == null) return widget.child;
     Widget result = widget.child;
     if (_scale != null) result = ScaleTransition(scale: _scale!, child: result);
-    if (_slide != null) result = SlideTransition(position: _slide!, child: result);
+    if (_slide != null)
+      result = SlideTransition(position: _slide!, child: result);
     return FadeTransition(opacity: fade, child: result);
   }
 }
@@ -101,12 +103,8 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
 /// call sites keep working.
 extension AppEntranceAnimation on Widget {
   /// Standalone block appearing once (hero cards, sections).
-  Widget appear({Key? key, Duration delay = Duration.zero}) => Reveal(
-    key: key,
-    delay: delay,
-    rise: AppMotion.riseSmall,
-    child: this,
-  );
+  Widget appear({Key? key, Duration delay = Duration.zero}) =>
+      Reveal(key: key, delay: delay, rise: AppMotion.riseSmall, child: this);
 
   /// List/grid item; pass its index to cascade (capped, see
   /// [AppMotion.staggerCap]).

@@ -64,10 +64,8 @@ class ContentSwitcher extends StatelessWidget {
       reverseDuration: motion.duration(duration),
       switchInCurve: AppMotion.entrance,
       switchOutCurve: AppMotion.exit,
-      layoutBuilder: (current, previous) => Stack(
-        alignment: alignment,
-        children: [...previous, ?current],
-      ),
+      layoutBuilder: (current, previous) =>
+          Stack(alignment: alignment, children: [...previous, ?current]),
       transitionBuilder: (child, animation) {
         final offset = motion.distance(rise);
         return FadeTransition(
@@ -224,10 +222,8 @@ class ExpandSection extends StatelessWidget {
         duration: d,
         switchInCurve: AppMotion.entrance,
         switchOutCurve: AppMotion.exit,
-        layoutBuilder: (current, previous) => Stack(
-          alignment: alignment,
-          children: [...previous, ?current],
-        ),
+        layoutBuilder: (current, previous) =>
+            Stack(alignment: alignment, children: [...previous, ?current]),
         child: expanded
             ? KeyedSubtree(key: const ValueKey('open'), child: child)
             : const SizedBox(key: ValueKey('closed'), width: double.infinity),
@@ -262,15 +258,17 @@ class _BumpOnChangeState extends State<BumpOnChange>
   );
   late final Animation<double> _scale = TweenSequence<double>([
     TweenSequenceItem(
-      tween: Tween(begin: 1.0, end: widget.peak).chain(
-        CurveTween(curve: Curves.easeOut),
-      ),
+      tween: Tween(
+        begin: 1.0,
+        end: widget.peak,
+      ).chain(CurveTween(curve: Curves.easeOut)),
       weight: 35,
     ),
     TweenSequenceItem(
-      tween: Tween(begin: widget.peak, end: 1.0).chain(
-        CurveTween(curve: Curves.easeOutBack),
-      ),
+      tween: Tween(
+        begin: widget.peak,
+        end: 1.0,
+      ).chain(CurveTween(curve: Curves.easeOutBack)),
       weight: 65,
     ),
   ]).animate(_controller);

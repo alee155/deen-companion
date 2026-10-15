@@ -10,17 +10,18 @@ Map<String, dynamic> breakdownJson() => {
   'net_zakatable_wealth': 16500.5,
 };
 
-Map<String, dynamic> calcJson({String standard = 'gold', bool above = true}) => {
-  'zakat_due': 412.51,
-  'above_nisab': above,
-  'nisab_standard': standard,
-  'nisab_value': 6000.0,
-  'nisab_gold_grams': 87,
-  'nisab_silver_grams': 612,
-  'rate': '2.5%',
-  'breakdown': breakdownJson(),
-  'note': 'n',
-};
+Map<String, dynamic> calcJson({String standard = 'gold', bool above = true}) =>
+    {
+      'zakat_due': 412.51,
+      'above_nisab': above,
+      'nisab_standard': standard,
+      'nisab_value': 6000.0,
+      'nisab_gold_grams': 87,
+      'nisab_silver_grams': 612,
+      'rate': '2.5%',
+      'breakdown': breakdownJson(),
+      'note': 'n',
+    };
 
 Map<String, dynamic> agriJson({String water = 'rain'}) => {
   'value': 1000,

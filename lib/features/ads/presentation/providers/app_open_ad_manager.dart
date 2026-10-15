@@ -72,7 +72,9 @@ class AppOpenAdManager with WidgetsBindingObserver {
     // whichever gets here first wins.
     if (_coldStartAttempted) return;
     if (!AdsConfig.adsEnabled) {
-      debugPrint('[Ads] [AppOpenManager] cold start show skipped — ads disabled');
+      debugPrint(
+        '[Ads] [AppOpenManager] cold start show skipped — ads disabled',
+      );
       return;
     }
     if (_hasShownOnce()) {
@@ -113,7 +115,9 @@ class AppOpenAdManager with WidgetsBindingObserver {
         'the in-flight preload…',
       );
       final loaded = await repository.preloadAppOpenAd();
-      debugPrint('[Ads] [AppOpenManager] cold start: preload settled, loaded=$loaded');
+      debugPrint(
+        '[Ads] [AppOpenManager] cold start: preload settled, loaded=$loaded',
+      );
       if (!loaded) return;
 
       // Re-check: something else (a resume/pause cycle, an interstitial)

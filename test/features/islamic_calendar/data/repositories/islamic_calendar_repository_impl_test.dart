@@ -41,13 +41,16 @@ void main() {
   T data<T>(Result<T> r) => (r as Success<T>).data;
 
   group('fetchTodayHijri', () {
-    test('fetches, caches, and then serves the same-day cache without network', () async {
-      when(() => remote.getTodayHijri()).thenAnswer((_) async => _conv());
-      expect(data(await repo.fetchTodayHijri()).hijri.year, 1448);
-      expect(repo.getCachedTodayHijri(), isNotNull);
-      await repo.fetchTodayHijri();
-      verify(() => remote.getTodayHijri()).called(1);
-    });
+    test(
+      'fetches, caches, and then serves the same-day cache without network',
+      () async {
+        when(() => remote.getTodayHijri()).thenAnswer((_) async => _conv());
+        expect(data(await repo.fetchTodayHijri()).hijri.year, 1448);
+        expect(repo.getCachedTodayHijri(), isNotNull);
+        await repo.fetchTodayHijri();
+        verify(() => remote.getTodayHijri()).called(1);
+      },
+    );
 
     test('forceRefresh ignores a same-day cache', () async {
       when(() => remote.getTodayHijri()).thenAnswer((_) async => _conv());
@@ -57,16 +60,22 @@ void main() {
     });
 
     test('cache written yesterday is not treated as today', () async {
-      storage.seed('islamic_today_hijri', _conv(year: 1447).toJson(),
-          age: const Duration(days: 1));
+      storage.seed(
+        'islamic_today_hijri',
+        _conv(year: 1447).toJson(),
+        age: const Duration(days: 1),
+      );
       expect(repo.getCachedTodayHijri(), isNull);
       when(() => remote.getTodayHijri()).thenAnswer((_) async => _conv());
       expect(data(await repo.fetchTodayHijri()).hijri.year, 1448);
     });
 
     test('offline: yesterday\'s cache is used as a stale fallback', () async {
-      storage.seed('islamic_today_hijri', _conv(year: 1447).toJson(),
-          age: const Duration(days: 2));
+      storage.seed(
+        'islamic_today_hijri',
+        _conv(year: 1447).toJson(),
+        age: const Duration(days: 2),
+      );
       network.connected = false;
       expect(data(await repo.fetchTodayHijri()).hijri.year, 1447);
       verifyNever(() => remote.getTodayHijri());
@@ -77,15 +86,23 @@ void main() {
       expect(failure(await repo.fetchTodayHijri()), isA<NetworkFailure>());
     });
 
-    test('ServerException: stale cache if any, else ServerFailure with message', () async {
-      when(() => remote.getTodayHijri()).thenThrow(const ServerException('503'));
-      final f = failure(await repo.fetchTodayHijri());
-      expect(f, isA<ServerFailure>());
-      expect(f.message, '503');
-      storage.seed('islamic_today_hijri', _conv(year: 1447).toJson(),
-          age: const Duration(days: 3));
-      expect(data(await repo.fetchTodayHijri()).hijri.year, 1447);
-    });
+    test(
+      'ServerException: stale cache if any, else ServerFailure with message',
+      () async {
+        when(
+          () => remote.getTodayHijri(),
+        ).thenThrow(const ServerException('503'));
+        final f = failure(await repo.fetchTodayHijri());
+        expect(f, isA<ServerFailure>());
+        expect(f.message, '503');
+        storage.seed(
+          'islamic_today_hijri',
+          _conv(year: 1447).toJson(),
+          age: const Duration(days: 3),
+        );
+        expect(data(await repo.fetchTodayHijri()).hijri.year, 1447);
+      },
+    );
 
     test('malformed payload -> UnexpectedFailure', () async {
       when(() => remote.getTodayHijri()).thenThrow(TypeError());
@@ -95,7 +112,9 @@ void main() {
 
   group('conversions', () {
     test('g2h caches per exact date (different day -> new request)', () async {
-      when(() => remote.getHijriDate(any(), any(), any())).thenAnswer((_) async => _conv());
+      when(
+        () => remote.getHijriDate(any(), any(), any()),
+      ).thenAnswer((_) async => _conv());
       await repo.convertGregorianToHijri(2026, 6, 16);
       await repo.convertGregorianToHijri(2026, 6, 16);
       await repo.convertGregorianToHijri(2026, 6, 17);
@@ -104,8 +123,12 @@ void main() {
     });
 
     test('g2h and h2g caches do not collide for the same numbers', () async {
-      when(() => remote.getHijriDate(any(), any(), any())).thenAnswer((_) async => _conv(year: 1448));
-      when(() => remote.getGregorianDate(any(), any(), any())).thenAnswer((_) async => _conv(year: 1111));
+      when(
+        () => remote.getHijriDate(any(), any(), any()),
+      ).thenAnswer((_) async => _conv(year: 1448));
+      when(
+        () => remote.getGregorianDate(any(), any(), any()),
+      ).thenAnswer((_) async => _conv(year: 1111));
       final a = data(await repo.convertGregorianToHijri(2026, 1, 1));
       final b = data(await repo.convertHijriToGregorian(2026, 1, 1));
       expect(a.hijri.year, 1448);
@@ -113,50 +136,103 @@ void main() {
     });
 
     test('conversion cache expires after 365 days', () async {
-      storage.seed('islamic_g2h_2026_6_16', _conv(year: 1111).toJson(),
-          age: const Duration(days: 364));
-      when(() => remote.getHijriDate(any(), any(), any())).thenAnswer((_) async => _conv());
-      expect(data(await repo.convertGregorianToHijri(2026, 6, 16)).hijri.year, 1111);
-      storage.seed('islamic_g2h_2026_6_16', _conv(year: 1111).toJson(),
-          age: const Duration(days: 366));
-      expect(data(await repo.convertGregorianToHijri(2026, 6, 16)).hijri.year, 1448);
-    });
-
-    test('forceRefresh bypasses cache', () async {
-      storage.seed('islamic_h2g_1448_1_1', _conv(year: 1111).toJson());
-      when(() => remote.getGregorianDate(any(), any(), any())).thenAnswer((_) async => _conv());
+      storage.seed(
+        'islamic_g2h_2026_6_16',
+        _conv(year: 1111).toJson(),
+        age: const Duration(days: 364),
+      );
+      when(
+        () => remote.getHijriDate(any(), any(), any()),
+      ).thenAnswer((_) async => _conv());
       expect(
-        data(await repo.convertHijriToGregorian(1448, 1, 1, forceRefresh: true)).hijri.year,
+        data(await repo.convertGregorianToHijri(2026, 6, 16)).hijri.year,
+        1111,
+      );
+      storage.seed(
+        'islamic_g2h_2026_6_16',
+        _conv(year: 1111).toJson(),
+        age: const Duration(days: 366),
+      );
+      expect(
+        data(await repo.convertGregorianToHijri(2026, 6, 16)).hijri.year,
         1448,
       );
     });
 
-    test('offline: expired cache still served; none -> NetworkFailure', () async {
-      network.connected = false;
-      expect(failure(await repo.convertGregorianToHijri(2026, 6, 16)), isA<NetworkFailure>());
-      storage.seed('islamic_g2h_2026_6_16', _conv(year: 1111).toJson(),
-          age: const Duration(days: 900));
-      expect(data(await repo.convertGregorianToHijri(2026, 6, 16)).hijri.year, 1111);
+    test('forceRefresh bypasses cache', () async {
+      storage.seed('islamic_h2g_1448_1_1', _conv(year: 1111).toJson());
+      when(
+        () => remote.getGregorianDate(any(), any(), any()),
+      ).thenAnswer((_) async => _conv());
+      expect(
+        data(
+          await repo.convertHijriToGregorian(1448, 1, 1, forceRefresh: true),
+        ).hijri.year,
+        1448,
+      );
     });
 
+    test(
+      'offline: expired cache still served; none -> NetworkFailure',
+      () async {
+        network.connected = false;
+        expect(
+          failure(await repo.convertGregorianToHijri(2026, 6, 16)),
+          isA<NetworkFailure>(),
+        );
+        storage.seed(
+          'islamic_g2h_2026_6_16',
+          _conv(year: 1111).toJson(),
+          age: const Duration(days: 900),
+        );
+        expect(
+          data(await repo.convertGregorianToHijri(2026, 6, 16)).hijri.year,
+          1111,
+        );
+      },
+    );
+
     test('server error falls back to cache, else ServerFailure', () async {
-      when(() => remote.getGregorianDate(any(), any(), any())).thenThrow(const ServerException());
-      expect(failure(await repo.convertHijriToGregorian(1448, 1, 1)), isA<ServerFailure>());
-      storage.seed('islamic_h2g_1448_1_1', _conv(year: 1111).toJson(), age: const Duration(days: 900));
-      expect(data(await repo.convertHijriToGregorian(1448, 1, 1)).hijri.year, 1111);
+      when(
+        () => remote.getGregorianDate(any(), any(), any()),
+      ).thenThrow(const ServerException());
+      expect(
+        failure(await repo.convertHijriToGregorian(1448, 1, 1)),
+        isA<ServerFailure>(),
+      );
+      storage.seed(
+        'islamic_h2g_1448_1_1',
+        _conv(year: 1111).toJson(),
+        age: const Duration(days: 900),
+      );
+      expect(
+        data(await repo.convertHijriToGregorian(1448, 1, 1)).hijri.year,
+        1111,
+      );
     });
 
     test('unexpected exceptions map to UnexpectedFailure', () async {
-      when(() => remote.getHijriDate(any(), any(), any())).thenThrow(StateError('x'));
-      expect(failure(await repo.convertGregorianToHijri(2026, 1, 1)), isA<UnexpectedFailure>());
-      when(() => remote.getGregorianDate(any(), any(), any())).thenThrow(StateError('x'));
-      expect(failure(await repo.convertHijriToGregorian(1448, 1, 1)), isA<UnexpectedFailure>());
+      when(
+        () => remote.getHijriDate(any(), any(), any()),
+      ).thenThrow(StateError('x'));
+      expect(
+        failure(await repo.convertGregorianToHijri(2026, 1, 1)),
+        isA<UnexpectedFailure>(),
+      );
+      when(
+        () => remote.getGregorianDate(any(), any(), any()),
+      ).thenThrow(StateError('x'));
+      expect(
+        failure(await repo.convertHijriToGregorian(1448, 1, 1)),
+        isA<UnexpectedFailure>(),
+      );
     });
   });
 
   group('months', () {
-    List<IslamicMonthModel> months() =>
-        [for (var i = 1; i <= 12; i++) IslamicMonthModel.fromJson(monthJson(i))];
+    List<IslamicMonthModel> months() => [
+      for (var i = 1; i <= 12; i++) IslamicMonthModel.fromJson(monthJson(i)),
+    ];
 
     test('fetch caches the list and getCachedMonths reads it back', () async {
       when(() => remote.getIslamicMonths()).thenAnswer((_) async => months());
@@ -167,17 +243,26 @@ void main() {
       expect(cached[8].number, 9);
     });
 
-    test('fresh (<90d) cache is served without network; older refetches', () async {
-      when(() => remote.getIslamicMonths()).thenAnswer((_) async => months());
-      storage.seed('islamic_months', {'list': [monthJson(1)]}, age: const Duration(days: 89));
-      expect(data(await repo.fetchAndCacheMonths()), hasLength(1));
-      verifyNever(() => remote.getIslamicMonths());
-      storage.seed('islamic_months', {'list': [monthJson(1)]}, age: const Duration(days: 91));
-      expect(data(await repo.fetchAndCacheMonths()), hasLength(12));
-    });
+    test(
+      'fresh (<90d) cache is served without network; older refetches',
+      () async {
+        when(() => remote.getIslamicMonths()).thenAnswer((_) async => months());
+        storage.seed('islamic_months', {
+          'list': [monthJson(1)],
+        }, age: const Duration(days: 89));
+        expect(data(await repo.fetchAndCacheMonths()), hasLength(1));
+        verifyNever(() => remote.getIslamicMonths());
+        storage.seed('islamic_months', {
+          'list': [monthJson(1)],
+        }, age: const Duration(days: 91));
+        expect(data(await repo.fetchAndCacheMonths()), hasLength(12));
+      },
+    );
 
     test('offline / server error fall back to cache', () async {
-      storage.seed('islamic_months', {'list': [monthJson(1)]}, age: const Duration(days: 200));
+      storage.seed('islamic_months', {
+        'list': [monthJson(1)],
+      }, age: const Duration(days: 200));
       network.connected = false;
       expect(data(await repo.fetchAndCacheMonths()), hasLength(1));
       network.connected = true;
@@ -189,15 +274,21 @@ void main() {
       network.connected = false;
       expect(failure(await repo.fetchAndCacheMonths()), isA<NetworkFailure>());
       network.connected = true;
-      when(() => remote.getIslamicMonths()).thenThrow(const ServerException('x'));
+      when(
+        () => remote.getIslamicMonths(),
+      ).thenThrow(const ServerException('x'));
       expect(failure(await repo.fetchAndCacheMonths()), isA<ServerFailure>());
       when(() => remote.getIslamicMonths()).thenThrow(StateError('x'));
-      expect(failure(await repo.fetchAndCacheMonths()), isA<UnexpectedFailure>());
+      expect(
+        failure(await repo.fetchAndCacheMonths()),
+        isA<UnexpectedFailure>(),
+      );
     });
   });
 
   group('events', () {
-    IslamicEventsBundleModel bundle() => IslamicEventsBundleModel.fromJson(eventsBundleJson());
+    IslamicEventsBundleModel bundle() =>
+        IslamicEventsBundleModel.fromJson(eventsBundleJson());
 
     test('fetch maps to entity and caches', () async {
       when(() => remote.getIslamicEvents()).thenAnswer((_) async => bundle());
@@ -209,10 +300,18 @@ void main() {
 
     test('12h TTL: 11h old served from cache, 13h old refetched', () async {
       when(() => remote.getIslamicEvents()).thenAnswer((_) async => bundle());
-      storage.seed('islamic_events', eventsBundleJson(), age: const Duration(hours: 11));
+      storage.seed(
+        'islamic_events',
+        eventsBundleJson(),
+        age: const Duration(hours: 11),
+      );
       await repo.fetchAndCacheEvents();
       verifyNever(() => remote.getIslamicEvents());
-      storage.seed('islamic_events', eventsBundleJson(), age: const Duration(hours: 13));
+      storage.seed(
+        'islamic_events',
+        eventsBundleJson(),
+        age: const Duration(hours: 13),
+      );
       await repo.fetchAndCacheEvents();
       verify(() => remote.getIslamicEvents()).called(1);
     });
@@ -220,7 +319,11 @@ void main() {
     test('offline and server-error fallbacks plus failure kinds', () async {
       network.connected = false;
       expect(failure(await repo.fetchAndCacheEvents()), isA<NetworkFailure>());
-      storage.seed('islamic_events', eventsBundleJson(), age: const Duration(days: 5));
+      storage.seed(
+        'islamic_events',
+        eventsBundleJson(),
+        age: const Duration(days: 5),
+      );
       expect(data(await repo.fetchAndCacheEvents()).events, hasLength(2));
       network.connected = true;
       when(() => remote.getIslamicEvents()).thenThrow(const ServerException());
@@ -228,7 +331,10 @@ void main() {
       storage.boxes.clear();
       expect(failure(await repo.fetchAndCacheEvents()), isA<ServerFailure>());
       when(() => remote.getIslamicEvents()).thenThrow(StateError('x'));
-      expect(failure(await repo.fetchAndCacheEvents()), isA<UnexpectedFailure>());
+      expect(
+        failure(await repo.fetchAndCacheEvents()),
+        isA<UnexpectedFailure>(),
+      );
     });
   });
 }

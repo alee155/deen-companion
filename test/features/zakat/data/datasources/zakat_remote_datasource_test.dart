@@ -15,8 +15,10 @@ Response<dynamic> _ok(Object? d) => Response(
   data: {'success': true, 'service': 'zakat', 'data': d},
 );
 
-DioException _err() =>
-    DioException(requestOptions: RequestOptions(path: ''), message: 'net');
+DioException _err() => DioException(
+  requestOptions: RequestOptions(path: ''),
+  message: 'net',
+);
 
 void main() {
   late _MockDio dio;
@@ -43,33 +45,53 @@ void main() {
     verify(() => dio.get(ApiEndpoints.zakatInfo)).called(1);
   });
 
-  test('getNisab passes optional prices through the endpoint builder', () async {
-    when(() => dio.get(any())).thenAnswer((_) async => _ok(nisabJson()));
-    await ds.getNisab(goldPricePerGram: 65.5, silverPricePerGram: 0.8);
-    verify(
-      () => dio.get(ApiEndpoints.zakatNisab(goldPricePerGram: 65.5, silverPricePerGram: 0.8)),
-    ).called(1);
-  });
+  test(
+    'getNisab passes optional prices through the endpoint builder',
+    () async {
+      when(() => dio.get(any())).thenAnswer((_) async => _ok(nisabJson()));
+      await ds.getNisab(goldPricePerGram: 65.5, silverPricePerGram: 0.8);
+      verify(
+        () => dio.get(
+          ApiEndpoints.zakatNisab(
+            goldPricePerGram: 65.5,
+            silverPricePerGram: 0.8,
+          ),
+        ),
+      ).called(1);
+    },
+  );
 
   test('calculate POSTs the request json and parses the response', () async {
-    when(() => dio.post(any(), data: any(named: 'data'))).thenAnswer((_) async => _ok(calcJson()));
+    when(
+      () => dio.post(any(), data: any(named: 'data')),
+    ).thenAnswer((_) async => _ok(calcJson()));
     final r = await ds.calculate(request);
     expect(r.zakatDue, 412.51);
-    final captured = verify(
-      () => dio.post(ApiEndpoints.zakatCalculate, data: captureAny(named: 'data')),
-    ).captured.single as Map<String, dynamic>;
+    final captured =
+        verify(
+              () => dio.post(
+                ApiEndpoints.zakatCalculate,
+                data: captureAny(named: 'data'),
+              ),
+            ).captured.single
+            as Map<String, dynamic>;
     expect(captured['cash'], 100);
     expect(captured.containsKey('gold_price_per_gram'), isFalse);
   });
 
   test('calculateAgriculture POSTs and parses', () async {
-    when(() => dio.post(any(), data: any(named: 'data'))).thenAnswer((_) async => _ok(agriJson()));
+    when(
+      () => dio.post(any(), data: any(named: 'data')),
+    ).thenAnswer((_) async => _ok(agriJson()));
     final r = await ds.calculateAgriculture(
       const ZakatAgricultureRequestModel(value: 1000, waterSource: 'rain'),
     );
     expect(r.zakatDue, 100);
     verify(
-      () => dio.post(ApiEndpoints.zakatAgriculture, data: {'value': 1000.0, 'water_source': 'rain'}),
+      () => dio.post(
+        ApiEndpoints.zakatAgriculture,
+        data: {'value': 1000.0, 'water_source': 'rain'},
+      ),
     ).called(1);
   });
 
@@ -80,7 +102,9 @@ void main() {
     await expectLater(ds.getNisab(), throwsA(isA<ServerException>()));
     await expectLater(ds.calculate(request), throwsA(isA<ServerException>()));
     await expectLater(
-      ds.calculateAgriculture(const ZakatAgricultureRequestModel(value: 1, waterSource: 'rain')),
+      ds.calculateAgriculture(
+        const ZakatAgricultureRequestModel(value: 1, waterSource: 'rain'),
+      ),
       throwsA(isA<ServerException>().having((e) => e.message, 'm', 'net')),
     );
   });

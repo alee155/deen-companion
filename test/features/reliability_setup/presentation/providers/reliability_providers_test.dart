@@ -65,13 +65,21 @@ void main() {
     daily = _MockDailyService();
     reminders = _MockReminderService();
     when(() => scheduler.canScheduleExact()).thenAnswer((_) async => true);
-    when(() => scheduler.requestExactAlarmPermission()).thenAnswer((_) async => true);
+    when(
+      () => scheduler.requestExactAlarmPermission(),
+    ).thenAnswer((_) async => true);
     when(() => alarm.canUseFullScreenIntent()).thenAnswer((_) async => true);
-    when(() => alarm.isIgnoringBatteryOptimizations()).thenAnswer((_) async => true);
+    when(
+      () => alarm.isIgnoringBatteryOptimizations(),
+    ).thenAnswer((_) async => true);
     when(() => alarm.openFullScreenIntentSettings()).thenAnswer((_) async {});
-    when(() => alarm.requestIgnoreBatteryOptimizations()).thenAnswer((_) async {});
+    when(
+      () => alarm.requestIgnoreBatteryOptimizations(),
+    ).thenAnswer((_) async {});
     when(() => daily.sync()).thenAnswer((_) async {});
-    when(() => reminders.syncIfEnabled()).thenAnswer((_) async => const ReminderSyncDisabled());
+    when(
+      () => reminders.syncIfEnabled(),
+    ).thenAnswer((_) async => const ReminderSyncDisabled());
   });
 
   tearDown(() => debugDefaultTargetPlatformOverride = null);
@@ -92,7 +100,8 @@ void main() {
     return c;
   }
 
-  ReliabilityService svc(ProviderContainer c) => c.read(reliabilityServiceProvider);
+  ReliabilityService svc(ProviderContainer c) =>
+      c.read(reliabilityServiceProvider);
 
   group('check()', () {
     test('everything granted on Android', () async {
@@ -105,10 +114,15 @@ void main() {
     test('reports each Android requirement independently', () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       when(() => scheduler.canScheduleExact()).thenAnswer((_) async => false);
-      when(() => alarm.isIgnoringBatteryOptimizations()).thenAnswer((_) async => false);
+      when(
+        () => alarm.isIgnoringBatteryOptimizations(),
+      ).thenAnswer((_) async => false);
       notif.granted = false;
       location.availability = const LocationAvailability(
-        serviceEnabled: true, hasPermission: false, permanentlyDenied: false);
+        serviceEnabled: true,
+        hasPermission: false,
+        permanentlyDenied: false,
+      );
       final s = await svc(make()).check();
       expect(s.missing, [
         ReliabilityRequirement.location,
@@ -119,49 +133,72 @@ void main() {
       expect(s[ReliabilityRequirement.fullScreenAlerts], isTrue);
     });
 
-    test('location counts only when permission is granted (service state is separate)', () async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      location.availability = const LocationAvailability(
-        serviceEnabled: false, hasPermission: true, permanentlyDenied: false);
-      final s = await svc(make()).check();
-      expect(s[ReliabilityRequirement.location], isTrue);
-    });
+    test(
+      'location counts only when permission is granted (service state is separate)',
+      () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        location.availability = const LocationAvailability(
+          serviceEnabled: false,
+          hasPermission: true,
+          permanentlyDenied: false,
+        );
+        final s = await svc(make()).check();
+        expect(s[ReliabilityRequirement.location], isTrue);
+      },
+    );
 
-    test('non-Android: Android-only gates are assumed fine and never queried', () async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-      when(() => scheduler.canScheduleExact()).thenAnswer((_) async => false);
-      final s = await svc(make()).check();
-      expect(s[ReliabilityRequirement.exactAlarms], isTrue);
-      expect(s[ReliabilityRequirement.fullScreenAlerts], isTrue);
-      expect(s[ReliabilityRequirement.batteryOptimization], isTrue);
-      verifyNever(() => scheduler.canScheduleExact());
-      verifyNever(() => alarm.canUseFullScreenIntent());
-    });
+    test(
+      'non-Android: Android-only gates are assumed fine and never queried',
+      () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        when(() => scheduler.canScheduleExact()).thenAnswer((_) async => false);
+        final s = await svc(make()).check();
+        expect(s[ReliabilityRequirement.exactAlarms], isTrue);
+        expect(s[ReliabilityRequirement.fullScreenAlerts], isTrue);
+        expect(s[ReliabilityRequirement.batteryOptimization], isTrue);
+        verifyNever(() => scheduler.canScheduleExact());
+        verifyNever(() => alarm.canUseFullScreenIntent());
+      },
+    );
   });
 
   group('request()', () {
-    test('location: prompts; opens app settings only when permanently denied', () async {
-      final c = make();
-      location.requestResult = const LocationAvailability(
-        serviceEnabled: true, hasPermission: false, permanentlyDenied: false);
-      await svc(c).request(ReliabilityRequirement.location);
-      expect(location.requestPermissionCalls, 1);
-      expect(location.openAppSettingsCalls, 0);
-    });
+    test(
+      'location: prompts; opens app settings only when permanently denied',
+      () async {
+        final c = make();
+        location.requestResult = const LocationAvailability(
+          serviceEnabled: true,
+          hasPermission: false,
+          permanentlyDenied: false,
+        );
+        await svc(c).request(ReliabilityRequirement.location);
+        expect(location.requestPermissionCalls, 1);
+        expect(location.openAppSettingsCalls, 0);
+      },
+    );
 
-    test('location permanently denied sends the user to settings and waits for resume', () async {
-      final c = make();
-      location.requestResult = const LocationAvailability(
-        serviceEnabled: true, hasPermission: false, permanentlyDenied: true);
-      var done = false;
-      final f = svc(c).request(ReliabilityRequirement.location).then((_) => done = true);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(location.openAppSettingsCalls, 1);
-      expect(done, isFalse, reason: 'must wait for the user to come back');
-      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await f;
-      expect(done, isTrue);
-    });
+    test(
+      'location permanently denied sends the user to settings and waits for resume',
+      () async {
+        final c = make();
+        location.requestResult = const LocationAvailability(
+          serviceEnabled: true,
+          hasPermission: false,
+          permanentlyDenied: true,
+        );
+        var done = false;
+        final f = svc(
+          c,
+        ).request(ReliabilityRequirement.location).then((_) => done = true);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(location.openAppSettingsCalls, 1);
+        expect(done, isFalse, reason: 'must wait for the user to come back');
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await f;
+        expect(done, isTrue);
+      },
+    );
 
     test('notifications granted: no settings detour', () async {
       final c = make();
@@ -170,41 +207,52 @@ void main() {
       expect(notif.openSettings, 0);
     });
 
-    test('notifications permanently denied: opens settings and waits for resume', () async {
-      final c = make();
-      notif.requestResult = PermissionRequestResult.permanentlyDenied;
-      final f = svc(c).request(ReliabilityRequirement.notifications);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(notif.openSettings, 1);
-      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await f;
-    });
+    test(
+      'notifications permanently denied: opens settings and waits for resume',
+      () async {
+        final c = make();
+        notif.requestResult = PermissionRequestResult.permanentlyDenied;
+        final f = svc(c).request(ReliabilityRequirement.notifications);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(notif.openSettings, 1);
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await f;
+      },
+    );
 
     test('exact alarms delegates to the scheduler', () async {
       await svc(make()).request(ReliabilityRequirement.exactAlarms);
       verify(() => scheduler.requestExactAlarmPermission()).called(1);
     });
 
-    test('full-screen and battery open their system screens then await resume', () async {
-      final c = make();
-      final f1 = svc(c).request(ReliabilityRequirement.fullScreenAlerts);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      verify(() => alarm.openFullScreenIntentSettings()).called(1);
-      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await f1;
+    test(
+      'full-screen and battery open their system screens then await resume',
+      () async {
+        final c = make();
+        final f1 = svc(c).request(ReliabilityRequirement.fullScreenAlerts);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        verify(() => alarm.openFullScreenIntentSettings()).called(1);
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await f1;
 
-      final f2 = svc(c).request(ReliabilityRequirement.batteryOptimization);
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      verify(() => alarm.requestIgnoreBatteryOptimizations()).called(1);
-      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await f2;
-    });
+        final f2 = svc(c).request(ReliabilityRequirement.batteryOptimization);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        verify(() => alarm.requestIgnoreBatteryOptimizations()).called(1);
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await f2;
+      },
+    );
 
-    test('a throwing platform call is swallowed and the status is refreshed', () async {
-      when(() => scheduler.requestExactAlarmPermission()).thenThrow(StateError('x'));
-      final c = make();
-      await svc(c).request(ReliabilityRequirement.exactAlarms);
-    });
+    test(
+      'a throwing platform call is swallowed and the status is refreshed',
+      () async {
+        when(
+          () => scheduler.requestExactAlarmPermission(),
+        ).thenThrow(StateError('x'));
+        final c = make();
+        await svc(c).request(ReliabilityRequirement.exactAlarms);
+      },
+    );
 
     test('resume invalidates the live status provider', () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
@@ -212,7 +260,10 @@ void main() {
       final sub = c.listen(reliabilityStatusProvider, (_, _) {});
       addTearDown(sub.close);
       svc(c);
-      expect((await c.read(reliabilityStatusProvider.future)).allGranted, isTrue);
+      expect(
+        (await c.read(reliabilityStatusProvider.future)).allGranted,
+        isTrue,
+      );
       notif.granted = false;
       binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       final after = await c.read(reliabilityStatusProvider.future);
@@ -221,44 +272,56 @@ void main() {
   });
 
   group('setUpAll()', () {
-    test('asks only for what is missing, in order, one at a time, then re-arms', () async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      notif.granted = false;
-      var batteryOk = false;
-      when(() => alarm.isIgnoringBatteryOptimizations()).thenAnswer((_) async => batteryOk);
-      when(() => alarm.requestIgnoreBatteryOptimizations()).thenAnswer((_) async {
-        batteryOk = true;
-      });
-      notif.requestResult = PermissionRequestResult.granted;
-      // Granting notifications flips the status for the next check.
-      final c = make();
-      final steps = <ReliabilityRequirement?>[];
-      final run = svc(c).setUpAll(onStep: steps.add);
-      // notifications (no wait) then battery (waits for resume)
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      notif.granted = true;
-      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await run;
-      expect(steps.first, ReliabilityRequirement.notifications);
-      expect(steps.last, isNull);
-      expect(steps, contains(ReliabilityRequirement.batteryOptimization));
-      verifyNever(() => scheduler.requestExactAlarmPermission());
-      verify(() => daily.sync()).called(1);
-      verify(() => reminders.syncIfEnabled()).called(1);
-    });
+    test(
+      'asks only for what is missing, in order, one at a time, then re-arms',
+      () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        notif.granted = false;
+        var batteryOk = false;
+        when(
+          () => alarm.isIgnoringBatteryOptimizations(),
+        ).thenAnswer((_) async => batteryOk);
+        when(() => alarm.requestIgnoreBatteryOptimizations()).thenAnswer((
+          _,
+        ) async {
+          batteryOk = true;
+        });
+        notif.requestResult = PermissionRequestResult.granted;
+        // Granting notifications flips the status for the next check.
+        final c = make();
+        final steps = <ReliabilityRequirement?>[];
+        final run = svc(c).setUpAll(onStep: steps.add);
+        // notifications (no wait) then battery (waits for resume)
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        notif.granted = true;
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await run;
+        expect(steps.first, ReliabilityRequirement.notifications);
+        expect(steps.last, isNull);
+        expect(steps, contains(ReliabilityRequirement.batteryOptimization));
+        verifyNever(() => scheduler.requestExactAlarmPermission());
+        verify(() => daily.sync()).called(1);
+        verify(() => reminders.syncIfEnabled()).called(1);
+      },
+    );
 
-    test('with nothing missing it makes no requests but still re-arms', () async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      final steps = <ReliabilityRequirement?>[];
-      await svc(make()).setUpAll(onStep: steps.add);
-      expect(steps, [null]);
-      expect(notif.requests, 0);
-      verify(() => daily.sync()).called(1);
-    });
+    test(
+      'with nothing missing it makes no requests but still re-arms',
+      () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        final steps = <ReliabilityRequirement?>[];
+        await svc(make()).setUpAll(onStep: steps.add);
+        expect(steps, [null]);
+        expect(notif.requests, 0);
+        verify(() => daily.sync()).called(1);
+      },
+    );
 
     test('a second call while one is running is ignored', () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      when(() => alarm.isIgnoringBatteryOptimizations()).thenAnswer((_) async => false);
+      when(
+        () => alarm.isIgnoringBatteryOptimizations(),
+      ).thenAnswer((_) async => false);
       final c = make();
       final first = svc(c).setUpAll();
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -280,7 +343,8 @@ void main() {
     test('markPrompted stores now and suppresses the prompt', () async {
       final c = make();
       await svc(c).markPrompted();
-      final stored = storage.boxes[box]![AppConstants.reliabilityPromptedAtKey] as int;
+      final stored =
+          storage.boxes[box]![AppConstants.reliabilityPromptedAtKey] as int;
       expect(
         (DateTime.now().millisecondsSinceEpoch - stored).abs(),
         lessThan(5000),
@@ -292,19 +356,24 @@ void main() {
       final c = make();
       int ago(Duration d) => DateTime.now().subtract(d).millisecondsSinceEpoch;
       storage.boxes[box] = {
-        AppConstants.reliabilityPromptedAtKey: ago(const Duration(hours: 23, minutes: 59)),
+        AppConstants.reliabilityPromptedAtKey: ago(
+          const Duration(hours: 23, minutes: 59),
+        ),
       };
       expect(svc(c).shouldPrompt(), isFalse);
       storage.boxes[box] = {
-        AppConstants.reliabilityPromptedAtKey: ago(const Duration(hours: 24, minutes: 1)),
+        AppConstants.reliabilityPromptedAtKey: ago(
+          const Duration(hours: 24, minutes: 1),
+        ),
       };
       expect(svc(c).shouldPrompt(), isTrue);
     });
 
     test('a timestamp in the future never prompts', () {
       storage.boxes[box] = {
-        AppConstants.reliabilityPromptedAtKey:
-            DateTime.now().add(const Duration(days: 3)).millisecondsSinceEpoch,
+        AppConstants.reliabilityPromptedAtKey: DateTime.now()
+            .add(const Duration(days: 3))
+            .millisecondsSinceEpoch,
       };
       expect(svc(make()).shouldPrompt(), isFalse);
     });

@@ -31,11 +31,15 @@ class BannerAdDataSource {
     );
 
     if (size == null) {
-      debugPrint('[Ads] [Banner] getAnchoredAdaptiveBannerAdSize returned null for width=$width');
+      debugPrint(
+        '[Ads] [Banner] getAnchoredAdaptiveBannerAdSize returned null for width=$width',
+      );
       AppLogger.e('Banner ad: could not resolve an adaptive size');
       return null;
     }
-    debugPrint('[Ads] [Banner] resolved adaptive size: ${size.width}x${size.height}');
+    debugPrint(
+      '[Ads] [Banner] resolved adaptive size: ${size.width}x${size.height}',
+    );
 
     final completer = Completer<BannerAdHandle?>();
 
