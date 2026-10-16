@@ -15,8 +15,9 @@ import '../config/flavor_config.dart';
 /// ```
 ///
 /// Printed only in debug builds of the dev flavor (`enableLogging`). Values go
-/// through [redact] first, so passwords, OTPs, tokens, e-mail addresses and
-/// signed photo links never reach the terminal.
+/// through [redact] first, so passwords, OTPs, tokens and e-mail addresses
+/// never reach the terminal, and a signed photo link shows where the image is
+/// without its signature (see [describeSignedUrl]).
 class FlowLog {
   FlowLog._();
 
@@ -96,7 +97,6 @@ class FlowLog {
     'accesstoken',
     'refreshtoken',
     'authorization',
-    'snapurl', // signed photo link: grants access to a private image
     'apikey',
     'xapikey',
   };
@@ -121,9 +121,22 @@ class FlowLog {
 
   static Object? _redactEntry(String key, Object? value) {
     final k = _normalize(key);
+    if (k == 'snapurl')
+      return value is String ? describeSignedUrl(value) : value;
     if (_secret.contains(k)) return value == null ? null : '***';
     if (_masked.contains(k)) return value is String ? mask(value) : value;
     return redact(value);
+  }
+
+  /// A private photo's signed link, safe to print: where the image lives, but
+  /// not the signature that unlocks it. The query string is dropped and a
+  /// Cloudinary `s--…--` signature segment is blanked, so the line shows that a
+  /// photo came back (and which one) without being a working link.
+  static String describeSignedUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasAuthority) return '***';
+    final path = uri.path.replaceAll(RegExp(r's--[^/]*--'), 's--***--');
+    return '${uri.scheme}://${uri.host}$path (signed link, signature hidden)';
   }
 
   /// `1f3a9b2c-…` / `a***@gmail.com`: enough to recognise, not to use.

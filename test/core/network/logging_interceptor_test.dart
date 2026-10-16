@@ -199,6 +199,39 @@ void main() {
     expect(all(), contains('GET api.aladhan.com/v1/calendar/2026/10'));
   });
 
+  test('an upload response shows the log, and the photo link safely', () async {
+    dio.httpClientAdapter = _Adapter(
+      (_) => _json(
+        '{"success":true,"data":{"id":"7c1f","prayer":"asr","date":"2026-10-13",'
+        '"status":"on_time","points":5,'
+        '"snapUrl":"https://res.cloudinary.com/demo/image/authenticated/'
+        's--AbCdEf12--/v1/prayers/abc123.jpg?token=SECRETQUERY"}}',
+        201,
+      ),
+    );
+    await dio.post(
+      '/prayers/logs',
+      data: FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          [1, 2, 3],
+          filename: 'snap.jpg',
+          contentType: DioMediaType('image', 'jpeg'),
+        ),
+      }),
+    );
+    final out = all();
+    expect(out, contains('RESPONSE RECEIVED  status 201'));
+    // The parts that explain what the server did.
+    expect(out, contains('prayer: asr'));
+    expect(out, contains('points: 5'));
+    expect(out, contains('status: on_time'));
+    // The photo is visible as a location, but cannot be opened from the log.
+    expect(out, contains('res.cloudinary.com'));
+    expect(out, contains('prayers/abc123.jpg'));
+    expect(out, isNot(contains('AbCdEf12')));
+    expect(out, isNot(contains('SECRETQUERY')));
+  });
+
   test('prints nothing when logging is off', () async {
     FlowLog.enabledOverride = false;
     dio.httpClientAdapter = _Adapter((_) => _json('{"success":true}', 200));

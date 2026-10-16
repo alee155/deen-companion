@@ -125,12 +125,39 @@ void main() {
       expect(shown, isNot(contains('pw-1')));
     });
 
-    test('signed photo links are hidden', () {
+    test('a signed photo link shows where it is, not how to open it', () {
       final shown = FlowLog.summarize({
-        'snapUrl': 'https://res.cloudinary.com/x?signature=abc',
+        'snapUrl':
+            'https://res.cloudinary.com/demo/image/authenticated/'
+            's--AbCdEf12--/v1700000000/prayers/abc123.jpg?token=SECRETQUERY',
       });
-      expect(shown, isNot(contains('cloudinary')));
-      expect(shown, isNot(contains('signature')));
+      expect(shown, contains('res.cloudinary.com'));
+      expect(shown, contains('prayers/abc123.jpg'));
+      expect(shown, contains('s--***--'));
+      expect(shown, isNot(contains('AbCdEf12')), reason: 'path signature');
+      expect(shown, isNot(contains('SECRETQUERY')), reason: 'query');
+      expect(shown, isNot(contains('token=')));
+      expect(shown, contains('signature hidden'));
+    });
+
+    test('a photo link with only a query signature loses the query', () {
+      final shown = FlowLog.summarize({
+        'snapUrl': 'https://img.test/a/b.jpg?sig=TOPSECRET&exp=123',
+      });
+      expect(shown, contains('img.test/a/b.jpg'));
+      expect(shown, isNot(contains('TOPSECRET')));
+      expect(shown, isNot(contains('exp=')));
+    });
+
+    test('a photo link that is not a URL is hidden entirely', () {
+      expect(FlowLog.summarize({'snapUrl': 'not a url'}), '{snapUrl: ***}');
+    });
+
+    test('describeSignedUrl is usable on its own', () {
+      expect(
+        FlowLog.describeSignedUrl('https://x.test/s--abc--/p.jpg?z=1'),
+        'https://x.test/s--***--/p.jpg (signed link, signature hidden)',
+      );
     });
 
     test('a missing secret stays null rather than showing ***', () {
