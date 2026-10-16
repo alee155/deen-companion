@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show IconData, Icons;
 import 'package:intl/intl.dart';
 
 import '../../../core/error/failures.dart';
@@ -11,6 +12,15 @@ extension PrayerNameLabel on PrayerName {
     PrayerName.asr => 'Asr',
     PrayerName.maghrib => 'Maghrib',
     PrayerName.isha => 'Isha',
+  };
+
+  /// The sky icon used for this prayer across the app.
+  IconData get icon => switch (this) {
+    PrayerName.fajr => Icons.wb_twilight_rounded,
+    PrayerName.dhuhr => Icons.wb_sunny_rounded,
+    PrayerName.asr => Icons.wb_sunny_outlined,
+    PrayerName.maghrib => Icons.nights_stay_rounded,
+    PrayerName.isha => Icons.dark_mode_rounded,
   };
 }
 

@@ -35,6 +35,17 @@ class GroupMemberPrayers extends Equatable {
 
   int get totalPoints => logs.fold(0, (sum, l) => sum + l.points);
 
+  /// The most recently logged prayer that has a photo, or null. This is the
+  /// snap other members open from this member's card.
+  PrayerLog? get latestPhotoLog {
+    PrayerLog? latest;
+    for (final l in logs) {
+      if (l.snapUrl == null) continue;
+      if (latest == null || l.loggedAt.isAfter(latest.loggedAt)) latest = l;
+    }
+    return latest;
+  }
+
   PrayerLog? logFor(PrayerName prayer) {
     for (final l in logs) {
       if (l.prayer == prayer) return l;

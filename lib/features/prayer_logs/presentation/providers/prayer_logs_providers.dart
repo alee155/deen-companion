@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_client.dart';
+import '../../../../core/state/keep_alive_for.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../../../core/utils/flow_log.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
@@ -105,6 +106,12 @@ typedef GroupFeedKey = ({String groupId, String? date});
 
 final groupPrayersProvider = FutureProvider.autoDispose
     .family<List<GroupMemberPrayers>, GroupFeedKey>((ref, key) async {
+      // Kept briefly after the group screen closes (so it reopens with the
+      // circles and photos already there) and dropped when the account changes.
+      final link = keepAliveFor(ref, const Duration(minutes: 15));
+      ref.listen(authSessionProvider.select((s) => s.userId), (_, _) {
+        link.close();
+      });
       if (!ref.watch(authSessionProvider).isAuthenticated) return const [];
       FlowLog.log(
         'GROUP FEED',
