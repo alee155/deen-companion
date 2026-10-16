@@ -227,6 +227,7 @@ class ApiEndpoints {
   static String prayerLog(String id) =>
       '$_deenBase/prayers/logs/${Uri.encodeComponent(id)}';
   static const String prayerLogsRange = '$_deenBase/prayers/logs/range';
+  static const String pointsRules = '$_deenBase/points/rules';
   static const String groups = '$_deenBase/groups';
   static String group(String id) => '$_deenBase/groups/$id';
   static String invitePreview(String token) =>
