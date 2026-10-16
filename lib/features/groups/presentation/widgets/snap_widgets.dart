@@ -1,11 +1,11 @@
 import 'dart:math' as math;
+import '../../../prayer_logs/presentation/widgets/snap_photo_viewer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/group_detail.dart';
-import '../../domain/entities/member_snap_stats.dart';
 
 String timeAgo(DateTime t) {
   final d = DateTime.now().difference(t);
@@ -118,61 +118,65 @@ class MemberAvatar extends StatelessWidget {
   }
 }
 
-/// Snapchat-style snap icon: a solid rounded square when there is an unseen
-/// snap, outlined once seen, muted when the member has none. Tap to view.
-class SnapIconButton extends StatelessWidget {
-  final SnapItem? snap;
+/// A member's snap on their card. With a photo it shows that photo as a small
+/// picture inside a green ring (like an unseen story), and tapping opens it
+/// full screen. Without one (or on the viewer's own card) it is a plain white
+/// box and does nothing.
+class SnapBox extends StatelessWidget {
+  final bool hasPhoto;
   final VoidCallback? onTap;
   final double size;
 
-  const SnapIconButton({
+  /// The photo to preview. Nothing is loaded when null.
+  final String? photoUrl;
+
+  const SnapBox({
     super.key,
-    required this.snap,
+    required this.hasPhoto,
     required this.onTap,
-    this.size = 38,
+    this.size = 36,
+    this.photoUrl,
   });
 
   @override
   Widget build(BuildContext context) {
-    final s = snap;
-    final unseen = s != null && !s.viewed;
-    final enabled = s != null;
+    final enabled = hasPhoto && onTap != null;
     final box = size.w;
+    final radius = box * 0.3;
+    final preview = enabled && photoUrl != null;
     return Semantics(
       button: true,
       enabled: enabled,
-      label: enabled ? 'View snap' : 'No snap',
+      label: enabled ? 'View photo' : 'No photo',
       child: InkResponse(
         onTap: enabled ? onTap : null,
         radius: box * 0.8,
         child: Container(
           width: box,
           height: box,
+          padding: EdgeInsets.all(preview ? 2.w : 0),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(box * 0.3),
-            gradient: unseen
-                ? LinearGradient(
-                    colors: [AppColors.emeraldInk, AppColors.emeraldInkDark],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  )
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(
+              color: enabled ? AppColors.emeraldInk : AppColors.borderWarm,
+              width: enabled ? 1.8 : 1,
+            ),
+            boxShadow: enabled
+                ? [
+                    BoxShadow(
+                      color: AppColors.emeraldInk.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                    ),
+                  ]
                 : null,
-            border: unseen
-                ? null
-                : Border.all(
-                    color: enabled
-                        ? AppColors.emeraldInk
-                        : AppColors.borderWarm,
-                    width: 1.8,
-                  ),
           ),
-          child: Icon(
-            Icons.photo_camera_rounded,
-            size: box * 0.5,
-            color: unseen
-                ? AppColors.onEmeraldInk
-                : (enabled ? AppColors.emeraldInk : AppColors.textMuted),
-          ),
+          child: preview
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(radius - 2.w),
+                  child: SnapPhoto(url: photoUrl!),
+                )
+              : null,
         ),
       ),
     );

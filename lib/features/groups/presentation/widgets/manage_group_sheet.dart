@@ -6,10 +6,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/group_detail.dart';
 import 'group_sheet_widgets.dart';
 
-enum ManageAction { edit, invite, leave, delete }
+enum ManageAction { rules, edit, invite, leave, delete }
 
-/// Group options. Admins get edit/delete too; everyone can share the invite
-/// link and leave.
+/// Group options. Admins get edit/delete too; everyone can read the points
+/// rules, share the invite link and leave.
 Future<ManageAction?> showManageGroupSheet(
   BuildContext context,
   GroupDetail group, {
@@ -25,6 +25,15 @@ Future<ManageAction?> showManageGroupSheet(
       child: Builder(
         builder: (ctx) => Column(
           children: [
+            _ActionTile(
+              icon: Icons.emoji_events_rounded,
+              color: AppColors.amberDeep,
+              bg: AppColors.amber.withValues(alpha: 0.18),
+              title: 'Rules',
+              subtitle: 'How many points each prayer earns',
+              onTap: () => Navigator.of(ctx).pop(ManageAction.rules),
+            ).slideIn(RevealDirection.bottom, distance: 14),
+            SizedBox(height: 10.h),
             if (isAdmin) ...[
               _ActionTile(
                 icon: Icons.edit_rounded,

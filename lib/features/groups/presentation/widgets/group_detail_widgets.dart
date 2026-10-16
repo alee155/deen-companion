@@ -18,11 +18,15 @@ class GroupDetailHero extends StatelessWidget {
   /// Opens the invite-link sheet.
   final VoidCallback onInvite;
 
+  /// Today's snap progress and streak, shown in the header once loaded.
+  final GroupSnapOverview? overview;
+
   const GroupDetailHero({
     super.key,
     required this.group,
     required this.myRole,
     required this.onInvite,
+    this.overview,
   });
 
   @override
@@ -165,6 +169,14 @@ class GroupDetailHero extends StatelessWidget {
                   delay: const Duration(milliseconds: 120),
                   distance: 12,
                 ),
+                if (overview != null) ...[
+                  SizedBox(height: 14.h),
+                  _HeroSnapSummary(overview: overview!).slideIn(
+                    RevealDirection.bottom,
+                    delay: const Duration(milliseconds: 180),
+                    distance: 12,
+                  ),
+                ],
               ],
             ),
           ),
@@ -174,28 +186,29 @@ class GroupDetailHero extends StatelessWidget {
   }
 }
 
-/// Today's progress, streak and the week, in one light card.
-class SnapOverviewCard extends StatelessWidget {
+/// Who snapped today, the streak and the week, on the dark header.
+class _HeroSnapSummary extends StatelessWidget {
   final GroupSnapOverview overview;
-  const SnapOverviewCard({super.key, required this.overview});
+  const _HeroSnapSummary({required this.overview});
 
   @override
   Widget build(BuildContext context) {
     final pct = (overview.todayProgress * 100).round();
+    final onHero = AppColors.onHeroSurface;
     return Container(
-      padding: EdgeInsets.all(16.w),
+      padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(24.r),
-        border: Border.all(color: AppColors.borderWarm),
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
       ),
       child: Column(
         children: [
           Row(
             children: [
               SizedBox(
-                width: 64.w,
-                height: 64.w,
+                width: 54.w,
+                height: 54.w,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -204,29 +217,27 @@ class SnapOverviewCard extends StatelessWidget {
                       duration: context.motion.duration(AppMotion.value),
                       curve: AppMotion.entrance,
                       builder: (_, v, _) => CustomPaint(
-                        size: Size.square(64.w),
+                        size: Size.square(54.w),
                         painter: RingPainter(
                           progress: v,
-                          track: AppColors.worshipAccent.withValues(
-                            alpha: 0.15,
-                          ),
+                          track: Colors.white.withValues(alpha: 0.18),
                           color: AppColors.emeraldInk,
-                          width: 6,
+                          width: 5,
                         ),
                       ),
                     ),
                     Text(
                       '$pct%',
                       style: TextStyle(
-                        fontSize: 14.sp,
+                        fontSize: 13.sp,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.inkText,
+                        color: Colors.white,
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(width: 14.w),
+              SizedBox(width: 12.w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,17 +245,17 @@ class SnapOverviewCard extends StatelessWidget {
                     Text(
                       'Snapped today',
                       style: TextStyle(
-                        fontSize: 15.sp,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.inkText,
+                        color: Colors.white,
                       ),
                     ),
-                    SizedBox(height: 3.h),
+                    SizedBox(height: 2.h),
                     Text(
                       '${overview.snappedTodayCount} of ${overview.memberCount} members',
                       style: TextStyle(
                         fontSize: 12.sp,
-                        color: AppColors.textSecondary,
+                        color: onHero.withValues(alpha: 0.8),
                       ),
                     ),
                   ],
@@ -254,16 +265,16 @@ class SnapOverviewCard extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.local_fire_department_rounded,
-                    size: 26.sp,
+                    size: 24.sp,
                     color: AppColors.amber,
                   ),
                   AnimatedCount(
                     value: overview.currentStreak,
                     fromZero: true,
                     style: TextStyle(
-                      fontSize: 18.sp,
+                      fontSize: 17.sp,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.inkText,
+                      color: Colors.white,
                       height: 1.1,
                     ),
                   ),
@@ -271,68 +282,25 @@ class SnapOverviewCard extends StatelessWidget {
                     'day streak',
                     style: TextStyle(
                       fontSize: 10.sp,
-                      color: AppColors.textSecondary,
+                      color: onHero.withValues(alpha: 0.75),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          SizedBox(height: 14.h),
-          Row(
-            children: [
-              for (final d in overview.week)
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        _dayLetter(d.date.weekday),
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      SizedBox(height: 5.h),
-                      Container(
-                        width: 26.w,
-                        height: 26.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: d.completed
-                              ? AppColors.emeraldInk
-                              : AppColors.parchment,
-                          border: d.isToday && !d.completed
-                              ? Border.all(
-                                  color: AppColors.emeraldInk,
-                                  width: 1.6,
-                                )
-                              : null,
-                        ),
-                        child: d.completed
-                            ? Icon(
-                                Icons.check_rounded,
-                                size: 15.sp,
-                                color: AppColors.onEmeraldInk,
-                              )
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
           SizedBox(height: 10.h),
           Text(
             'Longest streak: ${overview.longestStreak} days',
-            style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
+            style: TextStyle(
+              fontSize: 11.sp,
+              color: onHero.withValues(alpha: 0.7),
+            ),
           ),
         ],
       ),
     );
   }
-
-  static String _dayLetter(int weekday) => 'MTWTFSS'[weekday - 1];
 }
 
 /// A leaderboard row. [stats] is null while loading or if stats failed; the
@@ -346,7 +314,16 @@ class MemberSnapTile extends StatelessWidget {
   /// Whether tapping the row opens the member's details (admin, or self).
   final bool canOpenDetails;
   final VoidCallback onOpenDetails;
+
+  /// Opens the member's latest photo. Only offered when [hasPhoto].
   final VoidCallback onOpenSnap;
+
+  /// Whether there is a real photo from this member for the viewer to open
+  /// (never on the viewer's own card).
+  final bool hasPhoto;
+
+  /// The photo shown on the card's box while [hasPhoto].
+  final String? photoUrl;
 
   const MemberSnapTile({
     super.key,
@@ -357,6 +334,8 @@ class MemberSnapTile extends StatelessWidget {
     required this.canOpenDetails,
     required this.onOpenDetails,
     required this.onOpenSnap,
+    this.hasPhoto = false,
+    this.photoUrl,
   });
 
   @override
@@ -442,7 +421,11 @@ class MemberSnapTile extends StatelessWidget {
               ),
             ),
             SizedBox(width: 8.w),
-            SnapIconButton(snap: s?.latestSnap, onTap: onOpenSnap),
+            SnapBox(
+              hasPhoto: hasPhoto,
+              photoUrl: photoUrl,
+              onTap: hasPhoto ? onOpenSnap : null,
+            ),
             if (canOpenDetails) ...[
               SizedBox(width: 4.w),
               Icon(

@@ -18,6 +18,7 @@ Future<MemberSheetAction?> showMemberDetailSheet(
   required MemberSnapStats? stats,
   required bool isMe,
   required bool viewerIsAdmin,
+  Widget? prayerRow,
 }) {
   return showModalBottomSheet<MemberSheetAction>(
     context: context,
@@ -34,6 +35,7 @@ Future<MemberSheetAction?> showMemberDetailSheet(
         stats: stats,
         isMe: isMe,
         viewerIsAdmin: viewerIsAdmin,
+        prayerRow: prayerRow,
       ),
     ),
   );
@@ -46,12 +48,18 @@ class _MemberDetailSheet extends StatelessWidget {
   final bool isMe;
   final bool viewerIsAdmin;
 
+  /// The member's five prayer circles for today, when the feed has loaded. A
+  /// slot rather than a typed field, so this sheet stays free of the
+  /// prayer-log feature.
+  final Widget? prayerRow;
+
   const _MemberDetailSheet({
     required this.controller,
     required this.member,
     required this.stats,
     required this.isMe,
     required this.viewerIsAdmin,
+    this.prayerRow,
   });
 
   @override
@@ -160,6 +168,20 @@ class _MemberDetailSheet extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ],
+          if (prayerRow != null) ...[
+            SizedBox(height: 18.h),
+            Text('Today’s prayers', style: _sectionStyle),
+            SizedBox(height: 10.h),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(20.r),
+                border: Border.all(color: AppColors.borderWarm),
+              ),
+              child: prayerRow!,
             ),
           ],
           SizedBox(height: 18.h),

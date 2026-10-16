@@ -1,26 +1,33 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/motion/motion.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
-import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
-import '../../../prayer_logs/presentation/widgets/group_prayers_section.dart';
+import '../../../prayer_logs/domain/group_member_prayers.dart';
+import '../../../prayer_logs/presentation/widgets/snap_photo_viewer.dart';
+import '../../../prayer_logs/presentation/prayer_labels.dart';
+import '../../../prayer_logs/presentation/widgets/prayer_dots_row.dart';
 import '../../domain/entities/group_detail.dart';
 import '../../domain/entities/member_snap_stats.dart';
 import '../providers/groups_providers.dart';
 import '../widgets/delete_group_sheet.dart';
 import '../widgets/edit_group_sheet.dart';
+import '../widgets/group_detail_skeleton.dart';
 import '../widgets/group_detail_widgets.dart';
 import '../widgets/invite_group_sheet.dart';
 import '../widgets/leave_group_sheet.dart';
 import '../widgets/manage_group_sheet.dart';
 import '../widgets/remove_member_sheet.dart';
+import '../widgets/send_snap_button.dart';
 import '../widgets/member_detail_sheet.dart';
 import '../widgets/snap_widgets.dart';
 
@@ -36,9 +43,21 @@ class GroupDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<GroupDetailScreen> createState() => _GroupDetailScreenState();
 }
 
-class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
+class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
+    with WidgetsBindingObserver {
+  /// Two quiet refreshes are never closer than this (unless forced), so a poll
+  /// that lands just after the app returns to the foreground does not fetch
+  /// twice.
+  static const minGap = Duration(seconds: 20);
+
   final _scroll = ScrollController();
   final _bar = ValueNotifier<double>(0);
+
+  /// Running for [minGap] after each quiet refresh; while it runs, further
+  /// non-forced refreshes are skipped.
+  Timer? _cooldown;
+
+  GroupFeedKey get _feedKey => (groupId: widget.groupId, date: null);
 
   @override
   void initState() {
@@ -50,10 +69,56 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       );
       if (t != _bar.value) _bar.value = t;
     });
+
+    WidgetsBinding.instance.addObserver(this);
+
+    // Reopened with the group still held from an earlier visit: it is shown
+    // at once, and brought up to date behind the scenes (no skeleton).
+    final detail = groupDetailProvider(widget.groupId);
+    if (ref.exists(detail) && ref.read(detail).hasValue) {
+      FlowLog.log(
+        'GROUP',
+        'REOPENED WITH KEPT DATA -> SHOWING IT NOW, refreshing quietly',
+      );
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _refreshQuietly(detail: true, force: true),
+      );
+    }
+  }
+
+  /// Fetches again without touching what is on screen: the old data stays
+  /// until the new arrives, and a failure is ignored (the old data is still
+  /// right as far as we know). [detail] also reloads the member list.
+  void _refreshQuietly({required bool detail, bool force = false}) {
+    if (!mounted) return;
+    if (!force && (_cooldown?.isActive ?? false)) return;
+
+    final current = ref.read(groupDetailProvider(widget.groupId));
+    // Still on the very first load: it is already fetching.
+    if (current.isLoading && !current.hasValue) return;
+
+    _cooldown?.cancel();
+    _cooldown = Timer(minGap, () {});
+    FlowLog.log(
+      'GROUP',
+      'QUIET REFRESH (${detail ? 'group and prayers' : 'prayers'}) - '
+          'the current data stays on screen',
+    );
+    ref.invalidate(groupPrayersProvider(_feedKey));
+    if (detail) ref.invalidate(groupDetailProvider(widget.groupId));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    FlowLog.log('GROUP', 'APP RETURNED TO THE FOREGROUND');
+    _refreshQuietly(detail: true);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cooldown?.cancel();
     _scroll.dispose();
     _bar.dispose();
     super.dispose();
@@ -76,6 +141,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     );
     if (!mounted || action == null) return;
     switch (action) {
+      case ManageAction.rules:
+        await context.push('/points-rules');
       case ManageAction.edit:
         final saved = await showEditGroupSheet(context, group);
         if (saved == true && mounted) _toast('Group updated');
@@ -146,7 +213,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
       backgroundColor: AppColors.parchment,
       floatingActionButton: group == null
           ? null
-          : FloatingActionButton.extended(
+          : SendSnapButton(
               onPressed: () async {
                 HapticFeedback.selectionClick();
                 final sent = await context.push<bool>(
@@ -154,39 +221,28 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                 );
                 if (sent == true && mounted) _toast('Snap sent');
               },
-              backgroundColor: AppColors.emeraldInk,
-              foregroundColor: AppColors.onEmeraldInk,
-              icon: const Icon(Icons.camera_alt_rounded),
-              label: Text(
-                'Send snap',
-                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
-              ),
             ),
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: Stack(
           children: [
-            async.when(
-              data: (g) => _content(g, myId, isAdmin),
-              loading: () => Center(
-                child: CircularProgressIndicator(color: AppColors.emeraldInk),
-              ),
-              error: (e, _) => Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.w),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(e.toString(), textAlign: TextAlign.center),
-                      SizedBox(height: 12.h),
-                      FilledButton(
-                        onPressed: () =>
-                            ref.invalidate(groupDetailProvider(widget.groupId)),
-                        child: const Text('Try again'),
-                      ),
-                    ],
-                  ),
+            // The skeleton fades into the content (or the error) rather than
+            // popping, so the screen settles instead of jumping. A retry after
+            // an error shows the skeleton again while it reloads.
+            ContentSwitcher(
+              child: KeyedSubtree(
+                key: ValueKey(
+                  async.hasValue
+                      ? 'content'
+                      : async.isLoading
+                      ? 'loading'
+                      : 'error',
                 ),
+                child: async.hasValue
+                    ? _content(async.requireValue, myId, isAdmin)
+                    : async.isLoading
+                    ? const GroupDetailSkeleton()
+                    : _error(async.error!),
               ),
             ),
             Positioned(
@@ -209,9 +265,37 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     );
   }
 
+  Widget _error(Object error) => Center(
+    child: Padding(
+      padding: EdgeInsets.all(32.w),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(error.toString(), textAlign: TextAlign.center),
+          SizedBox(height: 12.h),
+          FilledButton(
+            onPressed: () =>
+                ref.invalidate(groupDetailProvider(widget.groupId)),
+            child: const Text('Try again'),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Widget _content(GroupDetail g, String? myId, bool isAdmin) {
     final overviewAsync = ref.watch(groupSnapOverviewProvider(g.id));
     final overview = overviewAsync.valueOrNull;
+
+    // Today's prayers per member, for the circles on each card. Absent while
+    // loading or if it failed (e.g. offline): the cards then show no circles
+    // rather than a row of "not logged".
+    final feed = ref
+        .watch(groupPrayersProvider((groupId: g.id, date: null)))
+        .valueOrNull;
+    final prayersByMember = {
+      for (final m in feed ?? const <GroupMemberPrayers>[]) m.userId: m,
+    };
 
     // Leaderboard order: highest score first once stats are known.
     final members = [...g.members];
@@ -226,6 +310,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     return RefreshIndicator(
       edgeOffset: 90.h,
       onRefresh: () async {
+        _cooldown?.cancel();
+        _cooldown = Timer(minGap, () {});
         ref.invalidate(groupDetailProvider(g.id));
         ref.invalidate(groupPrayersProvider);
         await ref.read(groupDetailProvider(g.id).future);
@@ -240,31 +326,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
             child: GroupDetailHero(
               group: g,
               myRole: g.roleOf(myId),
+              overview: overview,
               onInvite: () =>
                   showInviteGroupSheet(context, group: g, isAdmin: isAdmin),
-            ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 0),
-            sliver: SliverToBoxAdapter(
-              child: GroupPrayersSection(groupId: g.id),
-            ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 0),
-            sliver: SliverToBoxAdapter(
-              child: overview != null
-                  ? SnapOverviewCard(overview: overview).slideIn(
-                      RevealDirection.bottomStart,
-                      delay: const Duration(milliseconds: 120),
-                    )
-                  : overviewAsync.isLoading
-                  ? ShimmerBox(
-                      width: double.infinity,
-                      height: 170.h,
-                      borderRadius: 24.r,
-                    )
-                  : const SizedBox.shrink(),
             ),
           ),
           SliverToBoxAdapter(
@@ -325,7 +389,15 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                     child: Column(
                       children: [
                         for (var i = 0; i < members.length; i++) ...[
-                          _tile(g, members[i], i + 1, overview, myId, isAdmin),
+                          _tile(
+                            g,
+                            members[i],
+                            i + 1,
+                            overview,
+                            myId,
+                            isAdmin,
+                            prayersByMember[members[i].userId],
+                          ),
                           if (i != members.length - 1)
                             Divider(
                               height: 1,
@@ -371,13 +443,18 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
     GroupSnapOverview? overview,
     String? myId,
     bool isAdmin,
+    GroupMemberPrayers? prayers,
   ) {
     final stats = overview?.members[m.userId];
     final isMe = m.userId == myId;
     // Admins can open anyone's details; other members only their own.
     final canOpen = isAdmin || isMe;
+    // Photos are for the other members: the sender does not open their own.
+    final photoAvailable = !isMe && prayers?.latestPhotoLog != null;
     return MemberSnapTile(
       member: m,
+      hasPhoto: photoAvailable,
+      photoUrl: photoAvailable ? prayers?.latestPhotoLog?.snapUrl : null,
       stats: stats,
       rank: rank,
       isMe: isMe,
@@ -389,15 +466,62 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
           stats: stats,
           isMe: isMe,
           viewerIsAdmin: isAdmin,
+          // Today's prayer circles live here, not on the card.
+          prayerRow: prayers == null
+              ? null
+              : PrayerDotsRow(
+                  member: prayers,
+                  viewable: !isMe,
+                  showLabels: true,
+                  size: 36,
+                ),
         );
         if (action == MemberSheetAction.remove && mounted) {
           await _removeMember(group, m);
         }
       },
-      onOpenSnap: () {
-        final snap = stats?.latestSnap;
-        if (snap != null) showSnapViewer(context, member: m, snap: snap);
-      },
+      onOpenSnap: () => _openMemberPhoto(group, m),
+    );
+  }
+
+  /// Opens the member's latest photo. The feed is read again first: photo
+  /// links are signed and regenerated on every read, so a screen left open for
+  /// a while would otherwise try an expired one.
+  Future<void> _openMemberPhoto(GroupDetail group, GroupMember m) async {
+    final key = (groupId: group.id, date: null as String?);
+    FlowLog.log(
+      'GROUP FEED',
+      'USER TAPPED ${m.displayName}\'S PHOTO -> getting a fresh link',
+    );
+    List<GroupMemberPrayers> feed;
+    try {
+      feed = await ref.refresh(groupPrayersProvider(key).future);
+    } catch (_) {
+      // Offline or the call failed: the link we already have may still work.
+      feed = ref.read(groupPrayersProvider(key)).valueOrNull ?? const [];
+    }
+    if (!mounted) return;
+
+    GroupMemberPrayers? theirs;
+    for (final f in feed) {
+      if (f.userId == m.userId) theirs = f;
+    }
+    final log = theirs?.latestPhotoLog;
+    if (log == null) {
+      FlowLog.log('GROUP FEED', 'NO PHOTO AVAILABLE for ${m.displayName}');
+      _toast('No photo to show right now');
+      return;
+    }
+    FlowLog.log(
+      'GROUP FEED',
+      'OPENING ${m.displayName}\'S ${log.prayer.name.toUpperCase()} PHOTO',
+    );
+    await showSnapPhoto(
+      context,
+      url: log.snapUrl!,
+      title: m.displayName,
+      subtitle: '${log.prayer.label} · ${timeAgo(log.loggedAt)}',
+      avatar: MemberAvatar(member: m, size: 38.w),
     );
   }
 }

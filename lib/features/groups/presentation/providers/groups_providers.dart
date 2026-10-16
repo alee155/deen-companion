@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../../../core/utils/flow_log.dart';
+import '../../../../core/state/keep_alive_for.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../../../core/di/providers.dart';
 import '../../data/datasources/groups_local_datasource.dart';
@@ -105,9 +107,23 @@ final myGroupsProvider = AsyncNotifierProvider<MyGroupsNotifier, List<Group>>(
   MyGroupsNotifier.new,
 );
 
+/// How long a group's data is kept after its screen is closed. Reopening the
+/// group within this time shows it at once (and refreshes it quietly) instead
+/// of a loading skeleton.
+const groupDataKeepAlive = Duration(minutes: 15);
+
 /// Full group (with members) for the detail screen.
+///
+/// Kept for [groupDataKeepAlive] after the screen closes, and dropped at once
+/// when another account signs in: members' names and e-mails must never be
+/// shown to the next person.
 final groupDetailProvider = FutureProvider.autoDispose
     .family<GroupDetail, String>((ref, groupId) async {
+      final link = keepAliveFor(ref, groupDataKeepAlive);
+      ref.listen(authSessionProvider.select((s) => s.userId), (_, _) {
+        FlowLog.log('GROUP', 'ACCOUNT CHANGED -> DROPPING THE KEPT GROUP DATA');
+        link.close();
+      });
       final result = await ref
           .watch(groupsRepositoryProvider)
           .getGroupDetail(groupId);

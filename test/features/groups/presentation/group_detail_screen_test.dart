@@ -108,6 +108,7 @@ void main() {
     expect(find.textContaining('Alee Khan'), findsOneWidget);
     expect(find.text('Sara Ahmed'), findsOneWidget);
     expect(find.text('ADMIN'), findsOneWidget);
+    // Each member card shows its snaps, score and day streak.
     expect(find.byIcon(Icons.photo_camera_rounded), findsWidgets);
     await tester.pumpWidget(const SizedBox());
   });
