@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/permissions/camera_permission_service.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../../../core/utils/flow_log.dart';
 import '../../../../core/utils/logger.dart';
 import '../../data/camera/camera_plugin_service.dart';
 import '../../data/camera/camera_session.dart';
 import '../../data/flutter_snap_image_processor.dart';
-import '../../data/mock/mock_snap_repository.dart';
+import '../../data/prayer_log_snap_repository.dart';
+import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import '../../domain/entities/snap_draft.dart';
 import '../../domain/repositories/snap_image_processor.dart';
 import '../../domain/repositories/snap_repository.dart';
@@ -21,9 +23,9 @@ final snapImageProcessorProvider = Provider<SnapImageProcessor>(
   (ref) => const FlutterSnapImageProcessor(),
 );
 
-/// MOCK today — swap for the real API-backed repository later.
+/// Sending a snap logs the open prayer through `POST /prayers/logs`.
 final snapRepositoryProvider = Provider<SnapRepository>(
-  (ref) => const MockSnapRepository(),
+  (ref) => PrayerLogSnapRepository(log: ref.read(prayerLogActionsProvider).log),
 );
 
 // ---------------------------------------------------------------------------
@@ -353,6 +355,11 @@ class SnapComposerController
   Future<bool> send(List<String> recipientIds) async {
     final prepared = state.prepared;
     if (prepared == null || state.isSending) return false;
+    FlowLog.log(
+      'SEND SNAP',
+      'USER TAPPED SEND: photo ${prepared.compressedBytes} bytes, '
+          '${recipientIds.length} recipients',
+    );
     state = state.copyWith(isSending: true, clearError: true);
     final caption = state.caption.trim();
     final result = await ref
@@ -367,10 +374,12 @@ class SnapComposerController
           ),
         );
     switch (result) {
-      case Success():
+      case Success(:final data):
+        FlowLog.log('SEND SNAP', 'SEND FINISHED OK (snap id ${data.id})');
         state = state.copyWith(isSending: false);
         return true;
       case Error(:final failure):
+        FlowLog.error('SEND SNAP', 'SEND FAILED', failure.message);
         state = state.copyWith(isSending: false, errorMessage: failure.message);
         return false;
     }
