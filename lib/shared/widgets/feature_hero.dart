@@ -15,12 +15,18 @@ class FeatureHero extends StatelessWidget {
   final IconData ghostIcon;
   final List<FeatureHeroChip> chips;
 
+  /// A shorter header for detail screens: smaller title, a one-line subtitle
+  /// and tighter spacing, so the content starts higher. The default size is
+  /// for feature landing screens.
+  final bool compact;
+
   const FeatureHero({
     super.key,
     required this.title,
     required this.subtitle,
     required this.ghostIcon,
     this.chips = const [],
+    this.compact = false,
   });
 
   @override
@@ -34,7 +40,9 @@ class FeatureHero extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36.r)),
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular((compact ? 28 : 36).r),
+        ),
       ),
       child: Stack(
         children: [
@@ -45,20 +53,20 @@ class FeatureHero extends StatelessWidget {
             ),
           ),
           Positioned(
-            right: -24.w,
-            top: 40.h,
+            right: (compact ? -10 : -24).w,
+            top: (compact ? 30 : 40).h,
             child: Icon(
               ghostIcon,
-              size: 170.sp,
+              size: (compact ? 96 : 170).sp,
               color: AppColors.gold.withValues(alpha: 0.10),
             ),
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(
               24.w,
-              MediaQuery.of(context).padding.top + 66.h,
+              MediaQuery.of(context).padding.top + (compact ? 50 : 66).h,
               24.w,
-              26.h,
+              (compact ? 14 : 26).h,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,17 +74,19 @@ class FeatureHero extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: 30.sp,
+                    fontSize: (compact ? 22 : 30).sp,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                     height: 1.1,
                   ),
                 ).slideIn(RevealDirection.topStart),
-                SizedBox(height: 6.h),
+                SizedBox(height: (compact ? 3 : 6).h),
                 Text(
                   subtitle,
+                  maxLines: compact ? 1 : null,
+                  overflow: compact ? TextOverflow.ellipsis : null,
                   style: TextStyle(
-                    fontSize: 13.sp,
+                    fontSize: (compact ? 12 : 13).sp,
                     height: 1.45,
                     color: AppColors.onHeroSurface.withValues(alpha: 0.78),
                   ),
@@ -85,10 +95,10 @@ class FeatureHero extends StatelessWidget {
                   delay: const Duration(milliseconds: 70),
                 ),
                 if (chips.isNotEmpty) ...[
-                  SizedBox(height: 16.h),
+                  SizedBox(height: (compact ? 10 : 16).h),
                   Wrap(
                     spacing: 8.w,
-                    runSpacing: 8.h,
+                    runSpacing: (compact ? 6 : 8).h,
                     children: [
                       for (var i = 0; i < chips.length; i++)
                         chips[i].build().slideIn(
