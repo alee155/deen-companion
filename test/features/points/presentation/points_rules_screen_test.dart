@@ -4,6 +4,7 @@ import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/points/domain/entities/points_rule.dart';
 import 'package:deen_companion/features/points/presentation/providers/points_providers.dart';
 import 'package:deen_companion/features/points/presentation/screens/points_rules_screen.dart';
+import 'package:deen_companion/features/points/presentation/widgets/points_chart.dart';
 import 'package:deen_companion/shared/widgets/feature_hero.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -118,7 +119,7 @@ void main() {
   });
 
   group('screen', () {
-    testWidgets('shows every prayer with its points, Fajr first', (
+    testWidgets('charts every prayer with its points, Fajr first', (
       tester,
     ) async {
       final repo = FakePointsRepo()..result = Success(sampleRules());
@@ -126,15 +127,15 @@ void main() {
       await _settle(tester);
 
       for (final name in ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']) {
-        expect(find.text(name), findsOneWidget, reason: name);
+        expect(find.text(name), findsWidgets, reason: name);
       }
-      expect(find.text('+10'), findsOneWidget);
-      expect(find.text('+5'), findsNWidgets(4));
-      expect(find.text('points'), findsNWidgets(5));
+      // One value label per bar: 10 for Fajr, 5 for the other four.
+      expect(find.text('10'), findsOneWidget);
+      expect(find.text('5'), findsNWidgets(4));
 
-      final fajr = tester.getTopLeft(find.text('Fajr')).dy;
-      final isha = tester.getTopLeft(find.text('Isha')).dy;
-      expect(fajr, lessThan(isha));
+      final fajr = tester.getTopLeft(find.text('Fajr').first).dx;
+      final isha = tester.getTopLeft(find.text('Isha')).dx;
+      expect(fajr, lessThan(isha), reason: 'bars run Fajr to Isha');
     });
 
     testWidgets('opens with a hero: title, explanation and quick facts', (
@@ -176,72 +177,80 @@ void main() {
       );
     });
 
-    testWidgets('lists the prayers under a "Points per prayer" heading', (
+    testWidgets('puts the chart under a "Points per prayer" heading', (
       tester,
     ) async {
       final repo = FakePointsRepo()..result = Success(sampleRules());
       await _pump(tester, repo);
       await _settle(tester);
       final heading = tester.getTopLeft(find.text('Points per prayer')).dy;
-      final fajr = tester.getTopLeft(find.text('Fajr')).dy;
-      expect(heading, lessThan(fajr));
+      final chart = tester.getTopLeft(find.byType(PointsChart)).dy;
+      expect(heading, lessThan(chart));
     });
 
-    testWidgets('each card says when the prayer can be logged', (tester) async {
+    testWidgets('starts on the best prayer and says when it can be logged', (
+      tester,
+    ) async {
       final repo = FakePointsRepo()..result = Success(sampleRules());
       await _pump(tester, repo);
       await _settle(tester);
       expect(find.text('Log it from Fajr until sunrise'), findsOneWidget);
-      expect(find.text('Log it from Dhuhr until Asr'), findsOneWidget);
-      expect(find.text('Log it from Asr until Maghrib'), findsOneWidget);
-      expect(find.text('Log it from Maghrib until Isha'), findsOneWidget);
-      expect(find.text('Log it from Isha until the next Fajr'), findsOneWidget);
+      expect(find.text('+10 points'), findsOneWidget);
     });
 
-    testWidgets('only the best-earning prayer wears the HIGHEST badge', (
+    testWidgets('tapping a bar shows that prayer\'s window and points', (
       tester,
     ) async {
       final repo = FakePointsRepo()..result = Success(sampleRules());
       await _pump(tester, repo);
       await _settle(tester);
-      expect(find.text('HIGHEST'), findsOneWidget);
-      final badge = tester.getTopLeft(find.text('HIGHEST')).dy;
-      final fajr = tester.getTopLeft(find.text('Fajr')).dy;
-      final dhuhr = tester.getTopLeft(find.text('Dhuhr')).dy;
-      expect((badge - fajr).abs(), lessThan(10), reason: 'on the Fajr card');
-      expect(badge, lessThan(dhuhr));
+      for (final e in {
+        'Dhuhr': 'Log it from Dhuhr until Asr',
+        'Asr': 'Log it from Asr until Maghrib',
+        'Maghrib': 'Log it from Maghrib until Isha',
+        'Isha': 'Log it from Isha until the next Fajr',
+      }.entries) {
+        await tester.tap(find.text(e.key).first);
+        await tester.pumpAndSettle();
+        expect(find.text(e.value), findsOneWidget, reason: e.key);
+        expect(find.text('+5 points'), findsOneWidget);
+      }
     });
 
-    testWidgets('a tie for the top gives every winner the badge', (
-      tester,
-    ) async {
+    testWidgets('a tie for the top starts on the first winner', (tester) async {
       final repo = FakePointsRepo()
         ..result = Success(
           PointsRules([
-            const PointsRule(prayer: 'fajr', points: 10),
+            const PointsRule(prayer: 'fajr', points: 5),
             const PointsRule(prayer: 'isha', points: 10),
-            const PointsRule(prayer: 'asr', points: 5),
+            const PointsRule(prayer: 'asr', points: 10),
           ]),
         );
       await _pump(tester, repo);
       await _settle(tester);
-      expect(find.text('HIGHEST'), findsNWidgets(2));
+      // Asr comes before Isha in display order.
+      expect(find.text('Log it from Asr until Maghrib'), findsOneWidget);
     });
 
-    testWidgets('each bar shows its share of the best prayer', (tester) async {
+    testWidgets('the best bar is the tallest and the others scale to it', (
+      tester,
+    ) async {
       final repo = FakePointsRepo()..result = Success(sampleRules());
       await _pump(tester, repo);
       await tester.pumpAndSettle();
-      final factors =
-          tester
-              .widgetList<FractionallySizedBox>(
-                find.byType(FractionallySizedBox),
-              )
-              .map((w) => w.widthFactor!)
-              .toList()
-            ..sort();
-      // Fajr 10/10 = full; the four 5-point prayers are half.
-      expect(factors, [0.5, 0.5, 0.5, 0.5, 1.0]);
+      double barHeight(String label) {
+        final bar = find.ancestor(
+          of: find.text(label).first,
+          matching: find.byType(GestureDetector),
+        );
+        final box = find.descendant(
+          of: bar.first,
+          matching: find.byType(AnimatedContainer),
+        );
+        return tester.getSize(box.first).height;
+      }
+
+      expect(barHeight('Dhuhr') / barHeight('Fajr'), closeTo(0.5, 0.01));
     });
 
     testWidgets('explains how points are earned', (tester) async {
@@ -274,28 +283,6 @@ void main() {
       expect(find.text('Points per prayer'), findsNothing);
     });
 
-    testWidgets('the best-earning prayer is outlined in gold', (tester) async {
-      final repo = FakePointsRepo()..result = Success(sampleRules());
-      await _pump(tester, repo);
-      await _settle(tester);
-
-      // A card with the thick (gold) outline.
-      final highlighted = find.byWidgetPredicate((w) {
-        if (w is! Container) return false;
-        final d = w.decoration;
-        if (d is! BoxDecoration || d.border is! Border) return false;
-        return (d.border! as Border).top.width > 1.2;
-      });
-      expect(
-        find.ancestor(of: find.text('Fajr'), matching: highlighted),
-        findsOneWidget,
-      );
-      expect(
-        find.ancestor(of: find.text('Asr'), matching: highlighted),
-        findsNothing,
-      );
-    });
-
     testWidgets('a prayer the app does not know is still listed', (
       tester,
     ) async {
@@ -309,17 +296,7 @@ void main() {
       await _pump(tester, repo);
       await _settle(tester);
       expect(find.text('Jumuah'), findsOneWidget);
-      expect(find.text('+8'), findsOneWidget);
-    });
-
-    testWidgets('one point reads "point", not "points"', (tester) async {
-      final repo = FakePointsRepo()
-        ..result = Success(
-          PointsRules([const PointsRule(prayer: 'fajr', points: 1)]),
-        );
-      await _pump(tester, repo);
-      await _settle(tester);
-      expect(find.text('point'), findsOneWidget);
+      expect(find.text('8'), findsOneWidget);
     });
 
     testWidgets('no rules yet says so', (tester) async {

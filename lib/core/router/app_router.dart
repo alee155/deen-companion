@@ -164,7 +164,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // How many points each prayer earns (reached from a group's menu).
       GoRoute(
         path: '/points-rules',
-        builder: (context, state) => const PointsRulesScreen(),
+        builder: (context, state) =>
+            PointsRulesScreen(groupId: state.uri.queryParameters['groupId']),
       ),
       // City picker for prayer times (when location isn't shared).
       GoRoute(

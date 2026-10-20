@@ -10,15 +10,21 @@ import '../../../../shared/widgets/failure_view.dart';
 import '../../../../shared/widgets/feature_hero.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
-import '../../../prayer_logs/presentation/prayer_labels.dart';
-import '../../../prayer_times/domain/entities/prayer_times.dart';
 import '../../domain/entities/points_rule.dart';
 import '../providers/points_providers.dart';
+import '../../../auth/presentation/providers/auth_session_provider.dart';
+import '../../../groups/presentation/providers/groups_providers.dart';
+import '../../../streaks/presentation/widgets/daily_goal_section.dart';
+import '../widgets/points_chart.dart';
 
 /// How many points each prayer earns. Open to every member of a group, admin
 /// or not; the numbers come from `GET /points/rules`.
 class PointsRulesScreen extends ConsumerStatefulWidget {
-  const PointsRulesScreen({super.key});
+  /// The group these rules are being read for. With it, the screen also shows
+  /// that group's daily goal (and lets its admin change it).
+  final String? groupId;
+
+  const PointsRulesScreen({super.key, this.groupId});
 
   @override
   ConsumerState<PointsRulesScreen> createState() => _PointsRulesScreenState();
@@ -85,7 +91,11 @@ class _PointsRulesScreenState extends ConsumerState<PointsRulesScreen> {
               top: 0,
               left: 0,
               right: 0,
-              child: PinnedHeroBar(opacity: _bar, title: 'Rules'),
+              child: PinnedHeroBar(
+                opacity: _bar,
+                title: 'Rules',
+                shadow: false,
+              ),
             ),
           ],
         ),
@@ -110,6 +120,14 @@ class _PointsRulesScreenState extends ConsumerState<PointsRulesScreen> {
         ],
       ],
     );
+  }
+
+  /// Whether the signed-in user is this group's admin (false until the group
+  /// has loaded).
+  bool _isAdmin(String groupId) {
+    final myId = ref.watch(authSessionProvider).userId;
+    return ref.watch(groupDetailProvider(groupId)).valueOrNull?.isAdmin(myId) ??
+        false;
   }
 
   List<Widget> _loaded(PointsRules table) {
@@ -147,19 +165,24 @@ class _PointsRulesScreenState extends ConsumerState<PointsRulesScreen> {
       SliverToBoxAdapter(child: _sectionHeader('Points per prayer')),
       SliverPadding(
         padding: EdgeInsets.symmetric(horizontal: 20.w),
-        sliver: SliverList.separated(
-          itemCount: table.rules.length,
-          separatorBuilder: (_, _) => SizedBox(height: 12.h),
-          itemBuilder: (context, i) {
-            final rule = table.rules[i];
-            return _RuleCard(
-              rule: rule,
-              highest: table.highest,
-              isHighest: rule.points == table.highest,
-            ).slideInAt(i, distance: 18);
-          },
+        sliver: SliverToBoxAdapter(
+          child: PointsChart(
+            table: table,
+          ).slideIn(RevealDirection.bottom, distance: 18),
         ),
       ),
+      if (widget.groupId case final groupId?) ...[
+        SliverToBoxAdapter(child: _sectionHeader('Daily goal')),
+        SliverPadding(
+          padding: EdgeInsets.symmetric(horizontal: 20.w),
+          sliver: SliverToBoxAdapter(
+            child: DailyGoalSection(
+              groupId: groupId,
+              isAdmin: _isAdmin(groupId),
+            ),
+          ),
+        ),
+      ],
       SliverPadding(
         padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 0),
         sliver: const SliverToBoxAdapter(child: _HowItWorks()),
@@ -171,13 +194,11 @@ class _PointsRulesScreenState extends ConsumerState<PointsRulesScreen> {
     SliverToBoxAdapter(child: _sectionHeader('Points per prayer')),
     SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
-      sliver: SliverList.separated(
-        itemCount: 5,
-        separatorBuilder: (_, _) => SizedBox(height: 12.h),
-        itemBuilder: (_, _) => ShimmerBox(
+      sliver: SliverToBoxAdapter(
+        child: ShimmerBox(
           width: double.infinity,
-          height: 92.h,
-          borderRadius: 22.r,
+          height: 300.h,
+          borderRadius: 28.r,
         ),
       ),
     ),
@@ -216,207 +237,7 @@ BoxDecoration _cardDecoration({Color? border, double borderWidth = 1}) =>
         color: border ?? AppColors.borderWarm,
         width: borderWidth,
       ),
-      boxShadow: [
-        BoxShadow(
-          color: AppColors.shadow.withValues(alpha: 0.5),
-          blurRadius: 14,
-          offset: const Offset(0, 5),
-        ),
-      ],
     );
-
-class _RuleCard extends StatelessWidget {
-  final PointsRule rule;
-
-  /// The best any prayer earns, so each bar can show its share of it.
-  final int highest;
-
-  /// The top-earning prayer(s) get a gold look and a badge.
-  final bool isHighest;
-
-  const _RuleCard({
-    required this.rule,
-    required this.highest,
-    required this.isHighest,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final prayer = rule.prayerName;
-    final name = prayer?.label ?? _capitalize(rule.prayer);
-    final accent = isHighest ? AppColors.gold : AppColors.emeraldInk;
-    final fraction = highest == 0
-        ? 0.0
-        : (rule.points / highest).clamp(0.0, 1.0);
-
-    return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: _cardDecoration(
-        border: isHighest ? AppColors.gold : null,
-        borderWidth: isHighest ? 1.6 : 1,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 50.w,
-            height: 50.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isHighest
-                    ? [AppColors.goldLight, AppColors.gold]
-                    : [AppColors.emeraldInk, AppColors.emeraldInkDark],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: accent.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Icon(
-              prayer?.icon ?? Icons.mosque_rounded,
-              size: 24.sp,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(width: 14.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.inkText,
-                        ),
-                      ),
-                    ),
-                    if (isHighest) ...[
-                      SizedBox(width: 8.w),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 7.w,
-                          vertical: 2.h,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.gold.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Text(
-                          'HIGHEST',
-                          style: TextStyle(
-                            fontSize: 8.5.sp,
-                            letterSpacing: 0.8,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.amberDeep,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                if (prayer != null) ...[
-                  SizedBox(height: 2.h),
-                  Text(
-                    _window(prayer),
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-                SizedBox(height: 10.h),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6.r),
-                  child: Stack(
-                    children: [
-                      Container(height: 6.h, color: AppColors.borderWarm),
-                      TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: fraction),
-                        duration: context.motion.duration(AppMotion.value),
-                        curve: AppMotion.entrance,
-                        builder: (_, v, _) => FractionallySizedBox(
-                          widthFactor: v,
-                          child: Container(
-                            height: 6.h,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: isHighest
-                                    ? [AppColors.goldLight, AppColors.gold]
-                                    : [
-                                        AppColors.emeraldInk,
-                                        AppColors.emeraldInkDark,
-                                      ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: 14.w),
-          Container(
-            width: 62.w,
-            padding: EdgeInsets.symmetric(vertical: 8.h),
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16.r),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  '+${rule.points}',
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.w800,
-                    color: isHighest
-                        ? AppColors.amberDeep
-                        : AppColors.emeraldInk,
-                    height: 1.1,
-                  ),
-                ),
-                Text(
-                  rule.points == 1 ? 'point' : 'points',
-                  style: TextStyle(
-                    fontSize: 10.sp,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// The time each prayer can be logged in (what the server enforces).
-  static String _window(PrayerName prayer) => switch (prayer) {
-    PrayerName.fajr => 'Log it from Fajr until sunrise',
-    PrayerName.dhuhr => 'Log it from Dhuhr until Asr',
-    PrayerName.asr => 'Log it from Asr until Maghrib',
-    PrayerName.maghrib => 'Log it from Maghrib until Isha',
-    PrayerName.isha => 'Log it from Isha until the next Fajr',
-  };
-
-  static String _capitalize(String s) =>
-      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
-}
 
 /// What a member needs to know to earn the points above.
 class _HowItWorks extends StatelessWidget {
