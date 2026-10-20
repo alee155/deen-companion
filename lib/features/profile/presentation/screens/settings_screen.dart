@@ -21,7 +21,9 @@ import '../../../prayer_reminders/presentation/providers/reminders_provider.dart
 import '../../../prayer_times/presentation/providers/prayer_calculation_settings_provider.dart';
 import '../../../prayer_times/presentation/widgets/calculation_settings_sheets.dart';
 import '../widgets/dnd_settings_tile.dart';
+import '../../../theme/presentation/providers/theme_period_provider.dart';
 import '../widgets/settings_about_card.dart';
+import '../widgets/settings_auto_theme_tile.dart';
 import '../widgets/settings_bento_tile.dart';
 import '../widgets/settings_option_chip.dart';
 import '../widgets/settings_section_label.dart';
@@ -150,12 +152,24 @@ class SettingsScreen extends ConsumerWidget {
               ),
               SizedBox(height: 12.h),
               SettingsThemeSplit(
-                isDark: themeChoice == AppThemeChoice.dark,
+                isDark: themeChoice == AppThemeChoice.automatic
+                    ? null
+                    : themeChoice == AppThemeChoice.dark,
                 onChanged: (dark) => ref
                     .read(themeModeNotifierProvider.notifier)
                     .setChoice(
                       dark ? AppThemeChoice.dark : AppThemeChoice.light,
                     ),
+              ),
+              SizedBox(height: 12.h),
+              SettingsAutoThemeTile(
+                selected: themeChoice == AppThemeChoice.automatic,
+                period: themeChoice == AppThemeChoice.automatic
+                    ? ref.watch(themePeriodProvider)
+                    : null,
+                onTap: () => ref
+                    .read(themeModeNotifierProvider.notifier)
+                    .setChoice(AppThemeChoice.automatic),
               ),
               SizedBox(height: 30.h),
 

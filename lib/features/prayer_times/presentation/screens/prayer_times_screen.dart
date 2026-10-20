@@ -459,7 +459,7 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
+              colors: AppColors.heroGradient,
             ),
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(36.r)),
           ),
@@ -496,9 +496,7 @@ class _PrayerTimesScreenState extends ConsumerState<PrayerTimesScreen> {
         child: Container(
           height: 150.h,
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
-            ),
+            gradient: LinearGradient(colors: AppColors.heroGradient),
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(36.r)),
           ),
         ),

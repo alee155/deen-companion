@@ -40,6 +40,7 @@ const _chips = [
 ];
 
 void main() {
+  main_extra();
   testWidgets('compact is clearly shorter than the default', (tester) async {
     // No chips and a short subtitle, so the comparison is about spacing and
     // type size, not about how the test font wraps text.
@@ -119,4 +120,41 @@ void main() {
     final text = tester.widget<Text>(find.textContaining('x x').first);
     expect(text.maxLines, isNull);
   });
+}
+
+void main_extra() {
+  testWidgets(
+    'a chip too long for the screen shortens instead of overflowing',
+    (tester) async {
+      tester.view.physicalSize = const Size(260 * 3, 1200 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.6)),
+          child: ScreenUtilInit(
+            designSize: const Size(390, 844),
+            builder: (_, _) => const MaterialApp(
+              home: Scaffold(
+                body: FeatureHero(
+                  title: 'Statistics',
+                  subtitle: 'Family',
+                  ghostIcon: Icons.insights_rounded,
+                  compact: true,
+                  chips: [
+                    FeatureHeroChip(
+                      Icons.today_rounded,
+                      '12 of 12 members are on track today',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

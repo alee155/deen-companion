@@ -431,7 +431,7 @@ class _IslamicNameDetailScreenState
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
+          colors: AppColors.heroGradient,
         ),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(36.r)),
       ),

@@ -38,7 +38,7 @@ class FeatureHero extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
+          colors: AppColors.heroGradient,
         ),
         borderRadius: BorderRadius.vertical(
           bottom: Radius.circular((compact ? 28 : 36).r),
@@ -138,9 +138,15 @@ class FeatureHeroChip {
       children: [
         Icon(icon, size: 14.sp, color: AppColors.goldLight),
         SizedBox(width: 6.w),
-        Text(
-          text,
-          style: TextStyle(fontSize: 12.sp, color: Colors.white),
+        // Flexible, so a long chip shortens instead of overflowing the hero on
+        // a narrow phone or at large text.
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12.sp, color: Colors.white),
+          ),
         ),
       ],
     ),

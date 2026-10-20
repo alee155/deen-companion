@@ -16,6 +16,9 @@ class PinnedHeroBar extends StatelessWidget {
   /// False for tab roots, which have nothing to go back to.
   final bool showBack;
 
+  /// Whether the bar casts a shadow once it has solidified.
+  final bool shadow;
+
   const PinnedHeroBar({
     super.key,
     required this.opacity,
@@ -24,6 +27,7 @@ class PinnedHeroBar extends StatelessWidget {
     this.trailingTooltip,
     this.onTrailing,
     this.showBack = true,
+    this.shadow = true,
   });
 
   @override
@@ -36,7 +40,7 @@ class PinnedHeroBar extends StatelessWidget {
         return Container(
           decoration: BoxDecoration(
             color: AppColors.heroSurface.withValues(alpha: t),
-            boxShadow: t > 0.6
+            boxShadow: shadow && t > 0.6
                 ? [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.18 * t),

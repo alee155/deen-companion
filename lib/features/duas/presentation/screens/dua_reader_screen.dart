@@ -352,7 +352,7 @@ class _DuaReaderScreenState extends ConsumerState<DuaReaderScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
+                colors: AppColors.heroGradient,
               ),
               borderRadius: BorderRadius.circular(28.r),
               border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),

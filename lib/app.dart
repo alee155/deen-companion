@@ -7,7 +7,8 @@ import 'core/motion/motion.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
-import 'core/theme/theme_mode_provider.dart';
+import 'features/theme/presentation/providers/theme_period_provider.dart';
+import 'features/theme/presentation/widgets/theme_crossfade.dart';
 
 class DeenApp extends ConsumerWidget {
   const DeenApp({super.key});
@@ -15,7 +16,7 @@ class DeenApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final choice = ref.watch(themeModeNotifierProvider);
+    final variant = ref.watch(activeThemeVariantProvider);
     final motionLevel = ref.watch(motionLevelProvider);
 
     return ScreenUtilInit(
@@ -23,10 +24,10 @@ class DeenApp extends ConsumerWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        final lightTheme = AppTheme.light();
-        final darkTheme = AppTheme.dark();
-        final isDark = choice == AppThemeChoice.dark;
-        AppColors.applyBrightness(isDark ? Brightness.dark : Brightness.light);
+        // One theme for whichever look is active (a fixed appearance or a
+        // prayer period). It installs the matching palette as it builds.
+        final theme = AppTheme.forVariant(variant);
+        final isDark = variant.isDark;
         SystemChrome.setSystemUIOverlayStyle(
           SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
@@ -41,15 +42,24 @@ class DeenApp extends ConsumerWidget {
           ),
         );
         return MaterialApp.router(
-          key: ValueKey(choice),
           title: AppConstants.appName,
           debugShowCheckedModeBanner: false,
-          theme: lightTheme,
-          darkTheme: darkTheme,
-          themeMode: choice.themeMode,
+          theme: theme,
+          themeMode: ThemeMode.light,
+          // ThemeCrossfade owns the transition. Material's own 200 ms theme
+          // lerp would blend Theme-driven colours while the static palette
+          // jumps, so the two halves of the screen would change out of step.
+          themeAnimationDuration: Duration.zero,
           routerConfig: router,
-          builder: (context, child) =>
-              MotionScope(level: motionLevel, child: child ?? const SizedBox()),
+          // Not keyed on the theme: a look change rebuilds in place (state and
+          // navigation survive) and fades, see [ThemeCrossfade].
+          builder: (context, child) => MotionScope(
+            level: motionLevel,
+            child: ThemeCrossfade(
+              variant: variant,
+              child: child ?? const SizedBox(),
+            ),
+          ),
         );
       },
     );

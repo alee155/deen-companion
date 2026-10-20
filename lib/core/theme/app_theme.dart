@@ -11,14 +11,18 @@ class AppTheme {
   /// Both themes are built from the same code path, with [AppColors] switched
   /// to the matching palette first — so a Light and a Dark screen differ only
   /// in palette values, never in which widgets got themed.
-  static ThemeData light() => _build(Brightness.light);
+  static ThemeData light() => forVariant(ThemeVariant.light);
 
-  static ThemeData dark() => _build(Brightness.dark);
+  static ThemeData dark() => forVariant(ThemeVariant.dark);
 
-  static ThemeData _build(Brightness brightness) {
+  /// The theme for any look — a fixed appearance or a prayer period. Installs
+  /// the matching palette first, so it must be called before anything reads
+  /// [AppColors] for that look.
+  static ThemeData forVariant(ThemeVariant variant) {
     // Install the palette before reading any AppColors getter below.
-    AppColors.applyBrightness(brightness);
-    final isDark = brightness == Brightness.dark;
+    AppColors.applyVariant(variant);
+    final isDark = variant.isDark;
+    final brightness = isDark ? Brightness.dark : Brightness.light;
 
     final colorScheme = ColorScheme(
       brightness: brightness,

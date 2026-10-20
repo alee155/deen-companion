@@ -340,7 +340,7 @@ class _PrayerDndScreenState extends ConsumerState<PrayerDndScreen>
           end: Alignment.bottomRight,
           colors: on
               ? [const Color(0xFF0B1B2B), const Color(0xFF1C3550)]
-              : [AppColors.heroSurface, AppColors.emeraldInkDark],
+              : AppColors.heroGradient,
         ),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(36.r)),
       ),

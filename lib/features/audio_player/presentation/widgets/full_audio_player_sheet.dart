@@ -95,7 +95,7 @@ class FullAudioPlayerSheet extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
+          colors: AppColors.heroGradient,
         ),
       ),
       child: Stack(

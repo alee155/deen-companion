@@ -1,5 +1,24 @@
 import 'package:flutter/material.dart';
 
+/// Every look the app can wear: the two fixed appearances plus one per prayer
+/// period for the automatic theme. [light] and [dark] are the originals; the
+/// period variants keep the brand colours and shift only the ground, surfaces,
+/// text tiers and warm accents (see `_Palette.forVariant`).
+enum ThemeVariant {
+  light,
+  dark,
+  fajr,
+  sunrise,
+  dhuhr,
+  asr,
+  maghrib,
+  isha;
+
+  /// Whether this look sits on a dark ground (drives status-bar icons and
+  /// Material's brightness).
+  bool get isDark => this == dark || this == fajr || this == isha;
+}
+
 /// Deen app palette — deep teal ink and warm brass on a warm parchment
 /// ground in Light, and the same character re-tuned for Dark.
 ///
@@ -21,7 +40,15 @@ class AppColors {
   /// Installs the palette for [brightness]. Called from the root widget on
   /// every build, before any descendant reads a colour.
   static void applyBrightness(Brightness brightness) {
-    _current = brightness == Brightness.dark ? _Palette.dark : _Palette.light;
+    applyVariant(
+      brightness == Brightness.dark ? ThemeVariant.dark : ThemeVariant.light,
+    );
+  }
+
+  /// Installs the palette for [variant] (a fixed appearance or a prayer
+  /// period). Called from the root widget before any descendant reads a colour.
+  static void applyVariant(ThemeVariant variant) {
+    _current = _Palette.forVariant(variant);
   }
 
   static bool get isDark => _current.isDark;
@@ -41,6 +68,15 @@ class AppColors {
   /// in Dark instead of lifting, so a big block of it doesn't glare.
   static Color get heroSurface => _current.heroSurface;
   static Color get onHeroSurface => _current.onHeroSurface;
+
+  /// The wash behind hero headers, top-left to bottom-right. Light and Dark
+  /// keep the original ink-to-brand gradient; each prayer period tints it to
+  /// that part of the sky (deep night blue, dawn rose, midday teal, ...).
+  /// [onHeroSurface] reads clearly on both ends in every look.
+  static List<Color> get heroGradient => [
+    _current.heroGradientStart ?? _current.heroSurface,
+    _current.heroGradientEnd ?? _current.emeraldInkDark,
+  ];
 
   static Color get gold => _current.gold;
   static Color get goldLight => _current.goldLight;
@@ -111,6 +147,10 @@ class _Palette {
   final Color onEmeraldInk;
   final Color heroSurface;
   final Color onHeroSurface;
+
+  /// Hero gradient stops; null means the default ink-to-brand pair.
+  final Color? heroGradientStart;
+  final Color? heroGradientEnd;
   final Color gold;
   final Color goldLight;
   final Color amber;
@@ -154,6 +194,8 @@ class _Palette {
     required this.onEmeraldInk,
     required this.heroSurface,
     required this.onHeroSurface,
+    this.heroGradientStart,
+    this.heroGradientEnd,
     required this.gold,
     required this.goldLight,
     required this.amber,
@@ -186,6 +228,165 @@ class _Palette {
     required this.girlAccentBg,
     required this.shadow,
   });
+
+  /// This palette with the "atmosphere" values replaced. Brand colours
+  /// (`emeraldInk`, `heroSurface`, module accents, semantic colours) are
+  /// deliberately not overridable, so every period still reads as the same app.
+  _Palette atmosphere({
+    required Color background,
+    required Color gradientEnd,
+    required Color surface,
+    required Color border,
+    required Color inkText,
+    required Color textSecondary,
+    required Color textMuted,
+    Color? heroGradientStart,
+    Color? heroGradientEnd,
+    Color? gold,
+    Color? goldLight,
+    Color? amber,
+    Color? amberDeep,
+    Color? shadow,
+  }) {
+    return _Palette(
+      isDark: isDark,
+      emeraldInk: emeraldInk,
+      emeraldInkDark: emeraldInkDark,
+      onEmeraldInk: onEmeraldInk,
+      heroSurface: heroSurface,
+      onHeroSurface: onHeroSurface,
+      heroGradientStart: heroGradientStart,
+      heroGradientEnd: heroGradientEnd,
+      gold: gold ?? this.gold,
+      goldLight: goldLight ?? this.goldLight,
+      amber: amber ?? this.amber,
+      amberDeep: amberDeep ?? this.amberDeep,
+      backgroundGradientStart: background,
+      backgroundGradientEnd: gradientEnd,
+      background: background,
+      surface: surface,
+      border: border,
+      inkText: inkText,
+      textSecondary: textSecondary,
+      textMuted: textMuted,
+      quranAccent: quranAccent,
+      quranAccentBg: quranAccentBg,
+      hadithAccent: hadithAccent,
+      hadithAccentBg: hadithAccentBg,
+      duasAccent: duasAccent,
+      duasAccentBg: duasAccentBg,
+      hijriAccent: hijriAccent,
+      hijriAccentBg: hijriAccentBg,
+      worshipAccent: worshipAccent,
+      worshipAccentBg: worshipAccentBg,
+      toolsAccent: toolsAccent,
+      toolsAccentBg: toolsAccentBg,
+      success: success,
+      error: error,
+      boyAccent: boyAccent,
+      boyAccentBg: boyAccentBg,
+      girlAccent: girlAccent,
+      girlAccentBg: girlAccentBg,
+      shadow: shadow ?? this.shadow,
+    );
+  }
+
+  static final _dhuhr = light.atmosphere(
+    // Bright day: today's Light with a clear midday-teal hero.
+    background: light.background,
+    gradientEnd: light.backgroundGradientEnd,
+    surface: light.surface,
+    border: light.border,
+    inkText: light.inkText,
+    textSecondary: light.textSecondary,
+    textMuted: light.textMuted,
+    heroGradientStart: const Color(0xFF17607A),
+    heroGradientEnd: const Color(0xFF3E97AB),
+  );
+
+  static final _fajr = dark.atmosphere(
+    // Pre-dawn: indigo night with a faint violet glow on the horizon.
+    heroGradientStart: const Color(0xFF1E2F52),
+    heroGradientEnd: const Color(0xFFB9765A),
+    background: const Color(0xFF151828),
+    gradientEnd: const Color(0xFF272541),
+    surface: const Color(0xFF1E2236),
+    border: const Color(0xFF30364D),
+    inkText: const Color(0xFFF0EEF4),
+    textSecondary: const Color(0xFFB9BDD0),
+    textMuted: const Color(0xFF8189A3),
+    amber: const Color(0xFFE8A066),
+  );
+
+  static final _sunrise = light.atmosphere(
+    // Soft peach morning light.
+    heroGradientStart: const Color(0xFF4A3558),
+    heroGradientEnd: const Color(0xFFC97A52),
+    background: const Color(0xFFFFF6EC),
+    gradientEnd: const Color(0xFFFBE4D0),
+    surface: const Color(0xFFFFFCF8),
+    border: const Color(0xFFEBD8C6),
+    inkText: const Color(0xFF2A1E18),
+    textSecondary: const Color(0xFF665244),
+    textMuted: const Color(0xFFA08C7C),
+    goldLight: const Color(0xFFFAE6CF),
+  );
+
+  static final _asr = light.atmosphere(
+    // Golden afternoon: still bright, leaning toward evening.
+    heroGradientStart: const Color(0xFF6B4A1A),
+    heroGradientEnd: const Color(0xFFB07C24),
+    background: const Color(0xFFFBF3DF),
+    gradientEnd: const Color(0xFFF1DFB5),
+    surface: const Color(0xFFFFFCF2),
+    border: const Color(0xFFE4D2A4),
+    inkText: const Color(0xFF2A2210),
+    textSecondary: const Color(0xFF5A4F34),
+    textMuted: const Color(0xFF978B68),
+    gold: const Color(0xFFBE9540),
+    goldLight: const Color(0xFFF3E4C0),
+  );
+
+  static final _maghrib = light.atmosphere(
+    // Sunset: amber and terracotta warmth on a light ground.
+    heroGradientStart: const Color(0xFF34204A),
+    heroGradientEnd: const Color(0xFFC85F3A),
+    background: const Color(0xFFFFEFDB),
+    gradientEnd: const Color(0xFFF5CFA6),
+    surface: const Color(0xFFFFF8EE),
+    border: const Color(0xFFEBC79B),
+    inkText: const Color(0xFF33190F),
+    textSecondary: const Color(0xFF6B422B),
+    textMuted: const Color(0xFFA67A5E),
+    gold: const Color(0xFFB98235),
+    goldLight: const Color(0xFFF7DEBB),
+    amber: const Color(0xFFD9732B),
+    amberDeep: const Color(0xFFB4551A),
+  );
+
+  static final _isha = dark.atmosphere(
+    // Night: today's Dark, nudged a little cooler.
+    heroGradientStart: const Color(0xFF0B1B2B),
+    heroGradientEnd: const Color(0xFF1C3550),
+    background: const Color(0xFF10131C),
+    gradientEnd: const Color(0xFF181C28),
+    surface: const Color(0xFF191D2A),
+    border: const Color(0xFF282D3D),
+    inkText: const Color(0xFFF2F0E8),
+    textSecondary: const Color(0xFFB8BCC8),
+    textMuted: const Color(0xFF7F8494),
+  );
+
+  static _Palette forVariant(ThemeVariant variant) => switch (variant) {
+    ThemeVariant.light => light,
+    ThemeVariant.dhuhr => _dhuhr,
+    ThemeVariant.dark => dark,
+    ThemeVariant.fajr => _fajr,
+    ThemeVariant.sunrise => _sunrise,
+    ThemeVariant.asr => _asr,
+    ThemeVariant.maghrib => _maghrib,
+    ThemeVariant.isha => _isha,
+  };
 
   static const light = _Palette(
     isDark: false,

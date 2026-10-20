@@ -3,22 +3,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../constants/app_constants.dart';
 import '../di/providers.dart';
 
-/// The app offers exactly two appearances — Light and Dark — and opens in
-/// Light unless the user has chosen otherwise. There is deliberately no
-/// "System" option: the choice is explicit and sticky.
+/// The appearance the user picked: Light, Dark, or Automatic (the look follows
+/// the prayer periods of the day). It opens in Light unless the user has chosen
+/// otherwise, and there is deliberately no "System" option: the choice is
+/// explicit and sticky, and Automatic is only ever on because they turned it on.
 enum AppThemeChoice {
   light,
-  dark;
+  dark,
+  automatic;
 
+  /// Material's mode. Automatic reports light because the real brightness comes
+  /// from the active period (see `activeThemeVariantProvider`).
   ThemeMode get themeMode =>
       this == AppThemeChoice.dark ? ThemeMode.dark : ThemeMode.light;
 
-  String get label => this == AppThemeChoice.dark ? 'Dark' : 'Light';
+  String get label => switch (this) {
+    AppThemeChoice.light => 'Light',
+    AppThemeChoice.dark => 'Dark',
+    AppThemeChoice.automatic => 'Automatic',
+  };
 
   static AppThemeChoice fromStored(String? value) {
-    return value == AppThemeChoice.dark.name
-        ? AppThemeChoice.dark
-        : AppThemeChoice.light;
+    return switch (value) {
+      'dark' => AppThemeChoice.dark,
+      'automatic' => AppThemeChoice.automatic,
+      _ => AppThemeChoice.light,
+    };
   }
 }
 

@@ -17,6 +17,11 @@ void main() {
       expect(AppThemeChoice.fromStored('DARK'), AppThemeChoice.light);
     });
 
+    test('automatic is stored, restored and labelled', () {
+      expect(AppThemeChoice.fromStored('automatic'), AppThemeChoice.automatic);
+      expect(AppThemeChoice.automatic.label, 'Automatic');
+    });
+
     test('themeMode and label', () {
       expect(AppThemeChoice.dark.themeMode, ThemeMode.dark);
       expect(AppThemeChoice.light.themeMode, ThemeMode.light);

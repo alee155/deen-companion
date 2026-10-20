@@ -76,9 +76,7 @@ class _DuaSearchScreenState extends ConsumerState<DuaSearchScreen> {
   Widget _header() {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
-        ),
+        gradient: LinearGradient(colors: AppColors.heroGradient),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(28.r)),
       ),
       child: SafeArea(

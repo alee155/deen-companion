@@ -35,7 +35,7 @@ class DndSettingsTile extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
+            colors: AppColors.heroGradient,
           ),
           borderRadius: BorderRadius.circular(22.r),
         ),

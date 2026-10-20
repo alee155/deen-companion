@@ -472,7 +472,7 @@ class _HadithBannerFallback extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.heroSurface, AppColors.emeraldInkDark],
+          colors: AppColors.heroGradient,
         ),
       ),
       child: Stack(

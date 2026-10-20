@@ -3,10 +3,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 
-/// Light/Dark split panel — replaces the old three-way segmented control
-/// now that the app only ever offers these two appearances.
+/// Light/Dark split panel. Neither half shows as selected while the automatic
+/// theme is on (that has its own tile below).
 class SettingsThemeSplit extends StatelessWidget {
-  final bool isDark;
+  /// Null while the automatic theme is on.
+  final bool? isDark;
   final ValueChanged<bool> onChanged;
 
   const SettingsThemeSplit({
