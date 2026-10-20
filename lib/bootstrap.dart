@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'app.dart';
@@ -42,6 +44,11 @@ Future<void> bootstrap() async {
   );
 
   container.read(themeModeNotifierProvider);
+
+  // Many Android phones keep apps at 60 Hz by default. Ask for the best mode
+  // the screen has; on a 60 Hz-only phone (or an Android too old to report
+  // modes) this changes nothing.
+  if (Platform.isAndroid) unawaited(_useHighRefreshRate());
 
   FlutterError.onError = (details) {
     AppLogger.e('Flutter error', details.exception, details.stack);
@@ -106,5 +113,13 @@ Future<void> _syncPrayerDnd(ProviderContainer container) async {
     await container.read(prayerDndServiceProvider).syncIfEnabled();
   } catch (error, stackTrace) {
     AppLogger.e('Prayer DND startup sync failed', error, stackTrace);
+  }
+}
+
+Future<void> _useHighRefreshRate() async {
+  try {
+    await FlutterDisplayMode.setHighRefreshRate();
+  } catch (e, st) {
+    AppLogger.e('Boot: could not switch to a higher refresh rate', e, st);
   }
 }
