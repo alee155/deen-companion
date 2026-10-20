@@ -9,6 +9,8 @@ import 'package:deen_companion/features/groups/presentation/screens/group_detail
 import 'package:deen_companion/features/groups/presentation/widgets/send_snap_button.dart';
 import 'package:deen_companion/features/points/presentation/providers/points_providers.dart';
 import 'package:deen_companion/features/points/presentation/screens/points_rules_screen.dart';
+import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times.dart';
+import 'package:deen_companion/features/prayer_logs/domain/current_prayer.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import 'package:deen_companion/features/streaks/presentation/providers/streaks_providers.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../prayer_logs/presentation/_prayer_log_test_support.dart';
 import '../../streaks/_streaks_support.dart';
 import 'package:go_router/go_router.dart';
 
@@ -47,7 +50,11 @@ const _detail = GroupDetail(
   ],
 );
 
-Future<void> _pump(WidgetTester tester, {required String me}) async {
+Future<void> _pump(
+  WidgetTester tester, {
+  required String me,
+  CurrentPrayerState? current,
+}) async {
   tester.view.physicalSize = const Size(390 * 3, 1400 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
@@ -79,6 +86,9 @@ Future<void> _pump(WidgetTester tester, {required String me}) async {
           FakePointsRepo()..result = Success(sampleRules()),
         ),
         streaksRepositoryProvider.overrideWithValue(FakeStreaksRepo()),
+        currentPrayerProvider.overrideWith(
+          () => FixedCurrent(current ?? openState()),
+        ),
       ],
       child: ScreenUtilInit(
         designSize: const Size(390, 844),
@@ -178,6 +188,40 @@ void main() {
       expect(find.byType(SendSnapButton), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsNothing);
       expect(find.text('Send snap'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('says the prayer is logged and when the next one starts', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        me: 'admin1',
+        current: openState(logged: true, logId: 'l1'),
+      );
+      expect(find.byType(SendSnapButton), findsNothing);
+      expect(find.text('Asr logged'), findsOneWidget);
+      expect(find.textContaining('Next: Maghrib at'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('says no prayer is open while no window is open', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        me: 'admin1',
+        current: CurrentPrayerState(
+          now: DateTime.now(),
+          next: NextPrayer(
+            prayer: PrayerName.isha,
+            startsAt: DateTime.now().add(const Duration(hours: 1)),
+          ),
+        ),
+      );
+      expect(find.byType(SendSnapButton), findsNothing);
+      expect(find.text('No prayer is open right now'), findsOneWidget);
+      expect(find.textContaining('Isha starts at'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });
 

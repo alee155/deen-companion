@@ -29,6 +29,7 @@ import '../widgets/leave_group_sheet.dart';
 import '../widgets/manage_group_sheet.dart';
 import '../widgets/remove_member_sheet.dart';
 import '../widgets/send_snap_button.dart';
+import '../widgets/snap_status_pill.dart';
 import '../widgets/member_detail_sheet.dart';
 import '../widgets/snap_widgets.dart';
 
@@ -74,6 +75,12 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
 
     WidgetsBinding.instance.addObserver(this);
 
+    // Whether a snap can be sent right now is the server's call; ask again so
+    // the button never shows for a prayer that is already logged.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(currentPrayerProvider.notifier).refresh();
+    });
+
     // Reopened with the group still held from an earlier visit: it is shown
     // at once, and brought up to date behind the scenes (no skeleton).
     final detail = groupDetailProvider(widget.groupId);
@@ -114,6 +121,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
     FlowLog.log('GROUP', 'APP RETURNED TO THE FOREGROUND');
+    ref.read(currentPrayerProvider.notifier).refresh();
     _refreshQuietly(detail: true);
   }
 
@@ -212,11 +220,25 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     final myId = ref.watch(authSessionProvider).userId;
     final group = async.valueOrNull;
     final isAdmin = group?.isAdmin(myId) ?? false;
+    // A snap logs the prayer that is open now, once. Don't offer the button
+    // when there is nothing to log (it would only fail after the photo, timer
+    // and caption were all done); say why instead, and when the next chance is.
+    final prayer = ref.watch(currentPrayerProvider);
+    final status = prayer.valueOrNull;
+    final open = status?.current;
+    final canSnap = prayer.hasValue
+        ? open != null && !open.logged
+        : prayer.hasError; // unknown: let the server decide
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
+      floatingActionButtonLocation: group != null && !canSnap && status != null
+          ? FloatingActionButtonLocation.centerFloat
+          : FloatingActionButtonLocation.endFloat,
       floatingActionButton: group == null
           ? null
+          : !canSnap
+          ? (status == null ? null : SnapStatusPill(state: status))
           : SendSnapButton(
               onPressed: () async {
                 HapticFeedback.selectionClick();
@@ -529,7 +551,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       title: m.displayName,
       subtitle: '${log.prayer.label} · ${timeAgo(log.loggedAt)}',
       avatar: MemberAvatar(member: m, size: 38.w),
+      duration: log.viewDuration(),
     );
   }
 }
-      duration: log.viewDuration(),

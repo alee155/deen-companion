@@ -100,6 +100,7 @@ _Harness _harness() {
       groupsRepositoryProvider.overrideWithValue(groups),
       prayerLogsRepositoryProvider.overrideWithValue(feed),
       streaksRepositoryProvider.overrideWithValue(FakeStreaksRepo()),
+      currentPrayerProvider.overrideWith(() => FixedCurrent(openState())),
     ],
   );
   return _Harness(container, groups, feed);
