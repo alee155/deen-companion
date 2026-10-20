@@ -263,3 +263,7 @@ class ApiEndpoints {
   static const String authAccount = '$_deenBase/auth/account';
   static const String authVerifyEmail = '$_deenBase/auth/verify-email';
 }
+  static const String myProfile = '$_deenBase/users/me';
+  static const String myAvatar = '$_deenBase/users/me/avatar';
+  static const String myTimezone = '$_deenBase/users/me/timezone';
+  static const String myPoints = '$_deenBase/users/me/points';

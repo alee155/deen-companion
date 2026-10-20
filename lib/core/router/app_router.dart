@@ -12,6 +12,7 @@ import 'package:deen_companion/features/prayer_times/presentation/screens/city_p
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_logs_screen.dart';
 import 'package:deen_companion/features/snaps/presentation/screens/snap_flow_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/groups_screen.dart';
+import 'package:deen_companion/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/profile_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/settings_screen.dart';
 import 'package:deen_companion/features/recent_activity/presentation/screens/recent_activity_screen.dart';
@@ -192,6 +193,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/daily-content',
         builder: (context, state) =>
             DailyContentScreen(notificationId: state.uri.queryParameters['id']),
+      ),
+      GoRoute(
+        path: '/edit-profile',
+        builder: (context, state) => const EditProfileScreen(),
       ),
       GoRoute(
         path: '/reminders',

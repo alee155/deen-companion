@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -36,46 +37,46 @@ class ProfileHeader extends StatelessWidget {
           Padding(
             padding: EdgeInsets.fromLTRB(
               24.w,
-              MediaQuery.of(context).padding.top + 28.h,
+              MediaQuery.of(context).padding.top + 14.h,
               24.w,
-              28.h,
+              18.h,
             ),
             child: Column(
               children: [
-                _Avatar(
-                  session: session,
-                ).slideIn(RevealDirection.top, distance: 20),
-                SizedBox(height: 14.h),
-                Text(
-                  signedIn ? session.displayName : 'Guest',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 24.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                if (signedIn)
+                  _signedInRow(context)
+                else ...[
+                  _Avatar(
+                    session: session,
+                  ).slideIn(RevealDirection.top, distance: 20),
+                  SizedBox(height: 8.h),
+                  Text(
+                    'Guest',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 21.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ).slideIn(
+                    RevealDirection.bottomStart,
+                    delay: const Duration(milliseconds: 60),
                   ),
-                ).slideIn(
-                  RevealDirection.bottomStart,
-                  delay: const Duration(milliseconds: 60),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  signedIn
-                      ? (session.email ?? '')
-                      : 'Everything is saved on this device',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    color: AppColors.onHeroSurface.withValues(alpha: 0.75),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'Everything is saved on this device',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: AppColors.onHeroSurface.withValues(alpha: 0.75),
+                    ),
+                  ).slideIn(
+                    RevealDirection.bottomEnd,
+                    delay: const Duration(milliseconds: 120),
                   ),
-                ).slideIn(
-                  RevealDirection.bottomEnd,
-                  delay: const Duration(milliseconds: 120),
-                ),
+                ],
                 if (!signedIn) ...[
-                  SizedBox(height: 20.h),
+                  SizedBox(height: 14.h),
                   Row(
                     children: [
                       Expanded(
@@ -85,7 +86,7 @@ class ProfileHeader extends StatelessWidget {
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppColors.gold,
                                 foregroundColor: AppColors.heroSurface,
-                                minimumSize: Size.fromHeight(48.h),
+                                minimumSize: Size.fromHeight(44.h),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16.r),
                                 ),
@@ -112,7 +113,7 @@ class ProfileHeader extends StatelessWidget {
                                 side: BorderSide(
                                   color: AppColors.gold.withValues(alpha: 0.7),
                                 ),
-                                minimumSize: Size.fromHeight(48.h),
+                                minimumSize: Size.fromHeight(44.h),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16.r),
                                 ),
@@ -139,24 +140,98 @@ class ProfileHeader extends StatelessWidget {
       ),
     );
   }
+
+  /// Signed in: picture on the left, name and email beside it, and the edit
+  /// button at the end of the same row.
+  Widget _signedInRow(BuildContext context) {
+    return Row(
+      children: [
+        _Avatar(
+          session: session,
+          size: 72,
+        ).slideIn(RevealDirection.start, distance: 20),
+        SizedBox(width: 14.w),
+        Expanded(
+          child:
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    session.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 20.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    session.email ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: AppColors.onHeroSurface.withValues(alpha: 0.75),
+                    ),
+                  ),
+                ],
+              ).slideIn(
+                RevealDirection.bottomStart,
+                delay: const Duration(milliseconds: 60),
+              ),
+        ),
+        SizedBox(width: 8.w),
+        OutlinedButton.icon(
+          onPressed: () => context.push('/edit-profile'),
+          icon: Icon(Icons.edit_rounded, size: 14.sp),
+          label: Text(
+            'Edit',
+            style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.goldLight,
+            visualDensity: VisualDensity.compact,
+            minimumSize: Size(0, 34.h),
+            padding: EdgeInsets.symmetric(horizontal: 12.w),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            side: BorderSide(color: AppColors.gold.withValues(alpha: 0.7)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+          ),
+        ).slideIn(
+          RevealDirection.bottomEnd,
+          delay: const Duration(milliseconds: 120),
+        ),
+      ],
+    );
+  }
 }
 
 class _Avatar extends StatelessWidget {
   final AuthSession session;
-  const _Avatar({required this.session});
+
+  /// Outer size of the star frame; the photo circle is inside it.
+  final double size;
+  const _Avatar({required this.session, this.size = 88});
 
   @override
   Widget build(BuildContext context) {
     final photo = session.photoUrl;
     final signedIn = session.isAuthenticated;
+    final frame = size.w;
+    final circle = frame * 0.727;
     return SizedBox(
-      width: 108.w,
-      height: 108.w,
+      width: frame,
+      height: frame,
       child: Stack(
         alignment: Alignment.center,
         children: [
           CustomPaint(
-            size: Size.square(108.w),
+            size: Size.square(frame),
             painter: StarPainter(
               fill: AppColors.gold.withValues(alpha: 0.16),
               stroke: AppColors.goldLight,
@@ -165,8 +240,8 @@ class _Avatar extends StatelessWidget {
             ),
           ),
           Container(
-            width: 78.w,
-            height: 78.w,
+            width: circle,
+            height: circle,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.heroSurface,
@@ -175,18 +250,19 @@ class _Avatar extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             alignment: Alignment.center,
             child: signedIn && photo != null
-                ? Image.network(
-                    photo,
-                    width: 78.w,
-                    height: 78.w,
+                ? CachedNetworkImage(
+                    imageUrl: photo,
+                    width: circle,
+                    height: circle,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _initials(),
+                    placeholder: (_, _) => _initials(),
+                    errorWidget: (_, _, _) => _initials(),
                   )
                 : signedIn
                 ? _initials()
                 : Icon(
                     Icons.person_rounded,
-                    size: 40.sp,
+                    size: circle * 0.52,
                     color: AppColors.goldLight,
                   ),
           ),
@@ -198,7 +274,7 @@ class _Avatar extends StatelessWidget {
   Widget _initials() => Text(
     session.initials,
     style: TextStyle(
-      fontSize: 26.sp,
+      fontSize: (size * 0.25).sp,
       fontWeight: FontWeight.w800,
       color: AppColors.goldLight,
     ),

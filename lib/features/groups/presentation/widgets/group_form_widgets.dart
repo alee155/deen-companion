@@ -142,8 +142,11 @@ class ApprovalToggleCard extends StatelessWidget {
   }
 }
 
-/// Bottom sheet that asks where the group photo should come from.
-Future<ImageSource?> showImageSourceSheet(BuildContext context) {
+/// Bottom sheet that asks where a picked photo should come from.
+Future<ImageSource?> showImageSourceSheet(
+  BuildContext context, {
+  String title = 'Group photo',
+}) {
   Widget option(
     BuildContext ctx,
     IconData icon,
@@ -230,7 +233,7 @@ Future<ImageSource?> showImageSourceSheet(BuildContext context) {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Group photo',
+                title,
                 style: TextStyle(
                   fontSize: 20.sp,
                   fontWeight: FontWeight.w700,

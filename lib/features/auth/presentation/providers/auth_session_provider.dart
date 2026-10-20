@@ -76,6 +76,23 @@ class AuthSessionNotifier extends Notifier<AuthSession> {
     }
   }
 
+  /// Mirrors the profile the server returned into the stored session, so the
+  /// header, greetings and next launch show the current name and picture.
+  /// [photoUrl] is replaced as given (null clears it).
+  Future<void> applyProfile({required String name, String? photoUrl}) async {
+    final current = state;
+    if (!current.isAuthenticated) return;
+    if (current.name == name && current.photoUrl == photoUrl) return;
+    await signIn(
+      AuthSession(
+        userId: current.userId,
+        email: current.email,
+        name: name,
+        photoUrl: photoUrl,
+      ),
+    );
+  }
+
   Future<void> signIn(AuthSession session) async {
     if (!session.isAuthenticated) return;
     FlowLog.log(
