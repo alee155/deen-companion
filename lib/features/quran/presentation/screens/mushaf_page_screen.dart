@@ -1,3 +1,4 @@
+import '../../../../core/device/screen_awake.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -12,7 +13,8 @@ class MushafPageScreen extends ConsumerStatefulWidget {
   ConsumerState<MushafPageScreen> createState() => _MushafPageScreenState();
 }
 
-class _MushafPageScreenState extends ConsumerState<MushafPageScreen> {
+class _MushafPageScreenState extends ConsumerState<MushafPageScreen>
+    with KeepScreenOnMixin<MushafPageScreen> {
   late int _currentPage;
 
   @override

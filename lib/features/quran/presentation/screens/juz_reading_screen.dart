@@ -1,3 +1,4 @@
+import '../../../../core/device/screen_awake.dart';
 import 'package:deen_companion/features/quran/presentation/screens/juz_picker_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,7 +39,8 @@ class JuzReadingScreen extends ConsumerStatefulWidget {
   ConsumerState<JuzReadingScreen> createState() => _JuzReadingScreenState();
 }
 
-class _JuzReadingScreenState extends ConsumerState<JuzReadingScreen> {
+class _JuzReadingScreenState extends ConsumerState<JuzReadingScreen>
+    with KeepScreenOnMixin<JuzReadingScreen> {
   final ScrollController _controller = ScrollController();
   double _progress = 0;
   bool _loggedActivity = false;

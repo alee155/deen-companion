@@ -1,3 +1,4 @@
+import '../../../../core/device/screen_awake.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,7 +32,8 @@ class DuaReaderScreen extends ConsumerStatefulWidget {
   ConsumerState<DuaReaderScreen> createState() => _DuaReaderScreenState();
 }
 
-class _DuaReaderScreenState extends ConsumerState<DuaReaderScreen> {
+class _DuaReaderScreenState extends ConsumerState<DuaReaderScreen>
+    with KeepScreenOnMixin<DuaReaderScreen> {
   late final PageController _controller;
   late int _index;
   final Map<int, int> _counts = {};

@@ -1,3 +1,4 @@
+import '../../../../core/device/screen_awake.dart';
 import 'package:deen_companion/shared/providers/reading_preferences_provider.dart';
 import 'package:deen_companion/shared/widgets/reader_settings_sheet.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +40,8 @@ class HadithReadingScreen extends ConsumerStatefulWidget {
       _HadithReadingScreenState();
 }
 
-class _HadithReadingScreenState extends ConsumerState<HadithReadingScreen> {
+class _HadithReadingScreenState extends ConsumerState<HadithReadingScreen>
+    with KeepScreenOnMixin<HadithReadingScreen> {
   late final PageController _controller;
   int _page = 0;
   bool _focusMode = false;
