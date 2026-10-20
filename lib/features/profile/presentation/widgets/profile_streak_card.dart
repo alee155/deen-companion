@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
-import '../../../groups/domain/entities/group_streak.dart';
+import '../../../prayer_logs/presentation/prayer_labels.dart';
+import '../../../prayer_times/domain/entities/prayer_times.dart';
+import '../../../streaks/domain/entities/my_streaks.dart';
 
-/// The signed-in user's streak: big number, this week's dots, best streak.
+/// The signed-in user's streaks: the longest one running now (and where), the
+/// best ever, and a streak for each of the five prayers.
 class ProfileStreakCard extends StatelessWidget {
-  final UserStreakStats stats;
-  const ProfileStreakCard({super.key, required this.stats});
-
-  static const _days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  final MyStreaks streaks;
+  const ProfileStreakCard({super.key, required this.streaks});
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +64,7 @@ class ProfileStreakCard extends StatelessWidget {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         AnimatedCount(
-                          value: stats.currentStreak,
+                          value: streaks.currentBest,
                           fromZero: true,
                           style: TextStyle(
                             fontSize: 34.sp,
@@ -74,7 +75,7 @@ class ProfileStreakCard extends StatelessWidget {
                         ),
                         SizedBox(width: 6.w),
                         AnimatedText(
-                          stats.currentStreak == 1 ? 'day' : 'days',
+                          streaks.currentBest == 1 ? 'day' : 'days',
                           style: TextStyle(
                             fontSize: 14.sp,
                             color: AppColors.textSecondary,
@@ -98,7 +99,7 @@ class ProfileStreakCard extends StatelessWidget {
                     ),
                   ),
                   AnimatedCount(
-                    value: stats.longestStreak,
+                    value: streaks.longest,
                     style: TextStyle(
                       fontSize: 22.sp,
                       fontWeight: FontWeight.w800,
@@ -109,60 +110,81 @@ class ProfileStreakCard extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 16.h),
+          SizedBox(height: 14.h),
           Row(
             children: [
-              for (var i = 0; i < 7; i++)
+              for (final p in PrayerName.values)
                 Expanded(
-                  child: Column(
-                    children: [
-                      AnimatedContainer(
-                        duration: context.motion.duration(AppMotion.normal),
-                        curve: AppMotion.entrance,
-                        width: 32.w,
-                        height: 32.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: stats.week[i]
-                              ? AppColors.gold
-                              : AppColors.parchment,
-                          border: i == stats.todayIndex && !stats.week[i]
-                              ? Border.all(color: AppColors.gold, width: 1.6)
-                              : null,
-                        ),
-                        child: IconSwap(
-                          child: stats.week[i]
-                              ? Icon(
-                                  Icons.check_rounded,
-                                  key: const ValueKey('done'),
-                                  size: 17.sp,
-                                  color: AppColors.heroSurface,
-                                )
-                              : const SizedBox.shrink(key: ValueKey('todo')),
-                        ),
-                      ),
-                      SizedBox(height: 5.h),
-                      Text(
-                        _days[i],
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          fontWeight: i == stats.todayIndex
-                              ? FontWeight.w800
-                              : FontWeight.w500,
-                          color: i == stats.todayIndex
-                              ? AppColors.inkText
-                              : AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: _PrayerStreak(prayer: p, streak: streaks.prayer(p)),
                 ),
             ],
           ),
-          SizedBox(height: 12.h),
+          SizedBox(height: 10.h),
           Text(
-            '${stats.activeDaysThisWeek} of 7 days active this week',
+            _caption(),
             style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _caption() {
+    final lead = streaks.leading;
+    if (lead == null) return 'Join a group to start a streak with others.';
+    if (streaks.currentBest == 0) {
+      return 'Log ${lead.minPrayers == 1 ? 'a prayer' : '${lead.minPrayers} prayers'} today to start a streak in ${lead.name}.';
+    }
+    return 'Longest run right now: ${lead.name}.';
+  }
+}
+
+/// One prayer's own streak: its icon over the number of days in a row.
+class _PrayerStreak extends StatelessWidget {
+  final PrayerName prayer;
+  final PrayerStreak streak;
+  const _PrayerStreak({required this.prayer, required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    final on = streak.currentStreak > 0;
+    return Semantics(
+      label: '${prayer.label} streak, ${streak.currentStreak} days',
+      excludeSemantics: true,
+      child: Column(
+        children: [
+          Container(
+            width: 36.w,
+            height: 36.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: on
+                  ? AppColors.gold.withValues(alpha: 0.2)
+                  : AppColors.parchment,
+              border: Border.all(
+                color: on ? AppColors.gold : AppColors.borderWarm,
+              ),
+            ),
+            child: Icon(
+              prayer.icon,
+              size: 17.sp,
+              color: on ? AppColors.amberDeep : AppColors.textMuted,
+            ),
+          ),
+          SizedBox(height: 5.h),
+          Text(
+            '${streak.currentStreak}',
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w800,
+              color: on ? AppColors.inkText : AppColors.textMuted,
+            ),
+          ),
+          Text(
+            prayer.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 10.sp, color: AppColors.textMuted),
           ),
         ],
       ),

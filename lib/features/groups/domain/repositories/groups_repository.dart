@@ -3,7 +3,6 @@ import '../entities/group.dart';
 import '../entities/group_detail.dart';
 import '../entities/group_invite.dart';
 import '../entities/invite_preview.dart';
-import '../entities/group_streak.dart';
 
 abstract class GroupsRepository {
   Future<Result<List<Group>>> getMyGroups();
@@ -39,7 +38,4 @@ abstract class GroupsRepository {
 
   /// Joins the group behind [token]. Safe to repeat.
   Future<Result<JoinResult>> joinGroup(String token);
-
-  /// Still a local mock (Profile streak card) — no streak API yet.
-  Future<Result<UserStreakStats>> getMyStreakStats();
 }

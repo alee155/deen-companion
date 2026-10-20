@@ -15,6 +15,7 @@ import '../../../auth/presentation/providers/delete_account_controller.dart';
 import '../../../favorites/presentation/providers/favorites_providers.dart';
 import '../../../groups/presentation/providers/groups_providers.dart';
 import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
+import '../../../streaks/presentation/providers/streaks_providers.dart';
 import '../widgets/guest_benefits_card.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_stat_tile.dart';
@@ -184,9 +185,10 @@ class ProfileScreen extends ConsumerWidget {
                 children: [
                   if (signedIn) ...[
                     ref
-                        .watch(myStreakStatsProvider)
+                        .watch(myStreaksProvider)
                         .when(
-                          data: (s) => stagger(ProfileStreakCard(stats: s), 0),
+                          data: (s) =>
+                              stagger(ProfileStreakCard(streaks: s), 0),
                           loading: () => SizedBox(height: 190.h),
                           error: (_, _) => const SizedBox.shrink(),
                         ),

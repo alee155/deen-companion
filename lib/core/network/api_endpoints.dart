@@ -240,6 +240,11 @@ class ApiEndpoints {
       '$_deenBase/groups/$groupId/leave';
   static String groupPrayers(String id) =>
       '$_deenBase/groups/${Uri.encodeComponent(id)}/prayers';
+  static String groupStreakRule(String id) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/streak-rule';
+  static String groupStreaks(String id) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/streaks';
+  static const String myStreaks = '$_deenBase/users/me/streaks';
   static String groupInvite(String id) => '$_deenBase/groups/$id/invite';
   static String groupInviteReset(String id) =>
       '$_deenBase/groups/$id/invite/reset';

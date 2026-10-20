@@ -5,33 +5,21 @@ import '../../../../core/utils/flow_log.dart';
 import '../../../../core/state/keep_alive_for.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../../../core/di/providers.dart';
-import '../../data/datasources/groups_local_datasource.dart';
 import '../../data/datasources/groups_remote_datasource.dart';
-import '../../data/mock/mock_snap_stats_repository.dart';
 import '../../data/repositories/groups_repository_impl.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/group_detail.dart';
 import '../../domain/entities/group_invite.dart';
-import '../../domain/entities/group_streak.dart';
 import '../../domain/entities/invite_preview.dart';
-import '../../domain/entities/member_snap_stats.dart';
 import '../../domain/repositories/groups_repository.dart';
-import '../../domain/repositories/snap_stats_repository.dart';
 
 final groupsRemoteDataSourceProvider = Provider<GroupsRemoteDataSource>(
   (ref) => GroupsRemoteDataSourceImpl(ref.watch(dioProvider)),
 );
 
-/// Streak mock (see [GroupsLocalDataSource]).
-final groupsDataSourceProvider = Provider<GroupsLocalDataSource>(
-  (ref) => GroupsLocalDataSource(),
-);
-
 final groupsRepositoryProvider = Provider<GroupsRepository>(
-  (ref) => GroupsRepositoryImpl(
-    remote: ref.watch(groupsRemoteDataSourceProvider),
-    streaks: ref.watch(groupsDataSourceProvider),
-  ),
+  (ref) =>
+      GroupsRepositoryImpl(remote: ref.watch(groupsRemoteDataSourceProvider)),
 );
 
 class MyGroupsNotifier extends AsyncNotifier<List<Group>> {
@@ -127,25 +115,6 @@ final groupDetailProvider = FutureProvider.autoDispose
       final result = await ref
           .watch(groupsRepositoryProvider)
           .getGroupDetail(groupId);
-      return result.when(success: (d) => d, failure: (f) => throw f);
-    });
-
-/// MOCK today — swap this one provider for a real implementation when the
-/// snap statistics API is ready.
-final snapStatsRepositoryProvider = Provider<SnapStatsRepository>(
-  (ref) => const MockSnapStatsRepository(),
-);
-
-/// Snap numbers for the group's current members.
-final groupSnapOverviewProvider = FutureProvider.autoDispose
-    .family<GroupSnapOverview, String>((ref, groupId) async {
-      final detail = await ref.watch(groupDetailProvider(groupId).future);
-      final result = await ref
-          .watch(snapStatsRepositoryProvider)
-          .getGroupOverview(
-            groupId: groupId,
-            memberIds: [for (final m in detail.members) m.userId],
-          );
       return result.when(success: (d) => d, failure: (f) => throw f);
     });
 
@@ -336,13 +305,6 @@ final joinGroupControllerProvider =
     NotifierProvider.autoDispose<JoinGroupController, JoinGroupState>(
       JoinGroupController.new,
     );
-
-final myStreakStatsProvider = FutureProvider.autoDispose<UserStreakStats>((
-  ref,
-) async {
-  final result = await ref.watch(groupsRepositoryProvider).getMyStreakStats();
-  return result.when(success: (d) => d, failure: (f) => throw f);
-});
 
 /// How many groups the signed-in user created.
 final ownedGroupsCountProvider = Provider.autoDispose<int>((ref) {

@@ -5,19 +5,14 @@ import '../../../../core/utils/logger.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/group_detail.dart';
 import '../../domain/entities/group_invite.dart';
-import '../../domain/entities/group_streak.dart';
 import '../../domain/entities/invite_preview.dart';
 import '../../domain/repositories/groups_repository.dart';
-import '../datasources/groups_local_datasource.dart';
 import '../datasources/groups_remote_datasource.dart';
 
 class GroupsRepositoryImpl implements GroupsRepository {
   final GroupsRemoteDataSource remote;
 
-  /// Personal streak mock for Profile — remove once a streak API exists.
-  final GroupsLocalDataSource streaks;
-
-  const GroupsRepositoryImpl({required this.remote, required this.streaks});
+  const GroupsRepositoryImpl({required this.remote});
 
   @override
   Future<Result<List<Group>>> getMyGroups() => _guard(
@@ -92,16 +87,6 @@ class GroupsRepositoryImpl implements GroupsRepository {
     'joinGroup',
     () async => (await remote.joinWithInvite(token)).toEntity(),
   );
-
-  @override
-  Future<Result<UserStreakStats>> getMyStreakStats() async {
-    try {
-      return Success(streaks.myStats());
-    } catch (e, st) {
-      AppLogger.e('GroupsRepository: getMyStreakStats failed', e, st);
-      return const Error(UnexpectedFailure());
-    }
-  }
 
   Future<Result<T>> _guard<T>(String op, Future<T> Function() body) async {
     try {
