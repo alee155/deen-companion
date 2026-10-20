@@ -6,10 +6,13 @@ import 'package:deen_companion/features/groups/domain/entities/group.dart';
 import 'package:deen_companion/features/groups/domain/entities/group_detail.dart';
 import 'package:deen_companion/features/groups/presentation/providers/groups_providers.dart';
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
+import 'package:deen_companion/features/streaks/presentation/providers/streaks_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../streaks/_streaks_support.dart';
 
 class _Session extends AuthSessionNotifier {
   final String id;
@@ -79,6 +82,7 @@ Future<_InviteRemote> _pump(WidgetTester tester, {required String me}) async {
         authSessionProvider.overrideWith(() => _Session(me)),
         groupDetailProvider('g1').overrideWith((ref) async => _detail),
         groupsRemoteDataSourceProvider.overrideWithValue(remote),
+        streaksRepositoryProvider.overrideWithValue(FakeStreaksRepo()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(390, 844),
@@ -108,8 +112,9 @@ void main() {
     expect(find.textContaining('Alee Khan'), findsOneWidget);
     expect(find.text('Sara Ahmed'), findsOneWidget);
     expect(find.text('ADMIN'), findsOneWidget);
-    // Each member card shows its snaps, score and day streak.
-    expect(find.byIcon(Icons.photo_camera_rounded), findsWidgets);
+    // Each member card shows their real streak, from the board.
+    expect(find.text('4d'), findsOneWidget);
+    expect(find.text('2d'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -278,7 +283,7 @@ void main() {
     await _pump(tester, me: 'admin1');
     await tester.tap(find.textContaining('Alee Khan'));
     await _settle(tester);
-    expect(find.text('Snap activity'), findsOneWidget);
+    expect(find.text('Best streak'), findsOneWidget);
     expect(find.text('Remove from group'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
@@ -292,8 +297,8 @@ void main() {
       await _settle(tester);
       expect(find.textContaining('Admin view'), findsOneWidget);
       expect(find.textContaining('Sara Ahmed’s activity'), findsOneWidget);
-      expect(find.text('Snap activity'), findsOneWidget);
-      expect(find.text('Recent snaps'), findsOneWidget);
+      expect(find.text('Day streak'), findsOneWidget);
+      expect(find.text('Best streak'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -304,7 +309,7 @@ void main() {
     await _pump(tester, me: 'member1');
     await tester.tap(find.text('Alee Khan'));
     await _settle(tester);
-    expect(find.text('Snap activity'), findsNothing);
+    expect(find.text('Best streak'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 }

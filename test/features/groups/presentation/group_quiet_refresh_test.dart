@@ -13,12 +13,14 @@ import 'package:deen_companion/features/groups/presentation/screens/group_detail
 import 'package:deen_companion/features/groups/presentation/widgets/group_detail_skeleton.dart';
 import 'package:deen_companion/features/prayer_logs/domain/group_member_prayers.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/providers/prayer_logs_providers.dart';
+import 'package:deen_companion/features/streaks/presentation/providers/streaks_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../prayer_logs/presentation/_prayer_log_test_support.dart';
+import '../../streaks/_streaks_support.dart';
 
 /// A session whose user a test can switch.
 class _Session extends AuthSessionNotifier {
@@ -97,6 +99,7 @@ _Harness _harness() {
       authSessionProvider.overrideWith(_Session.new),
       groupsRepositoryProvider.overrideWithValue(groups),
       prayerLogsRepositoryProvider.overrideWithValue(feed),
+      streaksRepositoryProvider.overrideWithValue(FakeStreaksRepo()),
     ],
   );
   return _Harness(container, groups, feed);

@@ -3,15 +3,12 @@ import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
 import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
-import 'package:deen_companion/features/groups/data/datasources/groups_local_datasource.dart';
 import 'package:deen_companion/features/groups/data/datasources/groups_remote_datasource.dart';
-import 'package:deen_companion/features/groups/data/mock/mock_snap_stats_repository.dart';
 import 'package:deen_companion/features/groups/data/models/group_model.dart';
 import 'package:deen_companion/features/groups/data/repositories/groups_repository_impl.dart';
 import 'package:deen_companion/features/groups/domain/entities/group.dart';
 import 'package:deen_companion/features/groups/domain/entities/group_detail.dart';
 import 'package:deen_companion/features/groups/domain/entities/group_invite.dart';
-import 'package:deen_companion/features/groups/domain/entities/group_streak.dart';
 import 'package:deen_companion/features/groups/domain/entities/invite_preview.dart';
 import 'package:deen_companion/features/groups/domain/invite_link.dart';
 import 'package:deen_companion/features/groups/domain/repositories/groups_repository.dart';
@@ -232,14 +229,6 @@ class FailingRepo implements GroupsRepository {
   @override
   Future<Result<List<Group>>> getMyGroups() async =>
       const Error(UnexpectedFailure());
-  @override
-  Future<Result<UserStreakStats>> getMyStreakStats() async =>
-      const Error(UnexpectedFailure());
-}
-
-class ThrowingStats extends GroupsLocalDataSource {
-  @override
-  UserStreakStats myStats() => throw StateError('boom');
 }
 
 void main() {
@@ -311,27 +300,6 @@ void main() {
     });
   });
 
-  group('UserStreakStats', () {
-    test('activeDaysThisWeek counts true flags; empty is all zero', () {
-      const s = UserStreakStats(
-        currentStreak: 3,
-        longestStreak: 5,
-        week: [true, false, true, true, false, false, false],
-        todayIndex: 3,
-      );
-      expect(s.activeDaysThisWeek, 3);
-      expect(UserStreakStats.empty.activeDaysThisWeek, 0);
-    });
-  });
-
-  group('GroupsLocalDataSource (personal streak mock)', () {
-    test('myStats matches week shape', () {
-      final stats = GroupsLocalDataSource().myStats();
-      expect(stats.week, hasLength(7));
-      expect(stats.activeDaysThisWeek, stats.todayIndex);
-    });
-  });
-
   group('GroupsRepositoryImpl', () {
     late FakeRemote remote;
     late GroupsRepositoryImpl repo;
@@ -340,10 +308,7 @@ void main() {
         GroupModel.fromJson(_json(role: 'admin')),
         GroupModel.fromJson(_json(id: 'g2', name: 'Other', role: 'member')),
       ]);
-      repo = GroupsRepositoryImpl(
-        remote: remote,
-        streaks: GroupsLocalDataSource(),
-      );
+      repo = GroupsRepositoryImpl(remote: remote);
     });
 
     test('getMyGroups maps API groups in order', () async {
@@ -518,17 +483,6 @@ void main() {
         'You are not a member of this group',
       );
     });
-
-    test('streak stats failure maps to UnexpectedFailure', () async {
-      final bad = GroupsRepositoryImpl(
-        remote: remote,
-        streaks: ThrowingStats(),
-      );
-      expect(
-        ((await bad.getMyStreakStats()) as Error).failure,
-        isA<UnexpectedFailure>(),
-      );
-    });
   });
 
   group('providers', () {
@@ -651,16 +605,6 @@ void main() {
     });
 
     test(
-      'groupSnapOverviewProvider covers exactly the group members',
-      () async {
-        final c = make();
-        final o = await c.read(groupSnapOverviewProvider('g1').future);
-        expect(o.members.keys, ['u1', 'u2']);
-        expect(o.memberCount, 2);
-      },
-    );
-
-    test(
       'GroupManageController: update ok refreshes, failure reports',
       () async {
         remote.groups = [GroupModel.fromJson(_json(role: 'admin'))];
@@ -698,42 +642,6 @@ void main() {
         c.read(groupDetailProvider('x').future),
         throwsA(isA<NotFoundFailure>()),
       );
-      await expectLater(
-        c.read(myStreakStatsProvider.future),
-        throwsA(isA<UnexpectedFailure>()),
-      );
-    });
-  });
-
-  group('MockSnapStatsRepository (sample data, replaceable)', () {
-    const repo = MockSnapStatsRepository();
-
-    test('is deterministic and shaped for the UI', () async {
-      final a =
-          (await repo.getGroupOverview(groupId: 'g', memberIds: ['u1', 'u2'])
-                  as Success)
-              .data;
-      final b =
-          (await repo.getGroupOverview(groupId: 'g', memberIds: ['u1', 'u2'])
-                  as Success)
-              .data;
-      expect(a.members['u1']!.totalSnaps, b.members['u1']!.totalSnaps);
-      expect(
-        a.members['u1']!.dailyActivity,
-        hasLength(MockSnapStatsRepository.activityDays),
-      );
-      expect(a.week, hasLength(7));
-      expect(a.memberCount, 2);
-      expect(a.snappedTodayCount, lessThanOrEqualTo(2));
-      expect(a.members['u1']!.latestSnap, isNotNull);
-      expect(a.todayProgress, inInclusiveRange(0, 1));
-    });
-
-    test('empty member list does not divide by zero', () async {
-      final o =
-          (await repo.getGroupOverview(groupId: 'g', memberIds: []) as Success)
-              .data;
-      expect(o.todayProgress, 0);
     });
   });
 }

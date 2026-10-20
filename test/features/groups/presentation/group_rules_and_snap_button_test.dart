@@ -10,10 +10,13 @@ import 'package:deen_companion/features/groups/presentation/widgets/send_snap_bu
 import 'package:deen_companion/features/points/presentation/providers/points_providers.dart';
 import 'package:deen_companion/features/points/presentation/screens/points_rules_screen.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/providers/prayer_logs_providers.dart';
+import 'package:deen_companion/features/streaks/presentation/providers/streaks_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../streaks/_streaks_support.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../points/_points_support.dart';
@@ -57,7 +60,8 @@ Future<void> _pump(WidgetTester tester, {required String me}) async {
       ),
       GoRoute(
         path: '/points-rules',
-        builder: (_, _) => const PointsRulesScreen(),
+        builder: (_, state) =>
+            PointsRulesScreen(groupId: state.uri.queryParameters['groupId']),
       ),
       GoRoute(
         path: '/groups/:id/snap',
@@ -74,6 +78,7 @@ Future<void> _pump(WidgetTester tester, {required String me}) async {
         pointsRepositoryProvider.overrideWithValue(
           FakePointsRepo()..result = Success(sampleRules()),
         ),
+        streaksRepositoryProvider.overrideWithValue(FakeStreaksRepo()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(390, 844),
@@ -141,8 +146,15 @@ void main() {
         await _settle(tester);
 
         expect(find.byType(PointsRulesScreen), findsOneWidget);
-        expect(find.text('Fajr'), findsOneWidget);
-        expect(find.text('+10'), findsOneWidget);
+        expect(find.text('Fajr'), findsWidgets);
+        expect(find.text('+10 points'), findsOneWidget);
+        // The rules screen was opened for this group, so it shows its goal;
+        // only the admin gets the controls to change it.
+        expect(find.text('Daily goal'), findsWidgets);
+        expect(
+          find.text('Save goal'),
+          who == 'admin1' ? findsOneWidget : findsNothing,
+        );
         await tester.pumpWidget(const SizedBox());
       });
     }

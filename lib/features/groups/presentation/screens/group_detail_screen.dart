@@ -17,7 +17,8 @@ import '../../../prayer_logs/presentation/widgets/snap_photo_viewer.dart';
 import '../../../prayer_logs/presentation/prayer_labels.dart';
 import '../../../prayer_logs/presentation/widgets/prayer_dots_row.dart';
 import '../../domain/entities/group_detail.dart';
-import '../../domain/entities/member_snap_stats.dart';
+import '../../../streaks/domain/entities/group_streaks.dart';
+import '../../../streaks/presentation/providers/streaks_providers.dart';
 import '../providers/groups_providers.dart';
 import '../widgets/delete_group_sheet.dart';
 import '../widgets/edit_group_sheet.dart';
@@ -33,8 +34,9 @@ import '../widgets/snap_widgets.dart';
 
 /// Pushed as a top-level route, so the bottom navigation bar is not shown.
 ///
-/// Group info and members come from the API; snap numbers are sample data
-/// behind [snapStatsRepositoryProvider] until that backend exists.
+/// Everything here is real: the group and members from the groups API, each
+/// member's streak and today's goal from the streak board, and today's prayers,
+/// points and photos from the group feed.
 class GroupDetailScreen extends ConsumerStatefulWidget {
   final String groupId;
   const GroupDetailScreen({super.key, required this.groupId});
@@ -142,7 +144,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     if (!mounted || action == null) return;
     switch (action) {
       case ManageAction.rules:
-        await context.push('/points-rules');
+        await context.push(
+          '/points-rules?groupId=${Uri.encodeQueryComponent(group.id)}',
+        );
       case ManageAction.edit:
         final saved = await showEditGroupSheet(context, group);
         if (saved == true && mounted) _toast('Group updated');
@@ -284,8 +288,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   );
 
   Widget _content(GroupDetail g, String? myId, bool isAdmin) {
-    final overviewAsync = ref.watch(groupSnapOverviewProvider(g.id));
-    final overview = overviewAsync.valueOrNull;
+    final board = ref.watch(groupStreakBoardProvider(g.id)).valueOrNull;
 
     // Today's prayers per member, for the circles on each card. Absent while
     // loading or if it failed (e.g. offline): the cards then show no circles
@@ -297,14 +300,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       for (final m in feed ?? const <GroupMemberPrayers>[]) m.userId: m,
     };
 
-    // Leaderboard order: highest score first once stats are known.
+    // Leaderboard order: the streak board's own order (longest current
+    // streak first) once it has loaded; anyone it does not list goes last.
     final members = [...g.members];
-    if (overview != null) {
-      members.sort(
-        (a, b) => (overview.members[b.userId]?.score ?? 0).compareTo(
-          overview.members[a.userId]?.score ?? 0,
-        ),
-      );
+    if (board != null) {
+      final place = {for (final (i, e) in board.entries.indexed) e.userId: i};
+      int at(GroupMember m) => place[m.userId] ?? board.entries.length;
+      members.sort((a, b) => at(a).compareTo(at(b)));
     }
 
     return RefreshIndicator(
@@ -314,6 +316,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
         _cooldown = Timer(minGap, () {});
         ref.invalidate(groupDetailProvider(g.id));
         ref.invalidate(groupPrayersProvider);
+        ref.invalidate(groupStreakBoardProvider(g.id));
         await ref.read(groupDetailProvider(g.id).future);
       },
       child: CustomScrollView(
@@ -326,9 +329,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
             child: GroupDetailHero(
               group: g,
               myRole: g.roleOf(myId),
-              overview: overview,
+              board: board,
               onInvite: () =>
                   showInviteGroupSheet(context, group: g, isAdmin: isAdmin),
+              onOpenStats: () =>
+                  context.push('/groups/${Uri.encodeComponent(g.id)}/stats'),
             ),
           ),
           SliverToBoxAdapter(
@@ -369,8 +374,6 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                       ),
                     ),
                   ),
-                  const Spacer(),
-                  if (overview != null) const PreviewBadge(),
                 ],
               ),
             ),
@@ -393,7 +396,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                             g,
                             members[i],
                             i + 1,
-                            overview,
+                            board,
                             myId,
                             isAdmin,
                             prayersByMember[members[i].userId],
@@ -440,12 +443,14 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     GroupDetail group,
     GroupMember m,
     int rank,
-    GroupSnapOverview? overview,
+    GroupStreakBoard? board,
     String? myId,
     bool isAdmin,
     GroupMemberPrayers? prayers,
   ) {
-    final stats = overview?.members[m.userId];
+    // Each figure shows once its own source has loaded: the streak from the
+    // board, today's prayers and points from the group feed.
+    final streak = board?.of(m.userId);
     final isMe = m.userId == myId;
     // Admins can open anyone's details; other members only their own.
     final canOpen = isAdmin || isMe;
@@ -454,8 +459,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     return MemberSnapTile(
       member: m,
       hasPhoto: photoAvailable,
-      photoUrl: photoAvailable ? prayers?.latestPhotoLog?.snapUrl : null,
-      stats: stats,
+      streak: streak,
+      prayersToday: prayers?.loggedCount,
+      pointsToday: prayers?.totalPoints,
       rank: rank,
       isMe: isMe,
       canOpenDetails: canOpen,
@@ -463,7 +469,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
         final action = await showMemberDetailSheet(
           context,
           member: m,
-          stats: stats,
+          streak: streak,
+          pointsToday: prayers?.totalPoints,
           isMe: isMe,
           viewerIsAdmin: isAdmin,
           // Today's prayer circles live here, not on the card.

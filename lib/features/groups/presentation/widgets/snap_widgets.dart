@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-import '../../../prayer_logs/presentation/widgets/snap_photo_viewer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -18,32 +16,6 @@ String timeAgo(DateTime t) {
 
 String joinedLabel(DateTime? t) =>
     t == null ? '' : 'Joined ${DateFormat('d MMM yyyy').format(t.toLocal())}';
-
-/// Marks sections that currently show sample numbers (the snap statistics
-/// API isn't live yet).
-class PreviewBadge extends StatelessWidget {
-  const PreviewBadge({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-      decoration: BoxDecoration(
-        color: AppColors.worshipAccentBg,
-        borderRadius: BorderRadius.circular(8.r),
-      ),
-      child: Text(
-        'SAMPLE DATA',
-        style: TextStyle(
-          fontSize: 8.5.sp,
-          letterSpacing: 0.8,
-          fontWeight: FontWeight.w800,
-          color: AppColors.worshipAccent,
-        ),
-      ),
-    );
-  }
-}
 
 class RoleBadge extends StatelessWidget {
   final GroupRole role;
@@ -118,65 +90,48 @@ class MemberAvatar extends StatelessWidget {
   }
 }
 
-/// A member's snap on their card. With a photo it shows that photo as a small
-/// picture inside a green ring (like an unseen story), and tapping opens it
-/// full screen. Without one (or on the viewer's own card) it is a plain white
-/// box and does nothing.
+/// Where the app keeps the two snap icons.
+const snapPendingAsset = 'assets/images/snap_pending.png';
+const snapViewedAsset = 'assets/images/snap_viewed.png';
+
+/// A member's snap on their card: a filled arrow when there is a snap to open
+/// (tapping opens it full screen), an outlined one when there is none — never
+/// on the viewer's own card, which has nothing to open.
 class SnapBox extends StatelessWidget {
+  /// Whether there is a snap for the viewer to open.
   final bool hasPhoto;
   final VoidCallback? onTap;
   final double size;
-
-  /// The photo to preview. Nothing is loaded when null.
-  final String? photoUrl;
 
   const SnapBox({
     super.key,
     required this.hasPhoto,
     required this.onTap,
     this.size = 36,
-    this.photoUrl,
   });
 
   @override
   Widget build(BuildContext context) {
     final enabled = hasPhoto && onTap != null;
     final box = size.w;
-    final radius = box * 0.3;
-    final preview = enabled && photoUrl != null;
     return Semantics(
       button: true,
       enabled: enabled,
       label: enabled ? 'View photo' : 'No photo',
+      excludeSemantics: true,
       child: InkResponse(
         onTap: enabled ? onTap : null,
         radius: box * 0.8,
-        child: Container(
+        child: SizedBox(
           width: box,
           height: box,
-          padding: EdgeInsets.all(preview ? 2.w : 0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color: enabled ? AppColors.emeraldInk : AppColors.borderWarm,
-              width: enabled ? 1.8 : 1,
+          child: Padding(
+            padding: EdgeInsets.all(box * 0.12),
+            child: Image.asset(
+              enabled ? snapPendingAsset : snapViewedAsset,
+              fit: BoxFit.contain,
             ),
-            boxShadow: enabled
-                ? [
-                    BoxShadow(
-                      color: AppColors.emeraldInk.withValues(alpha: 0.25),
-                      blurRadius: 8,
-                    ),
-                  ]
-                : null,
           ),
-          child: preview
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(radius - 2.w),
-                  child: SnapPhoto(url: photoUrl!),
-                )
-              : null,
         ),
       ),
     );
@@ -227,121 +182,4 @@ class StatTile extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Bars of snaps per day, oldest → newest; today is highlighted.
-class ActivityBarChart extends StatelessWidget {
-  final List<int> values;
-  final double height;
-
-  const ActivityBarChart({super.key, required this.values, this.height = 120});
-
-  @override
-  Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final first = today.subtract(Duration(days: values.length - 1));
-    return Semantics(
-      label:
-          'Snap activity over the last ${values.length} days, '
-          '${values.fold<int>(0, (a, b) => a + b)} snaps in total',
-      child: Column(
-        children: [
-          SizedBox(
-            height: height.h,
-            width: double.infinity,
-            child: CustomPaint(
-              painter: _BarsPainter(
-                values: values,
-                bar: AppColors.emeraldInk.withValues(alpha: 0.45),
-                highlight: AppColors.emeraldInk,
-                grid: AppColors.borderWarm,
-                label: AppColors.textMuted,
-                labelSize: 9.sp,
-              ),
-            ),
-          ),
-          SizedBox(height: 6.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                DateFormat('d MMM').format(first),
-                style: TextStyle(fontSize: 10.sp, color: AppColors.textMuted),
-              ),
-              Text(
-                'Today',
-                style: TextStyle(
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BarsPainter extends CustomPainter {
-  final List<int> values;
-  final Color bar;
-  final Color highlight;
-  final Color grid;
-  final Color label;
-  final double labelSize;
-
-  _BarsPainter({
-    required this.values,
-    required this.bar,
-    required this.highlight,
-    required this.grid,
-    required this.label,
-    required this.labelSize,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.isEmpty) return;
-    final maxV = math.max(values.reduce(math.max), 1);
-    final gridPaint = Paint()
-      ..color = grid
-      ..strokeWidth = 1;
-    for (var i = 0; i <= 2; i++) {
-      final y = size.height * i / 2;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-    final slot = size.width / values.length;
-    final barW = slot * 0.56;
-    for (var i = 0; i < values.length; i++) {
-      final h = size.height * (values[i] / maxV) * 0.94;
-      final rect = RRect.fromRectAndCorners(
-        Rect.fromLTWH(
-          i * slot + (slot - barW) / 2,
-          size.height - math.max(h, values[i] == 0 ? 2 : 0),
-          barW,
-          math.max(h, values[i] == 0 ? 2 : 0),
-        ),
-        topLeft: Radius.circular(barW / 2),
-        topRight: Radius.circular(barW / 2),
-      );
-      canvas.drawRRect(
-        rect,
-        Paint()..color = i == values.length - 1 ? highlight : bar,
-      );
-    }
-    final tp = TextPainter(
-      text: TextSpan(
-        text: '$maxV',
-        style: TextStyle(fontSize: labelSize, color: label),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, const Offset(2, 2));
-  }
-
-  @override
-  bool shouldRepaint(_BarsPainter old) =>
-      old.values != values || old.bar != bar || old.highlight != highlight;
 }

@@ -7,15 +7,21 @@ import 'package:deen_companion/features/groups/domain/entities/group_detail.dart
 import 'package:deen_companion/features/groups/presentation/providers/groups_providers.dart';
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
 import 'package:deen_companion/features/groups/presentation/widgets/snap_widgets.dart';
+import 'package:deen_companion/features/groups/presentation/widgets/group_detail_widgets.dart';
 import 'package:deen_companion/features/prayer_logs/domain/group_member_prayers.dart';
 import 'package:deen_companion/features/prayer_logs/domain/prayer_log.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/widgets/prayer_dots_row.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times.dart';
+import 'package:deen_companion/features/streaks/presentation/providers/streaks_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'package:deen_companion/core/usecase/usecase.dart';
+import 'package:deen_companion/features/streaks/domain/entities/group_streaks.dart';
+import '../../streaks/_streaks_support.dart';
 
 class _Session extends AuthSessionNotifier {
   @override
@@ -112,6 +118,7 @@ var feedCalls = 0;
 Future<void> _pump(
   WidgetTester tester, {
   Future<List<GroupMemberPrayers>> Function()? feed,
+  FakeStreaksRepo? streaks,
   double width = 390,
 }) async {
   feedCalls = 0;
@@ -123,6 +130,9 @@ Future<void> _pump(
       overrides: [
         authSessionProvider.overrideWith(_Session.new),
         groupDetailProvider('g1').overrideWith((ref) async => _detail),
+        streaksRepositoryProvider.overrideWithValue(
+          streaks ?? FakeStreaksRepo(),
+        ),
         groupPrayersProvider.overrideWith((ref, key) {
           feedCalls++;
           return (feed ?? () async => _feed())();
@@ -152,17 +162,56 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('"Snapped today" now lives in the header, once', (tester) async {
+  testWidgets('the header shows how many met today\'s goal, from the board', (
+    tester,
+  ) async {
     await _pump(tester);
-    expect(find.text('Snapped today'), findsOneWidget);
-    expect(find.textMatching(r'^\d+ of 2 members$'), findsOneWidget);
-    expect(find.text('day streak'), findsOneWidget);
-    expect(find.textContaining('Longest streak'), findsOneWidget);
+    // Default board: Alee met the goal, Sara has not.
+    expect(find.text('Goal met today'), findsOneWidget);
+    expect(find.text('1 of 2 members'), findsOneWidget);
+    expect(find.text('50%'), findsOneWidget);
+    expect(find.text('top run'), findsOneWidget);
+    expect(find.text('Longest streak: 9 days'), findsOneWidget);
 
     // It sits inside the header block, above the Members list.
-    final summary = tester.getTopLeft(find.text('Snapped today')).dy;
+    final summary = tester.getTopLeft(find.text('Goal met today')).dy;
     final members = tester.getTopLeft(find.text('Members')).dy;
     expect(summary, lessThan(members));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('there is no separate streak card: it is all in the rows', (
+    tester,
+  ) async {
+    await _pump(tester);
+    expect(find.text('PRAYER STREAK'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('no sample data is left on the screen', (tester) async {
+    await _pump(tester);
+    expect(find.text('SAMPLE DATA'), findsNothing);
+    expect(find.text('Snapped today'), findsNothing);
+    expect(find.byIcon(Icons.photo_camera_rounded), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('members are ordered by the streak board', (tester) async {
+    await _pump(tester);
+    // Board order is Alee (4) then Sara (2), the detail order is the same, so
+    // flip the board to prove the board wins.
+    await tester.pumpWidget(const SizedBox());
+    final repo = FakeStreaksRepo()
+      ..board = Success(
+        GroupStreakBoard([
+          entry('member1', name: 'Sara Ahmed', current: 9, best: 9),
+          entry('admin1', name: 'Alee Khan', current: 1, best: 1),
+        ]),
+      );
+    await _pump(tester, streaks: repo);
+    final sara = tester.getTopLeft(find.text('Sara Ahmed')).dy;
+    final alee = tester.getTopLeft(find.textContaining('Alee Khan')).dy;
+    expect(sara, lessThan(alee));
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -176,58 +225,88 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('a member without a photo has a plain white box', (tester) async {
+  Finder snapIcon(String asset) => find.byWidgetPredicate(
+    (w) =>
+        w is Image &&
+        w.image is AssetImage &&
+        (w.image as AssetImage).assetName == asset,
+  );
+
+  testWidgets('each member has a snap icon, drawn from the app images', (
+    tester,
+  ) async {
     await _pump(tester);
     expect(find.byType(SnapBox), findsNWidgets(2), reason: 'one per member');
     expect(
       find.descendant(
         of: find.byType(SnapBox),
-        matching: find.byIcon(Icons.photo_camera_rounded),
+        matching: find.byType(SnapPhoto),
       ),
       findsNothing,
-      reason: 'no camera icon on the box',
+      reason: 'no photo preview on the card any more',
     );
-    final box = tester.widget<Container>(
-      find
-          .descendant(
-            of: find.byType(SnapBox),
-            matching: find.byType(Container),
-          )
-          .first,
+    expect(
+      snapIcon(snapPendingAsset).evaluate().length +
+          snapIcon(snapViewedAsset).evaluate().length,
+      2,
     );
-    expect((box.decoration as BoxDecoration).color, Colors.white);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('a member who sent a snap shows its picture in the box', (
+  testWidgets('a snap to open shows the filled arrow, none the outline', (
     tester,
   ) async {
     await _pump(tester);
-    final boxes = tester.widgetList<SnapBox>(find.byType(SnapBox));
-    final withPhoto = boxes.where((b) => b.photoUrl != null).length;
-    expect(withPhoto, lessThanOrEqualTo(1), reason: 'never on your own card');
+    // Sara sent photos, so Alee (the viewer) has one to open on her card; his
+    // own card has nothing to open.
+    expect(snapIcon(snapPendingAsset), findsOneWidget);
+    expect(snapIcon(snapViewedAsset), findsOneWidget);
+
+    final aleeRow = find.ancestor(
+      of: find.textContaining('Alee Khan'),
+      matching: find.byType(MemberSnapTile),
+    );
+    final saraRow = find.ancestor(
+      of: find.text('Sara Ahmed'),
+      matching: find.byType(MemberSnapTile),
+    );
     expect(
-      find.descendant(
-        of: find.byType(SnapBox),
-        matching: find.byType(SnapPhoto),
-      ),
-      findsNWidgets(withPhoto),
+      find.descendant(of: aleeRow, matching: snapIcon(snapViewedAsset)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: saraRow, matching: snapIcon(snapPendingAsset)),
+      findsOneWidget,
     );
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('each card shows snaps, score and day streak', (tester) async {
+  testWidgets('nobody has a snap: every icon is the outlined one', (
+    tester,
+  ) async {
+    await _pump(tester, feed: () async => _feed(photos: false));
+    expect(snapIcon(snapPendingAsset), findsNothing);
+    expect(snapIcon(snapViewedAsset), findsNWidgets(2));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('each card shows prayers today, points and the streak', (
+    tester,
+  ) async {
     await _pump(tester);
-    // One row per member: camera + snaps, bolt + score, flame + "17d".
-    expect(find.byIcon(Icons.photo_camera_rounded), findsNWidgets(2));
+    // Alee logged Fajr + Dhuhr, Sara Asr + Maghrib: 2 prayers, 10 points each.
+    expect(find.text('2/5'), findsNWidgets(2));
     expect(find.byIcon(Icons.bolt_rounded), findsNWidgets(2));
-    expect(find.textMatching(r'^\d+d$'), findsNWidgets(2));
-    // The header summary has its own flame, so 1 + one per member.
+    expect(find.text('10'), findsNWidgets(2));
+    // Streaks from the board: Alee 4, Sara 2.
+    expect(find.text('4d'), findsOneWidget);
+    expect(find.text('2d'), findsOneWidget);
+    // Flames: the header summary, and one per member.
     expect(find.byIcon(Icons.local_fire_department_rounded), findsNWidgets(3));
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('the stats sit under the name on the card', (tester) async {
+  testWidgets('the figures sit under the name on the card', (tester) async {
     await _pump(tester);
     final name = tester.getTopLeft(find.text('Sara Ahmed')).dy;
     final bolts = [
@@ -245,10 +324,28 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('the stats do not depend on the prayer feed', (tester) async {
+  testWidgets('each figure shows once its own source has loaded', (
+    tester,
+  ) async {
+    // Feed down: no prayers/points, but the board's streak still shows.
     await _pump(tester, feed: () async => throw const NetworkFailure());
-    expect(find.byIcon(Icons.bolt_rounded), findsNWidgets(2));
-    expect(find.textMatching(r'^\d+d$'), findsNWidgets(2));
+    expect(find.text('2/5'), findsNothing);
+    expect(find.byIcon(Icons.bolt_rounded), findsNothing);
+    expect(find.text('4d'), findsOneWidget);
+    expect(find.text('2d'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('board down: prayers and points show, the streak does not', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      streaks: FakeStreaksRepo()..board = const Error(NetworkFailure()),
+    );
+    expect(find.text('2/5'), findsNWidgets(2));
+    expect(find.text('4d'), findsNothing);
+    expect(find.text('Goal met today'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -267,21 +364,6 @@ void main() {
     expect(find.text('2 members'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
-  group('hero summary', () {
-    testWidgets('the week circles are gone, the rest stays', (tester) async {
-      await _pump(tester);
-      expect(find.text('Snapped today'), findsOneWidget);
-      expect(find.textMatching(r'^\d+%$'), findsOneWidget);
-      expect(find.text('day streak'), findsOneWidget);
-      expect(find.textContaining('Longest streak'), findsOneWidget);
-      // The week row used one letter per day (M T W T F S S).
-      for (final letter in ['M', 'T', 'W', 'F', 'S']) {
-        expect(find.text(letter), findsNothing, reason: 'week letter $letter');
-      }
-      await tester.pumpWidget(const SizedBox());
-    });
-  });
-
   group('real photos', () {
     /// The white box on [name]'s card.
     Finder viewPhoto() => _labelled('View photo');
@@ -303,9 +385,7 @@ void main() {
       await _pump(tester);
       // The enabled box is Sara's (the viewer's own is disabled).
       await tester.tap(
-        find
-            .descendant(of: viewPhoto(), matching: find.byType(Container))
-            .first,
+        find.descendant(of: viewPhoto(), matching: find.byType(Image)).first,
       );
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
@@ -322,9 +402,7 @@ void main() {
       await _pump(tester);
       final before = feedCalls;
       await tester.tap(
-        find
-            .descendant(of: viewPhoto(), matching: find.byType(Container))
-            .first,
+        find.descendant(of: viewPhoto(), matching: find.byType(Image)).first,
       );
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
@@ -335,7 +413,7 @@ void main() {
     testWidgets('your own box does nothing when tapped', (tester) async {
       await _pump(tester);
       await tester.tap(
-        find.descendant(of: noPhoto(), matching: find.byType(Container)).first,
+        find.descendant(of: noPhoto(), matching: find.byType(Image)).first,
       );
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byTooltip('Close'), findsNothing);
@@ -370,9 +448,7 @@ void main() {
         },
       );
       await tester.tap(
-        find
-            .descendant(of: viewPhoto(), matching: find.byType(Container))
-            .first,
+        find.descendant(of: viewPhoto(), matching: find.byType(Image)).first,
       );
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
@@ -409,8 +485,8 @@ void main() {
       await _pump(tester);
       await openSheet(tester, 'Sara Ahmed');
       final prayers = tester.getTopLeft(find.text('Today’s prayers')).dy;
-      final snapActivity = tester.getTopLeft(find.text('Snap activity')).dy;
-      expect(prayers, lessThan(snapActivity));
+      final stats = tester.getTopLeft(find.text('Day streak')).dy;
+      expect(prayers, lessThan(stats));
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -445,16 +521,11 @@ void main() {
       await openSheet(tester, 'Sara Ahmed');
       expect(find.text('Today’s prayers'), findsNothing);
       expect(_labelled('Asr logged'), findsNothing);
-      // The rest of the sheet is unaffected.
-      expect(find.text('Snap activity'), findsOneWidget);
+      // The rest of the sheet is unaffected: the streak still shows, the
+      // points (which come from the feed) do not.
+      expect(find.text('Day streak'), findsOneWidget);
+      expect(find.text('Points today'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
   });
-}
-
-extension on CommonFinders {
-  /// A [Text] whose whole content matches [pattern].
-  Finder textMatching(String pattern) => byWidgetPredicate(
-    (w) => w is Text && RegExp(pattern).hasMatch(w.data ?? ''),
-  );
 }
