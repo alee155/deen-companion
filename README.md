@@ -66,7 +66,7 @@ Built with **Flutter** and **Riverpod** on a feature-first **Clean Architecture*
 | Audio | `just_audio`, `just_audio_background` |
 | Location & sensors | `geolocator`, `geocoding`, `flutter_compass`, `permission_handler` |
 | Notifications | Native Android `AlarmManager` (prayer alarms) and `flutter_local_notifications` + `timezone` (daily content) |
-| UI | `flutter_screenutil`, `flutter_animate`, `flutter_svg`, `google_fonts`, `shimmer` |
+| UI | `flutter_screenutil`, `shimmer`, `cached_network_image` |
 | Ads | `google_mobile_ads` (configured per build; disabled when no IDs are supplied) |
 | Testing | `flutter_test`, `mocktail` |
 
