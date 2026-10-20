@@ -297,6 +297,7 @@ class _Row extends StatelessWidget {
                   context,
                   url: l.snapUrl!,
                   title: prayer.label,
+                  duration: l.viewDuration(),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10.r),

@@ -35,6 +35,16 @@ class PrayerLog extends Equatable {
   final DateTime windowEndsAt;
   final DateTime loggedAt;
 
+  /// Seconds the snap stays on screen for viewers (1 to 10), as the sender
+  /// chose. Null when the server did not send it.
+  final int? viewDurationSeconds;
+
+  /// How long a viewer sees the snap: the sender's choice, or [fallback].
+  Duration viewDuration([Duration fallback = const Duration(seconds: 6)]) =>
+      viewDurationSeconds == null
+      ? fallback
+      : Duration(seconds: viewDurationSeconds!);
+
   const PrayerLog({
     required this.id,
     required this.prayer,
@@ -45,6 +55,7 @@ class PrayerLog extends Equatable {
     required this.windowStartsAt,
     required this.windowEndsAt,
     required this.loggedAt,
+    this.viewDurationSeconds,
   });
 
   /// Undo is allowed only while the window is still open.
@@ -61,6 +72,7 @@ class PrayerLog extends Equatable {
     windowStartsAt,
     windowEndsAt,
     loggedAt,
+    viewDurationSeconds,
   ];
 }
 

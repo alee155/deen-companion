@@ -1,8 +1,9 @@
-/// How long a recipient can view a snap once opened.
+/// How long a recipient can view a snap once opened. The server accepts 1 to
+/// 10 seconds (`viewDurationSeconds`), so nothing longer is offered.
 class SnapViewTimer {
   SnapViewTimer._();
 
-  static const options = [3, 5, 10, 15, 30];
+  static const options = [3, 5, 10];
   static const defaultSeconds = 5;
 }
 

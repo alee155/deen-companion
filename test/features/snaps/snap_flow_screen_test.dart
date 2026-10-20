@@ -217,9 +217,9 @@ void main() {
     await _settle(tester);
     expect(find.text('Preview'), findsOneWidget);
     expect(find.text('5s'), findsWidgets);
-    await tester.tap(find.text('15s'));
+    await tester.tap(find.text('10s'));
     await _settle(tester);
-    expect(c.read(snapComposerProvider('g1')).viewSeconds, 15);
+    expect(c.read(snapComposerProvider('g1')).viewSeconds, 10);
     await tester.pumpWidget(const SizedBox());
   });
 

@@ -99,6 +99,7 @@ class _Dot extends StatelessWidget {
                 context,
                 url: url,
                 title: '${member.displayName} · ${prayer.label}',
+                duration: log!.viewDuration(),
               ),
         child: Container(
           width: size.w,

@@ -69,4 +69,53 @@ void main() {
 
     expect(find.text('Ali'), findsNothing);
   });
+
+  testWidgets('shows the whole photo, not a cropped fill', (tester) async {
+    await tester.pumpWidget(_host());
+    await tester.tap(find.text('open'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.fit, BoxFit.contain);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('the bar runs for the sender\'s view time', (tester) async {
+    await tester.pumpWidget(
+      ScreenUtilInit(
+        designSize: const Size(390, 844),
+        builder: (_, _) => MaterialApp(
+          home: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showSnapPhoto(
+                context,
+                url: 'http://localhost/none.jpg',
+                title: 'Ali',
+                duration: const Duration(seconds: 3),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pump(const Duration(milliseconds: 300));
+    double bar() => tester
+        .widget<LinearProgressIndicator>(find.byType(LinearProgressIndicator))
+        .value!;
+    // The bar waits at zero until the photo is on screen (here: it failed to
+    // load, which also starts the clock), then runs for the full 3 seconds.
+    for (var i = 0; i < 40 && bar() == 0; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(bar(), greaterThan(0));
+    final started = bar();
+    await tester.pump(const Duration(milliseconds: 1500));
+    expect(bar() - started, closeTo(0.5, 0.1));
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('Ali'), findsNothing);
+  });
 }

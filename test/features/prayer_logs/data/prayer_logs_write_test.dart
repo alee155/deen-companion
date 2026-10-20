@@ -80,6 +80,29 @@ void main() {
       expect(part.value.contentType.toString(), 'image/jpeg');
     });
 
+    test(
+      'sends viewDurationSeconds, clamped to the 1-10 the server takes',
+      () async {
+        stubPost().thenAnswer(
+          (_) async => okResponse({'success': true, 'data': _logJson}),
+        );
+        Future<Map<String, String>> sent(int seconds) async {
+          clearInteractions(dio);
+          await repo.logPrayer(photo, viewSeconds: seconds);
+          final form =
+              verify(
+                    () => dio.post(any(), data: captureAny(named: 'data')),
+                  ).captured.single
+                  as FormData;
+          return Map.fromEntries(form.fields);
+        }
+
+        expect(await sent(5), {'viewDurationSeconds': '5'});
+        expect(await sent(30), {'viewDurationSeconds': '10'});
+        expect(await sent(0), {'viewDurationSeconds': '1'});
+      },
+    );
+
     test('png and webp keep their own content type', () async {
       stubPost().thenAnswer(
         (_) async => okResponse({'success': true, 'data': _logJson}),

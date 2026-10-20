@@ -79,7 +79,10 @@ class ScriptedLogsRepo implements PrayerLogsRepository {
   CurrentPrayerState current = CurrentPrayerState(now: DateTime.now());
 
   @override
-  Future<Result<PrayerLog>> logPrayer(String imagePath) async {
+  Future<Result<PrayerLog>> logPrayer(
+    String imagePath, {
+    int? viewSeconds,
+  }) async {
     logged.add(imagePath);
     return logResult;
   }

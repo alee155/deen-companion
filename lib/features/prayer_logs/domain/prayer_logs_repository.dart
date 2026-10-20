@@ -7,10 +7,14 @@ abstract class PrayerLogsRepository {
   /// Largest photo the server accepts (`SNAP_MAX_MB`).
   static const maxPhotoBytes = 5 * 1024 * 1024;
 
+  /// The range the server accepts for `viewDurationSeconds`.
+  static const minViewSeconds = 1;
+  static const maxViewSeconds = 10;
+
   /// Logs the prayer that is open right now with [imagePath] as proof. The
   /// server decides which prayer; see `PrayerLogFailure` for the outcomes
   /// (no open window, already logged, not synced, too large).
-  Future<Result<PrayerLog>> logPrayer(String imagePath);
+  Future<Result<PrayerLog>> logPrayer(String imagePath, {int? viewSeconds});
 
   /// Everyone in a group and what they logged on [date] (null → today).
   /// A non-member gets a failure with `PrayerLogErrorCode.notGroupMember`.

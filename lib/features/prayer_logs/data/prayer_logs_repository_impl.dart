@@ -41,7 +41,10 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
   );
 
   @override
-  Future<Result<PrayerLog>> logPrayer(String imagePath) async {
+  Future<Result<PrayerLog>> logPrayer(
+    String imagePath, {
+    int? viewSeconds,
+  }) async {
     // A bad request is cheaper to refuse here than to upload and bounce.
     final file = File(imagePath);
     if (!await file.exists()) {
@@ -56,7 +59,15 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
         ),
       );
     }
-    return _guard('logPrayer', () => remote.logPrayer(imagePath));
+    // The server allows 1 to 10 seconds; clamp rather than get a 400.
+    final seconds = viewSeconds?.clamp(
+      PrayerLogsRepository.minViewSeconds,
+      PrayerLogsRepository.maxViewSeconds,
+    );
+    return _guard(
+      'logPrayer',
+      () => remote.logPrayer(imagePath, viewSeconds: seconds),
+    );
   }
 
   @override

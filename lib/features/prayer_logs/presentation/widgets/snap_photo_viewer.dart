@@ -9,13 +9,32 @@ import '../../../../core/theme/app_colors.dart';
 class SnapPhoto extends StatelessWidget {
   final String url;
   final BoxFit fit;
-  const SnapPhoto({super.key, required this.url, this.fit = BoxFit.cover});
+
+  /// Called once the photo is on screen, or once it failed to load (the
+  /// placeholder is then what is shown). May be called more than once.
+  final VoidCallback? onReady;
+  const SnapPhoto({
+    super.key,
+    required this.url,
+    this.fit = BoxFit.cover,
+    this.onReady,
+  });
+
+  void _ready() {
+    final cb = onReady;
+    if (cb == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => cb());
+  }
 
   @override
   Widget build(BuildContext context) {
     return Image.network(
       url,
       fit: fit,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (frame != null) _ready();
+        return child;
+      },
       loadingBuilder: (context, child, progress) => progress == null
           ? child
           : ColoredBox(
@@ -28,21 +47,25 @@ class SnapPhoto extends StatelessWidget {
                 ),
               ),
             ),
-      errorBuilder: (context, _, _) => ColoredBox(
-        color: AppColors.borderWarm,
-        child: Icon(
-          Icons.image_not_supported_outlined,
-          color: AppColors.textMuted,
-          size: 22.sp,
-        ),
-      ),
+      errorBuilder: (context, _, _) {
+        _ready();
+        return ColoredBox(
+          color: AppColors.borderWarm,
+          child: Icon(
+            Icons.image_not_supported_outlined,
+            color: AppColors.textMuted,
+            size: 22.sp,
+          ),
+        );
+      },
     );
   }
 }
 
-/// Full-screen, Snapchat-style photo viewer: the photo fills the screen, a
-/// progress bar runs along the top and closes it when full, the sender sits
-/// in the header. Tap to close, hold to pause, swipe down to dismiss.
+/// Full-screen, Snapchat-style photo viewer: the whole photo is shown as the
+/// sender framed it (never cropped), a progress bar runs along the top for
+/// [duration] — the sender's chosen view time, counted from when the photo is
+/// on screen — and closes it when full, the sender sits in the header. Tap to close, hold to pause, swipe down to dismiss.
 Future<void> showSnapPhoto(
   BuildContext context, {
   required String url,
@@ -103,10 +126,13 @@ class _SnapPhotoViewerState extends State<_SnapPhotoViewer>
     duration: widget.duration,
   );
   double _drag = 0;
+  bool _started = false;
 
-  @override
-  void initState() {
-    super.initState();
+  /// The clock starts when the photo is showing, not while it downloads, so
+  /// the viewer always gets the full time the sender chose.
+  void _start() {
+    if (_started || !mounted) return;
+    _started = true;
     _progress.forward().whenComplete(_close);
   }
 
@@ -129,7 +155,9 @@ class _SnapPhotoViewerState extends State<_SnapPhotoViewer>
         behavior: HitTestBehavior.opaque,
         onTap: _close,
         onLongPressStart: (_) => _progress.stop(),
-        onLongPressEnd: (_) => _progress.forward().whenComplete(_close),
+        onLongPressEnd: (_) {
+          if (_started) _progress.forward().whenComplete(_close);
+        },
         onVerticalDragUpdate: (d) =>
             setState(() => _drag = (_drag + d.delta.dy).clamp(0, 600)),
         onVerticalDragEnd: (d) {
@@ -146,7 +174,12 @@ class _SnapPhotoViewerState extends State<_SnapPhotoViewer>
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(_drag > 0 ? 24.r : 0),
-                child: SnapPhoto(url: widget.url, fit: BoxFit.cover),
+                child: SnapPhoto(
+                  url: widget.url,
+                  // Contain, like the sender's preview: cover would crop it.
+                  fit: BoxFit.contain,
+                  onReady: _start,
+                ),
               ),
               const _Scrim(top: true),
               const _Scrim(top: false),

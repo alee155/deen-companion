@@ -51,8 +51,10 @@ class _FakeLogs implements PrayerLogsRepository {
   }) async => const Success([]);
 
   @override
-  Future<Result<PrayerLog>> logPrayer(String imagePath) async =>
-      const Error(NetworkFailure());
+  Future<Result<PrayerLog>> logPrayer(
+    String imagePath, {
+    int? viewSeconds,
+  }) async => const Error(NetworkFailure());
 
   @override
   Future<Result<void>> deleteLog(String id) async => const Success(null);

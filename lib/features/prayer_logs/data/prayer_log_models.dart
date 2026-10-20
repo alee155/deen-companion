@@ -21,6 +21,7 @@ PrayerLog prayerLogFromJson(Map<String, dynamic> json) => PrayerLog(
   windowStartsAt: _time(json['windowStartsAt']),
   windowEndsAt: _time(json['windowEndsAt']),
   loggedAt: _time(json['loggedAt']),
+  viewDurationSeconds: (json['viewDurationSeconds'] as num?)?.toInt(),
 );
 
 CurrentPrayerState currentPrayerStateFromJson(Map<String, dynamic> json) {

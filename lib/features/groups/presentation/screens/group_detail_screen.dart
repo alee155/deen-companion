@@ -532,3 +532,4 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     );
   }
 }
+      duration: log.viewDuration(),

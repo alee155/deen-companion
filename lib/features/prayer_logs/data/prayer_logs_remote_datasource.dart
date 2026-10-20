@@ -12,7 +12,7 @@ abstract class PrayerLogsRemoteDataSource {
   /// `POST /prayers/logs` — multipart with a single `file` field (JPEG, PNG
   /// or WebP, ≤ 5 MB). Nothing else is sent: the server picks the prayer from
   /// its own clock, so the client can't claim a different one.
-  Future<PrayerLog> logPrayer(String imagePath);
+  Future<PrayerLog> logPrayer(String imagePath, {int? viewSeconds});
 
   /// `DELETE /prayers/logs/{id}` — owner only, and only while the window is
   /// still open (400 afterwards). Also removes the photo.
@@ -46,10 +46,11 @@ class PrayerLogsRemoteDataSourceImpl implements PrayerLogsRemoteDataSource {
   const PrayerLogsRemoteDataSourceImpl(this.dio);
 
   @override
-  Future<PrayerLog> logPrayer(String imagePath) => _data(
+  Future<PrayerLog> logPrayer(String imagePath, {int? viewSeconds}) => _data(
     () async => dio.post(
       ApiEndpoints.prayerLogs,
       data: FormData.fromMap({
+        'viewDurationSeconds': ?viewSeconds,
         'file': await MultipartFile.fromFile(
           imagePath,
           filename: 'snap${_extension(imagePath)}',

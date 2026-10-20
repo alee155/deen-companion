@@ -20,7 +20,10 @@ class _Scripted extends ScriptedLogsRepo {
   _Scripted(this.script);
 
   @override
-  Future<Result<PrayerLog>> logPrayer(String imagePath) async {
+  Future<Result<PrayerLog>> logPrayer(
+    String imagePath, {
+    int? viewSeconds,
+  }) async {
     logged.add(imagePath);
     return script[logged.length <= script.length
         ? logged.length - 1

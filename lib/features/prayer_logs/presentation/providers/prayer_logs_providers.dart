@@ -159,14 +159,14 @@ class PrayerLogActions {
   ///
   /// If the server has no times for today yet, the location is sent once (it
   /// then calculates them) and the log is retried once.
-  Future<Result<PrayerLog>> log(String imagePath) async {
+  Future<Result<PrayerLog>> log(String imagePath, {int? viewSeconds}) async {
     const tag = 'LOG PRAYER';
     final repo = ref.read(prayerLogsRepositoryProvider);
     FlowLog.log(
       tag,
       'UPLOADING THE PHOTO (the server decides which prayer this is)',
     );
-    var result = await repo.logPrayer(imagePath);
+    var result = await repo.logPrayer(imagePath, viewSeconds: viewSeconds);
     if (result case Error(:final failure)
         when failure is PrayerLogFailure &&
             failure.code == PrayerLogErrorCode.timesNotSynced) {
@@ -177,7 +177,9 @@ class PrayerLogActions {
       final loaded = await ref
           .read(prayerTimesLoaderProvider)
           .refresh(force: true);
-      if (loaded is Success) result = await repo.logPrayer(imagePath);
+      if (loaded is Success) {
+        result = await repo.logPrayer(imagePath, viewSeconds: viewSeconds);
+      }
     }
     result.when(
       success: (log) => FlowLog.data(tag, 'LOGGED', {
@@ -186,6 +188,7 @@ class PrayerLogActions {
         'points': log.points,
         'status': log.status.name,
         'hasPhoto': log.snapUrl != null,
+        'viewSeconds': log.viewDurationSeconds,
       }),
       failure: (f) => FlowLog.error(
         tag,
