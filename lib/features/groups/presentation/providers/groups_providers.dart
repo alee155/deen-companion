@@ -50,14 +50,34 @@ class MyGroupsNotifier extends AsyncNotifier<List<Group>> {
     String groupId, {
     required String name,
     required String description,
+    String? imagePath,
   }) async {
     final result = await ref
         .read(groupsRepositoryProvider)
-        .updateGroup(groupId, name: name, description: description);
+        .updateGroup(
+          groupId,
+          name: name,
+          description: description,
+          imagePath: imagePath,
+        );
     if (result case Success(:final data)) {
       state = AsyncData([
         for (final g in state.valueOrNull ?? const <Group>[])
           if (g.id == groupId) g.withUpdate(data) else g,
+      ]);
+    }
+    return result;
+  }
+
+  /// Admin only. Drops the picture from the group in the list.
+  Future<Result<void>> removeImage(String groupId) async {
+    final result = await ref
+        .read(groupsRepositoryProvider)
+        .removeGroupImage(groupId);
+    if (result is Success) {
+      state = AsyncData([
+        for (final g in state.valueOrNull ?? const <Group>[])
+          if (g.id == groupId) g.withoutImage() else g,
       ]);
     }
     return result;
@@ -155,12 +175,36 @@ class GroupManageController extends AutoDisposeNotifier<GroupManageState> {
     String groupId, {
     required String name,
     required String description,
+    String? imagePath,
   }) async {
     if (state.isBusy) return false;
     state = const GroupManageState(isSaving: true);
     final result = await ref
         .read(myGroupsProvider.notifier)
-        .updateGroup(groupId, name: name, description: description);
+        .updateGroup(
+          groupId,
+          name: name,
+          description: description,
+          imagePath: imagePath,
+        );
+    switch (result) {
+      case Success():
+        ref.invalidate(groupDetailProvider(groupId));
+        state = const GroupManageState();
+        return true;
+      case Error(:final failure):
+        state = GroupManageState(errorMessage: failure.message);
+        return false;
+    }
+  }
+
+  /// Removes the group picture. True once it is gone.
+  Future<bool> removeImage(String groupId) async {
+    if (state.isBusy) return false;
+    state = const GroupManageState(isSaving: true);
+    final result = await ref
+        .read(myGroupsProvider.notifier)
+        .removeImage(groupId);
     switch (result) {
       case Success():
         ref.invalidate(groupDetailProvider(groupId));

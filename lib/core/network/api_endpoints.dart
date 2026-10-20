@@ -234,6 +234,8 @@ class ApiEndpoints {
       '$_deenBase/invites/${Uri.encodeComponent(token)}';
   static String inviteJoin(String token) =>
       '$_deenBase/invites/${Uri.encodeComponent(token)}/join';
+  static String groupAvatar(String id) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/avatar';
   static String groupMember(String groupId, String userId) =>
       '$_deenBase/groups/$groupId/members/$userId';
   static String groupLeave(String groupId) =>
@@ -262,8 +264,8 @@ class ApiEndpoints {
       '$_deenBase/groups/$id/invite/reset';
   static const String authAccount = '$_deenBase/auth/account';
   static const String authVerifyEmail = '$_deenBase/auth/verify-email';
-}
   static const String myProfile = '$_deenBase/users/me';
   static const String myAvatar = '$_deenBase/users/me/avatar';
   static const String myTimezone = '$_deenBase/users/me/timezone';
   static const String myPoints = '$_deenBase/users/me/points';
+}

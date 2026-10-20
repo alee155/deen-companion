@@ -44,6 +44,9 @@ class FakeRemote implements GroupsRemoteDataSource {
   Object? error;
   int getCalls = 0;
   ({String name, String? description})? lastCreate;
+  String? lastCreateImage;
+  String? lastUpdateImage;
+  String? removedAvatarOf;
   GroupDetailModel? detail;
   ({String id, String name, String description})? lastUpdate;
   String? deletedId;
@@ -67,9 +70,11 @@ class FakeRemote implements GroupsRemoteDataSource {
   Future<GroupModel> createGroup({
     required String name,
     String? description,
+    String? imagePath,
   }) async {
     if (error != null) throw error!;
     lastCreate = (name: name, description: description);
+    lastCreateImage = imagePath;
     final m = GroupModel.fromJson(
       _json(id: 'new', name: name, description: description),
     );
@@ -88,9 +93,11 @@ class FakeRemote implements GroupsRemoteDataSource {
     String groupId, {
     required String name,
     required String description,
+    String? imagePath,
   }) async {
     if (error != null) throw error!;
     lastUpdate = (id: groupId, name: name, description: description);
+    lastUpdateImage = imagePath;
     return GroupModel.fromJson(
       _json(id: groupId, name: name, description: description),
     );
@@ -99,6 +106,12 @@ class FakeRemote implements GroupsRemoteDataSource {
   GroupInviteModel _invite(String id) {
     final t = 'tok-$id-${inviteVersion[id] ?? 0}';
     return GroupInviteModel(token: t, url: 'https://x.test/invite/$t');
+  }
+
+  @override
+  Future<void> removeAvatar(String groupId) async {
+    if (error != null) throw error!;
+    removedAvatarOf = groupId;
   }
 
   @override
@@ -204,7 +217,11 @@ class FailingRepo implements GroupsRepository {
     String groupId, {
     required String name,
     required String description,
+    String? imagePath,
   }) async => const Error(ServerFailure('nope'));
+  @override
+  Future<Result<void>> removeGroupImage(String groupId) async =>
+      const Error(ServerFailure('nope'));
   @override
   Future<Result<void>> deleteGroup(String groupId) async =>
       const Error(ServerFailure('nope'));

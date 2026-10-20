@@ -16,6 +16,9 @@ class GroupModel {
   final DateTime? updatedAt;
   final String? role;
 
+  /// Signed link to the group picture, null when it has none.
+  final String? avatarUrl;
+
   const GroupModel({
     required this.id,
     required this.name,
@@ -26,6 +29,7 @@ class GroupModel {
     required this.createdAt,
     required this.updatedAt,
     required this.role,
+    this.avatarUrl,
   });
 
   factory GroupModel.fromJson(Map<String, dynamic> json) => GroupModel(
@@ -38,6 +42,7 @@ class GroupModel {
     createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
     updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
     role: json['role'] as String?,
+    avatarUrl: _url(json['avatarUrl']),
   );
 
   Group toEntity({GroupRole? fallbackRole}) => Group(
@@ -49,10 +54,16 @@ class GroupModel {
     createdBy: createdBy,
     createdAt: createdAt,
     updatedAt: updatedAt,
+    imagePath: avatarUrl,
     role: role == null
         ? (fallbackRole ?? GroupRole.member)
         : GroupRole.parse(role),
   );
+}
+
+String? _url(Object? v) {
+  final s = v is String ? v.trim() : null;
+  return s == null || s.isEmpty ? null : s;
 }
 
 class GroupMemberModel {
@@ -61,6 +72,7 @@ class GroupMemberModel {
   final String email;
   final String? role;
   final DateTime? joinedAt;
+  final String? avatarUrl;
 
   const GroupMemberModel({
     required this.userId,
@@ -68,6 +80,7 @@ class GroupMemberModel {
     required this.email,
     required this.role,
     required this.joinedAt,
+    this.avatarUrl,
   });
 
   factory GroupMemberModel.fromJson(Map<String, dynamic> json) =>
@@ -77,6 +90,7 @@ class GroupMemberModel {
         email: json['email'] as String? ?? '',
         role: json['role'] as String?,
         joinedAt: DateTime.tryParse(json['joinedAt'] as String? ?? ''),
+        avatarUrl: _url(json['avatarUrl']),
       );
 
   GroupMember toEntity() => GroupMember(
@@ -85,6 +99,7 @@ class GroupMemberModel {
     email: email,
     role: GroupRole.parse(role),
     joinedAt: joinedAt,
+    avatarUrl: avatarUrl,
   );
 }
 
@@ -113,6 +128,7 @@ class GroupDetailModel {
     createdBy: group.createdBy,
     createdAt: group.createdAt,
     updatedAt: group.updatedAt,
+    avatarUrl: group.avatarUrl,
     members: [for (final m in members) m.toEntity()],
   );
 }

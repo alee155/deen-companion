@@ -9,12 +9,17 @@ abstract class GroupsRepository {
   Future<Result<Group>> createGroup(NewGroup input);
   Future<Result<GroupDetail>> getGroupDetail(String groupId);
 
-  /// Admin only (enforced by the backend). Changes name and description.
+  /// Admin only (enforced by the backend). Changes name and description,
+  /// and the picture when [imagePath] is given.
   Future<Result<Group>> updateGroup(
     String groupId, {
     required String name,
     required String description,
+    String? imagePath,
   });
+
+  /// Admin only. Removes the group picture.
+  Future<Result<void>> removeGroupImage(String groupId);
 
   /// Admin only (enforced by the backend).
   Future<Result<void>> deleteGroup(String groupId);

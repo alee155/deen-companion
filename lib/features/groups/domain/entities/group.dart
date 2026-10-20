@@ -28,8 +28,8 @@ class Group {
   final DateTime? updatedAt;
   final GroupRole role;
 
-  /// Asset path or local file path. Null falls back to an icon. The groups
-  /// API has no image yet.
+  /// The group's picture: the server's signed `avatarUrl`, or an asset or
+  /// local file path. Null falls back to an icon.
   final String? imagePath;
 
   // The API doesn't report these yet; the existing card UI still renders
@@ -72,7 +72,23 @@ class Group {
     createdAt: createdAt,
     updatedAt: updated.updatedAt ?? updatedAt,
     role: role,
-    imagePath: imagePath,
+    imagePath: updated.imagePath ?? imagePath,
+    privacy: privacy,
+    memberCount: memberCount,
+    requiresApproval: requiresApproval,
+  );
+
+  /// This group after its picture was removed.
+  Group withoutImage() => Group(
+    id: id,
+    name: name,
+    description: description,
+    inviteCode: inviteCode,
+    isInviteActive: isInviteActive,
+    createdBy: createdBy,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    role: role,
     privacy: privacy,
     memberCount: memberCount,
     requiresApproval: requiresApproval,
@@ -95,8 +111,8 @@ class Group {
   );
 }
 
-/// What the Create Group form collects. Only [name] and [description] are
-/// sent to the API today; the rest is kept so the form can grow without
+/// What the Create Group form collects. [name], [description] and the
+/// picture at [imagePath] are sent to the API; the rest is kept so the form can grow without
 /// reshaping the domain.
 class NewGroup {
   final String name;

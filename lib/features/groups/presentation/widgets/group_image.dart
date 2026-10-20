@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
-/// A group's picture: bundled asset, a picked local file, or an icon.
+/// A group's picture: the server's URL, a bundled asset, a picked local file,
+/// or an icon.
 class GroupImage extends StatelessWidget {
   final String? path;
   final double size;
@@ -31,6 +33,13 @@ class GroupImage extends StatelessWidget {
     Widget child;
     if (p == null) {
       child = _fallback();
+    } else if (p.startsWith('http://') || p.startsWith('https://')) {
+      child = CachedNetworkImage(
+        imageUrl: p,
+        fit: BoxFit.cover,
+        placeholder: (_, _) => _fallback(),
+        errorWidget: (_, _, _) => _fallback(),
+      );
     } else if (p.startsWith('assets/')) {
       child = Image.asset(
         p,

@@ -8,17 +8,27 @@ import '../models/group_model.dart';
 abstract class GroupsRemoteDataSource {
   Future<List<GroupModel>> getGroups();
 
-  /// [description] is optional on the backend; null/empty is omitted.
-  Future<GroupModel> createGroup({required String name, String? description});
+  /// [description] is optional on the backend; null/empty is omitted. A
+  /// non-null [imagePath] is uploaded as the group picture.
+  Future<GroupModel> createGroup({
+    required String name,
+    String? description,
+    String? imagePath,
+  });
 
   Future<GroupDetailModel> getGroupDetail(String groupId);
 
-  /// `PATCH /groups/{id}`; the response has no members/role.
+  /// `PATCH /groups/{id}`; the response has no members/role. A non-null
+  /// [imagePath] replaces the picture.
   Future<GroupModel> updateGroup(
     String groupId, {
     required String name,
     required String description,
+    String? imagePath,
   });
+
+  /// `DELETE /groups/{id}/avatar` — admin only.
+  Future<void> removeAvatar(String groupId);
 
   Future<void> deleteGroup(String groupId);
 
@@ -55,18 +65,24 @@ class GroupsRemoteDataSourceImpl implements GroupsRemoteDataSource {
   );
 
   @override
-  Future<GroupModel> createGroup({required String name, String? description}) =>
-      _data(
-        () => dio.post(
-          ApiEndpoints.groups,
-          data: {
-            'name': name,
-            if (description != null && description.isNotEmpty)
-              'description': description,
-          },
-        ),
-        (data) => GroupModel.fromJson(data as Map<String, dynamic>),
-      );
+  Future<GroupModel> createGroup({
+    required String name,
+    String? description,
+    String? imagePath,
+  }) => _data(
+    () async => dio.post(
+      ApiEndpoints.groups,
+      // Multipart, with `file` only when there is a picture: an empty file
+      // part is not a picture.
+      data: FormData.fromMap({
+        'name': name,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+        if (imagePath != null) 'file': await _file(imagePath),
+      }),
+    ),
+    (data) => GroupModel.fromJson(data as Map<String, dynamic>),
+  );
 
   @override
   Future<GroupDetailModel> getGroupDetail(String groupId) => _data(
@@ -79,13 +95,40 @@ class GroupsRemoteDataSourceImpl implements GroupsRemoteDataSource {
     String groupId, {
     required String name,
     required String description,
+    String? imagePath,
   }) => _data(
-    () => dio.patch(
+    () async => dio.patch(
       ApiEndpoints.group(groupId),
-      data: {'name': name, 'description': description},
+      // A picture needs multipart; without one a JSON body works.
+      data: imagePath == null
+          ? {'name': name, 'description': description}
+          : FormData.fromMap({
+              'name': name,
+              'description': description,
+              'file': await _file(imagePath),
+            }),
     ),
     (data) => GroupModel.fromJson(data as Map<String, dynamic>),
   );
+
+  @override
+  Future<void> removeAvatar(String groupId) =>
+      _data(() => dio.delete(ApiEndpoints.groupAvatar(groupId)), (_) {});
+
+  static Future<MultipartFile> _file(String path) {
+    final dot = path.lastIndexOf('.');
+    final ext = dot < 0 ? '.jpg' : path.substring(dot).toLowerCase();
+    return MultipartFile.fromFile(
+      path,
+      filename: 'group$ext',
+      // The server accepts JPEG, PNG and WebP only.
+      contentType: switch (ext) {
+        '.png' => DioMediaType('image', 'png'),
+        '.webp' => DioMediaType('image', 'webp'),
+        _ => DioMediaType('image', 'jpeg'),
+      },
+    );
+  }
 
   @override
   Future<void> deleteGroup(String groupId) =>

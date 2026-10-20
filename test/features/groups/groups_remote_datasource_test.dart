@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:deen_companion/core/error/exceptions.dart';
 import 'package:deen_companion/core/network/api_endpoints.dart';
 import 'package:deen_companion/features/groups/data/datasources/groups_remote_datasource.dart';
@@ -65,15 +67,43 @@ void main() {
     );
     expect(g.id, '9bc58689');
     expect(g.role, isNull);
-    verify(
-      () => dio.post(
-        ApiEndpoints.groups,
-        data: {
-          'name': 'Namaz Family Group',
-          'description': 'Daily recitation group',
-        },
-      ),
-    ).called(1);
+    final form =
+        verify(
+              () => dio.post(
+                ApiEndpoints.groups,
+                data: captureAny(named: 'data'),
+              ),
+            ).captured.single
+            as FormData;
+    expect(Map.fromEntries(form.fields), {
+      'name': 'Namaz Family Group',
+      'description': 'Daily recitation group',
+    });
+    expect(form.files, isEmpty);
+  });
+
+  test('createGroup uploads the picture as a multipart file', () async {
+    final file = File('${Directory.systemTemp.path}/group_pic_test.png')
+      ..writeAsBytesSync([1, 2, 3]);
+    addTearDown(file.deleteSync);
+    when(() => dio.post(any(), data: any(named: 'data'))).thenAnswer(
+      (_) async => okResponse({
+        'success': true,
+        'data': {..._group, 'avatarUrl': 'https://x.test/a.png'},
+      }, status: 201),
+    );
+    final g = await ds.createGroup(name: 'Pic', imagePath: file.path);
+    expect(g.avatarUrl, 'https://x.test/a.png');
+    final form =
+        verify(
+              () => dio.post(
+                ApiEndpoints.groups,
+                data: captureAny(named: 'data'),
+              ),
+            ).captured.single
+            as FormData;
+    expect(form.files.single.key, 'file');
+    expect(form.files.single.value.contentType?.mimeType, 'image/png');
   });
 
   test('empty description is omitted from the body', () async {
@@ -85,9 +115,15 @@ void main() {
     );
     final g = await ds.createGroup(name: 'Solo', description: '');
     expect(g.description, isNull);
-    verify(
-      () => dio.post(ApiEndpoints.groups, data: {'name': 'Solo'}),
-    ).called(1);
+    final form =
+        verify(
+              () => dio.post(
+                ApiEndpoints.groups,
+                data: captureAny(named: 'data'),
+              ),
+            ).captured.single
+            as FormData;
+    expect(Map.fromEntries(form.fields), {'name': 'Solo'});
   });
 
   test('validation errors surface joined messages', () async {
@@ -190,6 +226,39 @@ void groupDetailTests() {
         data: {'name': 'Office Namaz Group', 'description': 'd'},
       ),
     ).called(1);
+  });
+
+  test('updateGroup with a picture PATCHes multipart', () async {
+    final file = File('${Directory.systemTemp.path}/group_pic_test2.jpg')
+      ..writeAsBytesSync([1, 2, 3]);
+    addTearDown(file.deleteSync);
+    when(
+      () => dio.patch(any(), data: any(named: 'data')),
+    ).thenAnswer((_) async => okResponse({'success': true, 'data': _group}));
+    await ds.updateGroup(
+      'g',
+      name: 'n',
+      description: 'd',
+      imagePath: file.path,
+    );
+    final form =
+        verify(
+              () => dio.patch(
+                ApiEndpoints.group('g'),
+                data: captureAny(named: 'data'),
+              ),
+            ).captured.single
+            as FormData;
+    expect(form.files.single.key, 'file');
+    expect(form.files.single.value.contentType?.mimeType, 'image/jpeg');
+  });
+
+  test('removeAvatar sends DELETE to the avatar route', () async {
+    when(
+      () => dio.delete(any()),
+    ).thenAnswer((_) async => okResponse({'success': true, 'data': {}}));
+    await ds.removeAvatar('g');
+    verify(() => dio.delete(ApiEndpoints.groupAvatar('g'))).called(1);
   });
 
   test('deleteGroup sends DELETE', () async {

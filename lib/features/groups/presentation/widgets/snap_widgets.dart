@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -45,7 +46,7 @@ class RoleBadge extends StatelessWidget {
   }
 }
 
-/// Initials avatar. A gold ring means the member has snapped today.
+/// The member's picture, or their initials when they have none. A gold ring means the member has snapped today.
 class MemberAvatar extends StatelessWidget {
   final GroupMember member;
   final double size;
@@ -60,6 +61,15 @@ class MemberAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final url = member.avatarUrl;
+    final initials = Text(
+      member.initials,
+      style: TextStyle(
+        fontSize: size * 0.32,
+        fontWeight: FontWeight.w800,
+        color: AppColors.worshipAccent,
+      ),
+    );
     return Container(
       width: size,
       height: size,
@@ -73,18 +83,23 @@ class MemberAvatar extends StatelessWidget {
       ),
       child: Container(
         alignment: Alignment.center,
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.worshipAccentBg,
         ),
-        child: Text(
-          member.initials,
-          style: TextStyle(
-            fontSize: size * 0.32,
-            fontWeight: FontWeight.w800,
-            color: AppColors.worshipAccent,
-          ),
-        ),
+        child: url == null
+            ? initials
+            : CachedNetworkImage(
+                imageUrl: url,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                // Shows the initials while loading and if the link fails.
+                placeholder: (_, _) => initials,
+                errorWidget: (_, _, _) => initials,
+                fadeInDuration: const Duration(milliseconds: 150),
+              ),
       ),
     );
   }

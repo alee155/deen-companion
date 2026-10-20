@@ -26,6 +26,7 @@ class GroupsRepositoryImpl implements GroupsRepository {
         final model = await remote.createGroup(
           name: input.name,
           description: input.description,
+          imagePath: input.imagePath,
         );
         // POST /groups omits `role`; whoever creates a group administers it.
         return model.toEntity(fallbackRole: GroupRole.admin);
@@ -42,15 +43,21 @@ class GroupsRepositoryImpl implements GroupsRepository {
     String groupId, {
     required String name,
     required String description,
+    String? imagePath,
   }) => _guard('updateGroup', () async {
     final model = await remote.updateGroup(
       groupId,
       name: name,
       description: description,
+      imagePath: imagePath,
     );
     // PATCH omits `role`; only admins can edit, so it is admin.
     return model.toEntity(fallbackRole: GroupRole.admin);
   });
+
+  @override
+  Future<Result<void>> removeGroupImage(String groupId) =>
+      _guard('removeGroupImage', () => remote.removeAvatar(groupId));
 
   @override
   Future<Result<void>> deleteGroup(String groupId) =>
@@ -96,6 +103,11 @@ class GroupsRepositoryImpl implements GroupsRepository {
     } on NotFoundException {
       return const Error(NotFoundFailure());
     } on ServerException catch (e) {
+      if (e.statusCode == 413) {
+        return const Error(
+          ServerFailure('That photo is too large. Choose a smaller one.'),
+        );
+      }
       final m = e.message;
       return Error(m == null ? const ServerFailure() : ServerFailure(m));
     } catch (e, st) {

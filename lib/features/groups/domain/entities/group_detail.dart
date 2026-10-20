@@ -8,12 +8,16 @@ class GroupMember {
   final GroupRole role;
   final DateTime? joinedAt;
 
+  /// Signed link to the member's profile picture.
+  final String? avatarUrl;
+
   const GroupMember({
     required this.userId,
     required this.name,
     required this.email,
     required this.role,
     this.joinedAt,
+    this.avatarUrl,
   });
 
   bool get isAdmin => role == GroupRole.admin;
@@ -38,6 +42,9 @@ class GroupDetail {
   final String createdBy;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  /// Signed link to the group picture, null when it has none.
+  final String? avatarUrl;
   final List<GroupMember> members;
 
   const GroupDetail({
@@ -49,6 +56,7 @@ class GroupDetail {
     this.createdBy = '',
     this.createdAt,
     this.updatedAt,
+    this.avatarUrl,
     this.members = const [],
   });
 
@@ -73,6 +81,19 @@ class GroupDetail {
     createdBy: createdBy,
     createdAt: createdAt,
     updatedAt: updated.updatedAt ?? updatedAt,
+    avatarUrl: updated.imagePath ?? avatarUrl,
+    members: members,
+  );
+
+  GroupDetail withoutImage() => GroupDetail(
+    id: id,
+    name: name,
+    description: description,
+    inviteCode: inviteCode,
+    isInviteActive: isInviteActive,
+    createdBy: createdBy,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
     members: members,
   );
 }

@@ -7,6 +7,7 @@ import '../../../../shared/widgets/islamic_ornaments.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/group_detail.dart';
 import '../../../streaks/domain/entities/group_streaks.dart';
+import 'group_image.dart';
 import 'snap_widgets.dart';
 
 /// Compact header: identity + the few facts that matter. Deliberately short so
@@ -94,23 +95,30 @@ class GroupDetailHero extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    SizedBox(
-                      width: 52.w,
-                      height: 52.w,
-                      child: CustomPaint(
-                        painter: StarPainter(
-                          fill: AppColors.emeraldInk.withValues(alpha: 0.18),
-                          stroke: AppColors.emeraldInk,
-                          strokeWidth: 1.4,
-                          inner: 0.76,
+                    if (group.avatarUrl != null)
+                      GroupImage(
+                        path: group.avatarUrl,
+                        size: 52.w,
+                        radius: 16.r,
+                      ).slideIn(RevealDirection.start, distance: 14)
+                    else
+                      SizedBox(
+                        width: 52.w,
+                        height: 52.w,
+                        child: CustomPaint(
+                          painter: StarPainter(
+                            fill: AppColors.emeraldInk.withValues(alpha: 0.18),
+                            stroke: AppColors.emeraldInk,
+                            strokeWidth: 1.4,
+                            inner: 0.76,
+                          ),
+                          child: Icon(
+                            Icons.groups_rounded,
+                            size: 24.sp,
+                            color: AppColors.emeraldInk,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.groups_rounded,
-                          size: 24.sp,
-                          color: AppColors.emeraldInk,
-                        ),
-                      ),
-                    ).slideIn(RevealDirection.start, distance: 14),
+                      ).slideIn(RevealDirection.start, distance: 14),
                     SizedBox(width: 12.w),
                     Expanded(
                       child:
@@ -492,14 +500,6 @@ class MemberSnapTile extends StatelessWidget {
             ),
             SizedBox(width: 8.w),
             SnapBox(hasPhoto: hasPhoto, onTap: hasPhoto ? onOpenSnap : null),
-            if (canOpenDetails) ...[
-              SizedBox(width: 4.w),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 20.sp,
-                color: AppColors.textMuted,
-              ),
-            ],
           ],
         ),
       ),
