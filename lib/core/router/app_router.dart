@@ -6,6 +6,7 @@ import 'package:deen_companion/features/groups/presentation/screens/group_detail
 import 'package:deen_companion/features/groups/presentation/screens/join_group_screen.dart';
 import 'package:deen_companion/core/utils/flow_log.dart';
 import 'package:deen_companion/features/points/presentation/screens/points_rules_screen.dart';
+import 'package:deen_companion/features/statistics/presentation/screens/group_statistics_screen.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_log_flow_screen.dart';
 import 'package:deen_companion/features/prayer_times/presentation/screens/city_picker_screen.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_logs_screen.dart';
@@ -137,6 +138,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/groups/create',
         builder: (context, state) => const CreateGroupScreen(),
+      ),
+      // A group's statistics (overview, members, my numbers, who needs a nudge).
+      GoRoute(
+        path: '/groups/:groupId/stats',
+        builder: (context, state) =>
+            GroupStatisticsScreen(groupId: state.pathParameters['groupId']!),
       ),
       // Send-a-snap flow (camera → crop → timer → recipients).
       GoRoute(

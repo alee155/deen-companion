@@ -245,6 +245,18 @@ class ApiEndpoints {
   static String groupStreaks(String id) =>
       '$_deenBase/groups/${Uri.encodeComponent(id)}/streaks';
   static const String myStreaks = '$_deenBase/users/me/streaks';
+  static const String myStatsSummary = '$_deenBase/users/me/stats/summary';
+  static const String myStatsDaily = '$_deenBase/users/me/stats/daily';
+  static const String myStatsTrend = '$_deenBase/users/me/stats/trend';
+  static String groupStatsOverview(String id) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/stats/overview';
+  static String groupStatsMembers(String id) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/stats/members';
+  static String groupStatsMember(String id, String userId) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/stats/members/'
+      '${Uri.encodeComponent(userId)}';
+  static String groupStatsAttention(String id) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/stats/attention';
   static String groupInvite(String id) => '$_deenBase/groups/$id/invite';
   static String groupInviteReset(String id) =>
       '$_deenBase/groups/$id/invite/reset';

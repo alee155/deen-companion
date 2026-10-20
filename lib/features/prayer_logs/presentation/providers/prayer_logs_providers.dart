@@ -5,6 +5,8 @@ import '../../../../core/state/keep_alive_for.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../../../core/utils/flow_log.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
+import '../../../statistics/presentation/providers/statistics_providers.dart';
+import '../../../streaks/presentation/providers/streaks_providers.dart';
 import '../../data/prayer_logs_remote_datasource.dart';
 import '../../data/prayer_logs_repository_impl.dart';
 import '../../domain/current_prayer.dart';
@@ -221,6 +223,9 @@ class PrayerLogActions {
     ref.invalidate(prayerLogsProvider);
     ref.invalidate(prayerLogsRangeProvider);
     ref.invalidate(groupPrayersProvider);
+    // A prayer logged or removed changes every streak it counted toward.
+    invalidateStreaks(ref);
+    invalidateStatistics(ref);
     await ref.read(currentPrayerProvider.notifier).refresh();
   }
 }
