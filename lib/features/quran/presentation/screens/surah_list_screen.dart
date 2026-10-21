@@ -1,14 +1,17 @@
 import 'package:deen_companion/core/theme/app_motion.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/last_read_surah_provider.dart';
 import '../providers/quran_providers.dart';
 import '../providers/surah_playback.dart';
 import '../widgets/last_read_card.dart';
+import '../widgets/quran_hero.dart';
 import '../widgets/surah_card_tile.dart';
 
 class SurahListScreen extends ConsumerWidget {
@@ -22,28 +25,26 @@ class SurahListScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.parchment,
 
-      appBar: AppBar(
-        backgroundColor: AppColors.parchment,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        title: Text(
-          'Quran',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24.sp,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-
-      body: SafeArea(
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
         child: RefreshIndicator(
           onRefresh: () =>
               ref.read(surahListNotifierProvider.notifier).refresh(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              QuranHero(
+                arabicTitle: 'القرآن الكريم',
+                subtitle:
+                    '${surahListAsync.valueOrNull?.length ?? 114} surahs · 30 juz',
+                actionIcon: Icons.search_rounded,
+                actionTooltip: 'Search',
+                onAction: () => context.push('/quran/search'),
+                chipIcon: Icons.layers_rounded,
+                chipLabel: 'Browse by Juz',
+                onChip: () => context.push('/juz'),
+              ),
+              SizedBox(height: 14.h),
               if (lastRead != null) ...[
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.w),

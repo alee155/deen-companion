@@ -30,12 +30,14 @@ class _ReaderSettingsSheet extends ConsumerWidget {
     final prefs = ref.watch(readingPreferencesProvider);
     final notifier = ref.read(readingPreferencesProvider.notifier);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
+    // A Material (not a DecoratedBox) so the switch tiles' ink isn't hidden.
+    return Material(
+      color: AppColors.surfaceLight,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-        border: Border(top: BorderSide(color: AppColors.borderWarm)),
+        side: BorderSide(color: AppColors.borderWarm),
       ),
+      clipBehavior: Clip.antiAlias,
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
