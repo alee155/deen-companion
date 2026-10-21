@@ -1,4 +1,3 @@
-import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,15 +14,14 @@ import '../../../auth/presentation/providers/delete_account_controller.dart';
 import '../../../favorites/presentation/providers/favorites_providers.dart';
 import '../../../groups/presentation/providers/groups_providers.dart';
 import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
-import '../../../streaks/presentation/providers/streaks_providers.dart';
 import '../providers/profile_providers.dart';
 import '../widgets/guest_benefits_card.dart';
 import '../widgets/profile_header.dart';
-import '../widgets/profile_stat_tile.dart';
-import '../widgets/profile_streak_card.dart';
+import '../widgets/profile_shortcut_tile.dart';
+import '../widgets/profile_stats_strip.dart';
 
 /// Profile tab. Adapts to the auth state: guests get a sign-in prompt and
-/// what an account adds; signed-in users get their streak, group stats and
+/// what an account adds; signed-in users get their figures, shortcuts and
 /// account actions.
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -157,244 +155,202 @@ class ProfileScreen extends ConsumerWidget {
     if (signedIn) ref.watch(profileProvider);
     final points = signedIn ? ref.watch(myPointsProvider).valueOrNull : null;
 
-    const dirs = [
-      RevealDirection.bottom,
-      RevealDirection.bottomStart,
-      RevealDirection.topStart, // 2 label
-      RevealDirection.bottomEnd, // 3 card
-      RevealDirection.bottomStart, // 4 label
-      RevealDirection.bottom, // 5 card
-      RevealDirection.topStart, // 6 label
-      RevealDirection.bottomEnd, // 7 card
-      RevealDirection.bottomStart, // 8 label
-      RevealDirection.bottom, // 9 card
-    ];
-    Widget stagger(Widget child, int i) => child.slideIn(
-      dirs[i],
+    Widget reveal(Widget child, int i) => child.slideIn(
+      i.isEven ? RevealDirection.bottomStart : RevealDirection.bottomEnd,
       delay: Duration(milliseconds: 40 * i),
       distance: 18,
       onVisible: true,
     );
 
+    // The strip straddles the header edge: half of it hangs below.
+    final overlap = signedIn ? ProfileStatsStrip.height.h / 2 : 0.0;
+
+    final shortcuts = [
+      ProfileShortcutTile(
+        icon: Icons.favorite_rounded,
+        color: AppColors.hadithAccent,
+        bg: AppColors.hadithAccentBg,
+        title: 'Favorites',
+        subtitle: favoritesCount == 0
+            ? 'Nothing saved yet'
+            : '$favoritesCount saved',
+        onTap: () => context.go('/favorites'),
+      ),
+      ProfileShortcutTile(
+        icon: Icons.history_rounded,
+        color: AppColors.quranAccent,
+        bg: AppColors.quranAccentBg,
+        title: 'Recent',
+        subtitle: recentCount == 0
+            ? 'Nothing viewed yet'
+            : 'Last $recentCount viewed',
+        onTap: () => context.push('/recent-activity'),
+      ),
+      ProfileShortcutTile(
+        icon: Icons.groups_rounded,
+        color: AppColors.worshipAccent,
+        bg: AppColors.worshipAccentBg,
+        title: 'My groups',
+        subtitle: groups.isEmpty
+            ? 'Create or join one'
+            : '${groups.length} joined · $owned yours',
+        onTap: () => context.go('/groups'),
+      ),
+      ProfileShortcutTile(
+        icon: Icons.stars_rounded,
+        color: AppColors.gold,
+        bg: AppColors.gold.withValues(alpha: 0.16),
+        title: 'My points',
+        subtitle: points == null
+            ? 'How points work'
+            : '${_fmt(points.total)} earned',
+        onTap: () => context.push('/points-rules'),
+      ),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.parchment,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
-        // The header stays put; only what is below it scrolls.
-        child: Column(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          physics: const BouncingScrollPhysics(),
           children: [
-            ProfileHeader(session: session),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                physics: const BouncingScrollPhysics(),
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 130.h),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (signedIn) ...[
-                          ref
-                              .watch(myStreaksProvider)
-                              .when(
-                                data: (s) =>
-                                    stagger(ProfileStreakCard(streaks: s), 0),
-                                loading: () => SizedBox(height: 190.h),
-                                error: (_, _) => const SizedBox.shrink(),
-                              ),
-                          SizedBox(height: 12.h),
-                          Row(
-                            children: [
-                              Expanded(
-                                child:
-                                    ProfileStatTile(
-                                      icon: Icons.workspace_premium_rounded,
-                                      color: AppColors.gold,
-                                      bg: AppColors.gold.withValues(
-                                        alpha: 0.16,
-                                      ),
-                                      value: '$owned',
-                                      label: owned == 1
-                                          ? 'Group created'
-                                          : 'Groups created',
-                                      onTap: () => context.go('/groups'),
-                                    ).slideIn(
-                                      RevealDirection.bottomStart,
-                                      delay: const Duration(milliseconds: 40),
-                                      distance: 18,
-                                    ),
-                              ),
-                              SizedBox(width: 12.w),
-                              Expanded(
-                                child:
-                                    ProfileStatTile(
-                                      icon: Icons.groups_rounded,
-                                      color: AppColors.worshipAccent,
-                                      bg: AppColors.worshipAccentBg,
-                                      value: '${groups.length}',
-                                      label: groups.length == 1
-                                          ? 'Group joined'
-                                          : 'Groups joined',
-                                      onTap: () => context.go('/groups'),
-                                    ).slideIn(
-                                      RevealDirection.bottomEnd,
-                                      delay: const Duration(milliseconds: 80),
-                                      distance: 18,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ] else
-                          stagger(const GuestBenefitsCard(), 0),
-                        SizedBox(height: 24.h),
-
-                        stagger(const GroupedSectionLabel('Your library'), 2),
-                        stagger(
-                          GroupedCard(
-                            children: [
-                              GroupedTile(
-                                icon: Icons.favorite_outline,
-                                iconColor: AppColors.hadithAccent,
-                                iconBg: AppColors.hadithAccentBg,
-                                title: 'Favorites',
-                                subtitle: favoritesCount == 0
-                                    ? 'Nothing saved yet'
-                                    : '$favoritesCount saved item${favoritesCount == 1 ? '' : 's'}',
-                                onTap: () => context.go('/favorites'),
-                              ),
-                              GroupedTile(
-                                icon: Icons.history,
-                                iconColor: AppColors.quranAccent,
-                                iconBg: AppColors.quranAccentBg,
-                                title: 'Recent activity',
-                                subtitle: recentCount == 0
-                                    ? 'Nothing viewed yet'
-                                    : 'Your last $recentCount activit${recentCount == 1 ? 'y' : 'ies'}',
-                                onTap: () => context.push('/recent-activity'),
-                              ),
-                            ],
-                          ),
-                          3,
-                        ),
-                        SizedBox(height: 24.h),
-
-                        stagger(const GroupedSectionLabel('Community'), 4),
-                        stagger(
-                          GroupedCard(
-                            children: [
-                              GroupedTile(
-                                icon: Icons.groups_rounded,
-                                iconColor: AppColors.worshipAccent,
-                                iconBg: AppColors.worshipAccentBg,
-                                title: 'My groups',
-                                subtitle: groups.isEmpty
-                                    ? 'Create or join a Quran group'
-                                    : '${groups.length} group${groups.length == 1 ? '' : 's'} · $owned created by you',
-                                onTap: () => context.go('/groups'),
-                              ),
-                              if (signedIn)
-                                GroupedTile(
-                                  icon: Icons.stars_rounded,
-                                  iconColor: AppColors.gold,
-                                  iconBg: AppColors.gold.withValues(
-                                    alpha: 0.16,
-                                  ),
-                                  title: 'My points',
-                                  subtitle: points == null
-                                      ? 'See how prayers earn points'
-                                      : '${_fmt(points.total)} point${points.total == 1 ? '' : 's'} earned',
-                                  onTap: () => context.push('/points-rules'),
-                                ),
-                            ],
-                          ),
-                          5,
-                        ),
-                        SizedBox(height: 24.h),
-
-                        stagger(const GroupedSectionLabel('Preferences'), 6),
-                        stagger(
-                          GroupedCard(
-                            children: [
-                              GroupedTile(
-                                icon: Icons.settings_outlined,
-                                iconColor: AppColors.toolsAccent,
-                                iconBg: AppColors.toolsAccentBg,
-                                title: 'Settings',
-                                subtitle:
-                                    'Appearance, prayer alerts, storage and about',
-                                onTap: () => context.go('/settings'),
-                              ),
-                            ],
-                          ),
-                          7,
-                        ),
-
-                        if (signedIn) ...[
-                          SizedBox(height: 24.h),
-                          stagger(const GroupedSectionLabel('Account'), 8),
-                          stagger(
-                            GroupedCard(
-                              children: [
-                                GroupedTile(
-                                  icon: Icons.lock_reset_rounded,
-                                  iconColor: AppColors.toolsAccent,
-                                  iconBg: AppColors.toolsAccentBg,
-                                  title: 'Reset password',
-                                  forceChevron: true,
-                                  onTap: () => context.push(
-                                    '/forgot-password'
-                                    '?email=${Uri.encodeQueryComponent(session.email ?? '')}',
-                                  ),
-                                ),
-                                GroupedTile(
-                                  icon: Icons.delete_outline_rounded,
-                                  iconColor: AppColors.error,
-                                  iconBg: AppColors.hadithAccentBg,
-                                  title: 'Delete account',
-                                  titleColor: AppColors.error,
-                                  forceChevron: true,
-                                  onTap: () => _confirmDelete(context, ref),
-                                ),
-                                GroupedTile(
-                                  icon: Icons.logout_rounded,
-                                  iconColor: AppColors.textSecondary,
-                                  iconBg: AppColors.parchment,
-                                  title: 'Log out',
-                                  showChevron: false,
-                                  onTap: () => _confirmLogout(context, ref),
-                                ),
-                              ],
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ProfileHeader(session: session, bottomOverlap: overlap),
+                if (signedIn)
+                  Positioned(
+                    left: 20.w,
+                    right: 20.w,
+                    bottom: -overlap,
+                    child:
+                        ProfileStatsStrip(
+                          stats: [
+                            ProfileStat(
+                              label: 'Points',
+                              value: points?.total ?? 0,
+                              icon: Icons.stars_rounded,
                             ),
-                            9,
-                          ),
-                        ],
-
-                        SizedBox(height: 20.h),
-                        Center(
-                          child: Text(
-                            ref
-                                .watch(appVersionNameProvider)
-                                .when(
-                                  data: (v) => '${AppConstants.appName} · v$v',
-                                  loading: () => AppConstants.appName,
-                                  error: (_, _) => AppConstants.appName,
-                                ),
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.textMuted,
+                            ProfileStat(
+                              label: 'Joined',
+                              value: groups.length,
+                              icon: Icons.groups_rounded,
                             ),
-                          ),
+                            ProfileStat(
+                              label: 'Created',
+                              value: owned,
+                              icon: Icons.workspace_premium_rounded,
+                            ),
+                          ],
                         ).slideIn(
-                          RevealDirection.top,
-                          onVisible: true,
-                          distance: 14,
+                          RevealDirection.bottom,
+                          delay: const Duration(milliseconds: 240),
+                          distance: 18,
                         ),
-                        // const BannerAdWidget(
-                        //   margin: EdgeInsets.symmetric(vertical: 4),
-                        // ),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(20.w, overlap + 22.h, 20.w, 130.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!signedIn) ...[
+                    reveal(const GuestBenefitsCard(), 0),
+                    SizedBox(height: 24.h),
+                  ],
+                  reveal(const GroupedSectionLabel('Shortcuts'), 1),
+                  GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    // A fixed height (not an aspect ratio) so larger system
+                    // text can't overflow the tile.
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 12.w,
+                      crossAxisSpacing: 12.w,
+                      mainAxisExtent: 140.h,
+                    ),
+                    children: [
+                      for (var i = 0; i < shortcuts.length; i++)
+                        reveal(shortcuts[i], i + 2),
+                    ],
+                  ),
+                  SizedBox(height: 24.h),
+                  reveal(const GroupedSectionLabel('More'), 6),
+                  reveal(
+                    GroupedCard(
+                      children: [
+                        GroupedTile(
+                          icon: Icons.settings_outlined,
+                          iconColor: AppColors.toolsAccent,
+                          iconBg: AppColors.toolsAccentBg,
+                          title: 'Settings',
+                          subtitle:
+                              'Appearance, prayer alerts, storage and about',
+                          onTap: () => context.go('/settings'),
+                        ),
+                        if (signedIn)
+                          GroupedTile(
+                            icon: Icons.lock_reset_rounded,
+                            iconColor: AppColors.toolsAccent,
+                            iconBg: AppColors.toolsAccentBg,
+                            title: 'Reset password',
+                            forceChevron: true,
+                            onTap: () => context.push(
+                              '/forgot-password'
+                              '?email=${Uri.encodeQueryComponent(session.email ?? '')}',
+                            ),
+                          ),
                       ],
                     ),
+                    7,
                   ),
+                  if (signedIn) ...[
+                    SizedBox(height: 24.h),
+                    reveal(
+                      GroupedCard(
+                        children: [
+                          GroupedTile(
+                            icon: Icons.logout_rounded,
+                            iconColor: AppColors.textSecondary,
+                            iconBg: AppColors.parchment,
+                            title: 'Log out',
+                            showChevron: false,
+                            onTap: () => _confirmLogout(context, ref),
+                          ),
+                          GroupedTile(
+                            icon: Icons.delete_outline_rounded,
+                            iconColor: AppColors.error,
+                            iconBg: AppColors.hadithAccentBg,
+                            title: 'Delete account',
+                            titleColor: AppColors.error,
+                            forceChevron: true,
+                            onTap: () => _confirmDelete(context, ref),
+                          ),
+                        ],
+                      ),
+                      8,
+                    ),
+                  ],
+                  SizedBox(height: 20.h),
+                  Center(
+                    child: Text(
+                      ref
+                          .watch(appVersionNameProvider)
+                          .when(
+                            data: (v) => '${AppConstants.appName} · v$v',
+                            loading: () => AppConstants.appName,
+                            error: (_, _) => AppConstants.appName,
+                          ),
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ).slideIn(RevealDirection.top, onVisible: true, distance: 14),
                 ],
               ),
             ),

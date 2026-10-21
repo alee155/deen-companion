@@ -86,8 +86,8 @@ class GuestBenefitsCard extends StatelessWidget {
             'Read the Quran together with family and friends.',
           ),
           row(
-            Icons.local_fire_department_rounded,
-            'Build a daily streak',
+            Icons.stars_rounded,
+            'Earn points for your prayers',
             'Stay consistent and see your progress here.',
           ),
           Divider(height: 20.h, color: AppColors.borderWarm),
