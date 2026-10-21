@@ -6,11 +6,9 @@ import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/group_detail.dart';
 import '../providers/groups_providers.dart';
-import 'group_form_widgets.dart';
 import 'group_sheet_widgets.dart';
 
-/// Admin-only. The user must type the group's name before the destructive
-/// button unlocks. Resolves true once the group is deleted.
+/// Admin-only. Resolves true once the group is deleted.
 Future<bool?> showDeleteGroupSheet(BuildContext context, GroupDetail group) {
   HapticFeedback.mediumImpact();
   return showGroupSheet<bool>(context, (_) => DeleteGroupSheet(group: group));
@@ -25,25 +23,6 @@ class DeleteGroupSheet extends ConsumerStatefulWidget {
 }
 
 class _DeleteGroupSheetState extends ConsumerState<DeleteGroupSheet> {
-  final _confirm = TextEditingController();
-
-  bool get _matches => _confirm.text.trim() == widget.group.name.trim();
-
-  @override
-  void initState() {
-    super.initState();
-    _confirm.addListener(() {
-      ref.read(groupManageControllerProvider.notifier).clearError();
-      setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _confirm.dispose();
-    super.dispose();
-  }
-
   Future<void> _delete() async {
     FocusScope.of(context).unfocus();
     final ok = await ref
@@ -113,55 +92,6 @@ class _DeleteGroupSheetState extends ConsumerState<DeleteGroupSheet> {
             ),
           ).slideIn(RevealDirection.bottom, distance: 12),
           SizedBox(height: 16.h),
-          Text.rich(
-            TextSpan(
-              style: TextStyle(
-                fontSize: 12.5.sp,
-                color: AppColors.textSecondary,
-              ),
-              children: [
-                const TextSpan(text: 'Type '),
-                TextSpan(
-                  text: g.name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.inkText,
-                  ),
-                ),
-                const TextSpan(text: ' to confirm.'),
-              ],
-            ),
-          ),
-          SizedBox(height: 8.h),
-          TextField(
-            controller: _confirm,
-            enabled: !state.isDeleting,
-            autocorrect: false,
-            decoration:
-                groupInputDecoration(
-                  accent: AppColors.emeraldInk,
-                  label: 'Group name',
-                  hint: g.name,
-                  icon: Icons.keyboard_rounded,
-                ).copyWith(
-                  suffixIcon: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 160),
-                    child: _matches
-                        ? Icon(
-                            Icons.check_circle_rounded,
-                            key: const ValueKey('ok'),
-                            color: AppColors.success,
-                            size: 22.sp,
-                          )
-                        : const SizedBox.shrink(key: ValueKey('no')),
-                  ),
-                ),
-          ).slideIn(
-            RevealDirection.bottom,
-            delay: const Duration(milliseconds: 60),
-            distance: 12,
-          ),
-          SizedBox(height: 14.h),
           SheetNotice(message: state.errorMessage),
           Row(
             children: [
@@ -181,7 +111,7 @@ class _DeleteGroupSheetState extends ConsumerState<DeleteGroupSheet> {
                   icon: Icons.delete_outline_rounded,
                   destructive: true,
                   loading: state.isDeleting,
-                  onPressed: _matches ? _delete : null,
+                  onPressed: _delete,
                 ),
               ),
             ],

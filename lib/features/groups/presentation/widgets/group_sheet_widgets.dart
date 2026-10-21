@@ -308,10 +308,15 @@ class SheetSecondaryButton extends StatelessWidget {
       height: 50.h,
       child: OutlinedButton.icon(
         onPressed: onPressed,
-        icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 18.sp),
-        label: Text(
-          label,
-          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700),
+        icon: icon == null ? null : Icon(icon, size: 18.sp),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700),
+          ),
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.inkText,
