@@ -32,22 +32,49 @@ class DndWindowPlanner {
       for (final entry in times.entries) {
         final minutes = settings.minutesFor(entry.key);
         if (minutes == null || minutes <= 0) continue;
-        final start = entry.value;
+        final prayerTime = entry.value;
+        final start = prayerTime.subtract(
+          Duration(minutes: settings.leadFor(entry.key)),
+        );
         if (!start.isAfter(now) || start.isAfter(horizon)) continue;
         // Overlapping month lists can repeat a day.
-        if (!seen.add('${entry.key.name}@${start.millisecondsSinceEpoch}')) {
+        if (!seen.add(
+          '${entry.key.name}@${prayerTime.millisecondsSinceEpoch}',
+        )) {
           continue;
         }
         windows.add(
           DndWindow(
             prayerName: entry.key.name,
             start: start,
-            end: start.add(Duration(minutes: minutes)),
+            end: prayerTime.add(Duration(minutes: minutes)),
           ),
         );
       }
     }
     windows.sort((a, b) => a.start.compareTo(b.start));
-    return windows;
+    return _mergeOverlaps(windows);
+  }
+
+  /// An early start can run into the previous prayer's window; one
+  /// continuous window is armed instead of two that fight over the same
+  /// on/off alarms.
+  static List<DndWindow> _mergeOverlaps(List<DndWindow> sorted) {
+    final merged = <DndWindow>[];
+    for (final w in sorted) {
+      if (merged.isNotEmpty && !w.start.isAfter(merged.last.end)) {
+        final last = merged.removeLast();
+        merged.add(
+          DndWindow(
+            prayerName: last.prayerName,
+            start: last.start,
+            end: w.end.isAfter(last.end) ? w.end : last.end,
+          ),
+        );
+      } else {
+        merged.add(w);
+      }
+    }
+    return merged;
   }
 }

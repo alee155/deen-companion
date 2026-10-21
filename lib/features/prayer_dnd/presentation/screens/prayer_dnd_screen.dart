@@ -209,6 +209,27 @@ class _PrayerDndScreenState extends ConsumerState<PrayerDndScreen>
     }
   }
 
+  /// DEBUG: DND starts in 1 minute and lasts 2.
+  Future<void> _armTest() async {
+    final channel = ref.read(prayerDndChannelProvider);
+    if (!await channel.hasPolicyAccess()) {
+      await channel.openPolicyAccessSettings();
+      _setStatus('Grant Do Not Disturb access, then try again.', true);
+      return;
+    }
+    if (!await channel.canScheduleExactAlarms()) {
+      await channel.openExactAlarmSettings();
+    }
+    final armed = await ref.read(prayerDndServiceProvider).armTestWindow();
+    _setStatus(
+      armed == null
+          ? 'Test failed: native DND scheduler unavailable.'
+          : 'Test armed: DND turns on in 1 minute for 2 minutes. Background '
+                'or kill the app now.',
+      armed == null,
+    );
+  }
+
   void _setStatus(String message, bool isError) {
     if (!mounted) return;
     setState(() {
@@ -274,7 +295,7 @@ class _PrayerDndScreenState extends ConsumerState<PrayerDndScreen>
                           children: [
                             if (!_exactAlarmsOk) _exactAlarmNotice(),
                             _section(
-                              'How long should it stay on?',
+                              'When should it be on?',
                               Icons.timer_rounded,
                               trailing: '${settings.configuredCount} of 5 set',
                             ),
@@ -282,13 +303,21 @@ class _PrayerDndScreenState extends ConsumerState<PrayerDndScreen>
                           ],
                         ),
                       ),
+                      if (kDebugMode)
+                        _InfoRow(
+                          icon: Icons.science_outlined,
+                          title: 'Debug: test DND in 1 minute',
+                          body: 'Tap to turn DND on in 1 minute for 2 minutes.',
+                          onTap: _armTest,
+                        ),
                       _section('Good to know', Icons.lightbulb_outline_rounded),
                       const _InfoRow(
                         icon: Icons.alarm_rounded,
                         title: 'Alarms still ring',
                         body:
                             'Only calls, messages and notifications are silenced, so your '
-                            'wake-up alarm and prayer alarm won’t be missed.',
+                            'wake-up alarm and prayer alarm still ring, even when they fall '
+                            'inside the window.',
                       ).slideIn(RevealDirection.start, onVisible: true),
                       const _InfoRow(
                         icon: Icons.person_outline_rounded,
@@ -355,91 +384,108 @@ class _PrayerDndScreenState extends ConsumerState<PrayerDndScreen>
           Padding(
             padding: EdgeInsets.fromLTRB(
               24.w,
-              MediaQuery.of(context).padding.top + 66.h,
+              MediaQuery.of(context).padding.top + 58.h,
               24.w,
-              26.h,
+              20.h,
             ),
             child: Column(
               children: [
-                // Medallion
-                SizedBox(
-                  width: 120.w,
-                  height: 120.w,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      AnimatedContainer(
-                        duration: context.motion.duration(AppMotion.slow),
-                        width: 120.w,
-                        height: 120.w,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              AppColors.gold.withValues(alpha: on ? 0.35 : 0.0),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 100.w,
-                        height: 100.w,
-                        child: CustomPaint(
-                          painter: StarPainter(
-                            fill: on
-                                ? AppColors.gold.withValues(alpha: 0.2)
-                                : Colors.white.withValues(alpha: 0.08),
-                            stroke: on
-                                ? AppColors.goldLight
-                                : Colors.white.withValues(alpha: 0.35),
-                            strokeWidth: 1.6,
-                            inner: 0.76,
-                          ),
-                          child: IconSwap(
-                            child: Icon(
-                              on
-                                  ? Icons.notifications_off_rounded
-                                  : Icons.notifications_active_outlined,
-                              key: ValueKey(on),
-                              size: 38.sp,
-                              color: on ? AppColors.goldLight : Colors.white70,
+                Row(
+                  children: [
+                    // Medallion
+                    SizedBox(
+                      width: 76.w,
+                      height: 76.w,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          AnimatedContainer(
+                            duration: context.motion.duration(AppMotion.slow),
+                            width: 76.w,
+                            height: 76.w,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: RadialGradient(
+                                colors: [
+                                  AppColors.gold.withValues(
+                                    alpha: on ? 0.35 : 0.0,
+                                  ),
+                                  Colors.transparent,
+                                ],
+                              ),
                             ),
                           ),
-                        ),
+                          SizedBox(
+                            width: 66.w,
+                            height: 66.w,
+                            child: CustomPaint(
+                              painter: StarPainter(
+                                fill: on
+                                    ? AppColors.gold.withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.08),
+                                stroke: on
+                                    ? AppColors.goldLight
+                                    : Colors.white.withValues(alpha: 0.35),
+                                strokeWidth: 1.4,
+                                inner: 0.76,
+                              ),
+                              child: IconSwap(
+                                child: Icon(
+                                  on
+                                      ? Icons.notifications_off_rounded
+                                      : Icons.notifications_active_outlined,
+                                  key: ValueKey(on),
+                                  size: 26.sp,
+                                  color: on
+                                      ? AppColors.goldLight
+                                      : Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ).slideIn(RevealDirection.top, distance: 20),
-                SizedBox(height: 14.h),
-                AnimatedText(
-                  on ? 'Silent during prayer' : 'Silence your phone for prayer',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ).slideIn(
-                  RevealDirection.bottom,
-                  delay: const Duration(milliseconds: 60),
+                    ).slideIn(RevealDirection.top, distance: 20),
+                    SizedBox(width: 14.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AnimatedText(
+                            on
+                                ? 'Silent during prayer'
+                                : 'Silence your phone for prayer',
+                            style: TextStyle(
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ).slideIn(
+                            RevealDirection.bottom,
+                            delay: const Duration(milliseconds: 60),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            on
+                                ? 'Turns on when each selected prayer begins, then off again.'
+                                : 'Calls and notifications won’t interrupt your prayer.',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              height: 1.4,
+                              color: AppColors.onHeroSurface.withValues(
+                                alpha: 0.78,
+                              ),
+                            ),
+                          ).slideIn(
+                            RevealDirection.top,
+                            delay: const Duration(milliseconds: 120),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 8.h),
-                Text(
-                  on
-                      ? 'Do Not Disturb turns on when each selected prayer begins, then switches off again.'
-                      : 'When a prayer begins, Deen turns on Do Not Disturb so calls and notifications don’t interrupt you — then switches it off.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    height: 1.5,
-                    color: AppColors.onHeroSurface.withValues(alpha: 0.78),
-                  ),
-                ).slideIn(
-                  RevealDirection.top,
-                  delay: const Duration(milliseconds: 120),
-                ),
-                SizedBox(height: 20.h),
+                SizedBox(height: 16.h),
                 Container(
                   padding: EdgeInsets.symmetric(
                     horizontal: 16.w,
@@ -726,51 +772,61 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String body;
+  final VoidCallback? onTap;
 
-  const _InfoRow({required this.icon, required this.title, required this.body});
+  const _InfoRow({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(bottom: 10.h),
-      child: _Card(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: EdgeInsets.all(9.w),
-              decoration: BoxDecoration(
-                color: AppColors.toolsAccentBg,
-                borderRadius: BorderRadius.circular(12.r),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: _Card(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: EdgeInsets.all(9.w),
+                decoration: BoxDecoration(
+                  color: AppColors.toolsAccentBg,
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Icon(icon, size: 18.sp, color: AppColors.toolsAccent),
               ),
-              child: Icon(icon, size: 18.sp, color: AppColors.toolsAccent),
-            ),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.inkText,
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.inkText,
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 3.h),
-                  Text(
-                    body,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      height: 1.5,
-                      color: AppColors.textSecondary,
+                    SizedBox(height: 3.h),
+                    Text(
+                      body,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        height: 1.5,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

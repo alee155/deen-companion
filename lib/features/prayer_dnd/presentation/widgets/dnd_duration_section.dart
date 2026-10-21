@@ -25,6 +25,15 @@ String formatDndMinutes(int minutes) {
 
 String _time(DateTime t) => DateFormat.jm().format(t);
 
+/// "10 min before · 20 min after" (or just the after part with no lead).
+String _shape(int lead, int after) => lead > 0
+    ? '${formatDndMinutes(lead)} before · ${formatDndMinutes(after)} after'
+    : '${formatDndMinutes(after)} after';
+
+String _range(DateTime prayer, int lead, int after) =>
+    '${_time(prayer.subtract(Duration(minutes: lead)))} – '
+    '${_time(prayer.add(Duration(minutes: after)))}';
+
 /// "How long should it stay on?": Fixed (preset pills per prayer) or Custom
 /// (slider per prayer). Both edit the same per-prayer durations.
 class DndDurationSection extends ConsumerWidget {
@@ -44,8 +53,8 @@ class DndDurationSection extends ConsumerWidget {
       await notifier.setMode(mode);
     }
 
-    Future<void> set(PrayerName prayer, int minutes) async {
-      await notifier.setDuration(prayer, minutes);
+    Future<void> set(PrayerName prayer, int lead, int after) async {
+      await notifier.setWindow(prayer, lead, after);
       await onChanged();
     }
 
@@ -54,8 +63,8 @@ class DndDurationSection extends ConsumerWidget {
       await onChanged();
     }
 
-    Future<void> setAll(int minutes) async {
-      await notifier.setAllDurations(minutes);
+    Future<void> setAll(int lead, int after) async {
+      await notifier.setAllWindows(lead, after);
       await onChanged();
     }
 
@@ -71,7 +80,7 @@ class DndDurationSection extends ConsumerWidget {
           dir: RevealDirection.end,
           icon: Icons.hourglass_bottom_rounded,
           title: 'Fixed duration',
-          subtitle: 'Pick a set time for each prayer',
+          subtitle: 'Pick a ready-made window for each prayer',
           onTap: () => chooseMode(DndDurationMode.preset),
           body: _FixedBody(
             settings: settings,
@@ -88,7 +97,7 @@ class DndDurationSection extends ConsumerWidget {
           dir: RevealDirection.bottomStart,
           icon: Icons.tune_rounded,
           title: 'Custom duration',
-          subtitle: 'Slide to choose up to 2 hours per prayer',
+          subtitle: 'Choose when it starts and ends around the prayer',
           onTap: () => chooseMode(DndDurationMode.custom),
           body: _CustomBody(
             settings: settings,
@@ -244,47 +253,6 @@ class _PrayerBadge extends StatelessWidget {
   }
 }
 
-/// Selectable duration container. Orange when selected.
-class _Pill extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _Pill({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      haptic: true,
-      scale: AppMotion.pressScaleSmall,
-      child: AnimatedContainer(
-        duration: context.motion.duration(AppMotion.fast),
-        curve: AppMotion.entrance,
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 8.h),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.amber : AppColors.parchment,
-          borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(
-            color: selected ? AppColors.amberDeep : AppColors.borderWarm,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w700,
-            color: selected ? _onSelected : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _RemoveButton extends StatelessWidget {
   final PrayerName prayer;
   final VoidCallback onTap;
@@ -324,7 +292,7 @@ class _PrayerAccordion extends StatefulWidget {
 
   /// Optional first row that edits every prayer at once (Fixed only).
   final Widget Function(VoidCallback close)? allEditor;
-  final int? allValue;
+  final String? allValue;
 
   const _PrayerAccordion({
     required this.settings,
@@ -375,10 +343,10 @@ class _PrayerAccordionState extends State<_PrayerAccordion> {
               ),
             ),
             title: 'All prayers',
-            subtitle: 'Same duration for every prayer',
-            trailingTop: widget.allValue != null
-                ? formatDndMinutes(widget.allValue!)
-                : '${widget.settings.configuredCount} of 5 set',
+            subtitle: 'Same window for every prayer',
+            trailingTop:
+                widget.allValue ??
+                '${widget.settings.configuredCount} of 5 set',
             editor: widget.allEditor!(_close),
             highlighted: widget.allValue != null,
           ),
@@ -394,16 +362,19 @@ class _PrayerAccordionState extends State<_PrayerAccordion> {
 
   Widget _prayerRow(PrayerName prayer) {
     final minutes = widget.settings.minutesFor(prayer);
+    final lead = widget.settings.leadFor(prayer);
     final time = widget.times[prayer];
     return _row(
       key: prayer,
       leading: _PrayerBadge(prayer: prayer, configured: minutes != null),
       title: prayerLabels[prayer]!,
-      subtitle: time == null ? 'Time unavailable' : _time(time),
-      trailingTop: minutes == null ? null : formatDndMinutes(minutes),
-      trailingBottom: minutes != null && time != null
-          ? 'until ${_time(time.add(Duration(minutes: minutes)))}'
-          : null,
+      subtitle: time == null ? 'Time unavailable' : 'Prayer at ${_time(time)}',
+      trailingTop: minutes == null
+          ? null
+          : time != null
+          ? _range(time, lead, minutes)
+          : formatDndMinutes(minutes),
+      trailingBottom: minutes == null ? null : _shape(lead, minutes),
       onRemove: minutes == null
           ? null
           : () {
@@ -524,9 +495,9 @@ class _PrayerAccordionState extends State<_PrayerAccordion> {
 class _FixedBody extends StatelessWidget {
   final DndSettings settings;
   final Map<PrayerName, DateTime> times;
-  final Future<void> Function(PrayerName, int) onSet;
+  final Future<void> Function(PrayerName, int, int) onSet;
   final Future<void> Function(PrayerName) onClear;
-  final Future<void> Function(int) onSetAll;
+  final Future<void> Function(int, int) onSetAll;
   final Future<void> Function() onClearAll;
 
   const _FixedBody({
@@ -540,32 +511,54 @@ class _FixedBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final values = settings.durations.values.toSet();
-    final allValue =
-        settings.configuredCount == PrayerName.values.length &&
-            values.length == 1
-        ? values.first
-        : null;
+    // Every prayer set to the same window → the "All prayers" row shows it.
+    DndPreset? allPreset;
+    String? allSummary;
+    if (settings.configuredCount == PrayerName.values.length) {
+      final shapes = {
+        for (final p in PrayerName.values)
+          (settings.leadFor(p), settings.minutesFor(p)!),
+      };
+      if (shapes.length == 1) {
+        final (lead, after) = shapes.first;
+        allSummary = _shape(lead, after);
+        for (final preset in DndSettings.presets) {
+          if (preset.matches(lead, after)) allPreset = preset;
+        }
+      }
+    }
 
     return _PrayerAccordion(
       settings: settings,
       times: times,
       onClear: onClear,
-      allValue: allValue,
-      allEditor: (close) => _PillsEditor(
-        selected: allValue,
-        onPick: (m) {
+      allValue: allSummary,
+      allEditor: (close) => _PresetsEditor(
+        selected: allPreset,
+        onPick: (preset) {
           close();
-          allValue == m ? onClearAll() : onSetAll(m);
+          allPreset == preset
+              ? onClearAll()
+              : onSetAll(preset.leadMinutes, preset.afterMinutes);
         },
       ),
       editorFor: (prayer, close) {
-        final current = settings.minutesFor(prayer);
-        return _PillsEditor(
+        final lead = settings.leadFor(prayer);
+        final after = settings.minutesFor(prayer);
+        DndPreset? current;
+        if (after != null) {
+          for (final preset in DndSettings.presets) {
+            if (preset.matches(lead, after)) current = preset;
+          }
+        }
+        return _PresetsEditor(
           selected: current,
-          onPick: (m) {
+          prayerTime: times[prayer],
+          onPick: (preset) {
             close();
-            current == m ? onClear(prayer) : onSet(prayer, m);
+            current == preset
+                ? onClear(prayer)
+                : onSet(prayer, preset.leadMinutes, preset.afterMinutes);
           },
         );
       },
@@ -573,10 +566,15 @@ class _FixedBody extends StatelessWidget {
   }
 }
 
-class _PillsEditor extends StatelessWidget {
-  final int? selected;
-  final ValueChanged<int> onPick;
-  const _PillsEditor({required this.selected, required this.onPick});
+class _PresetsEditor extends StatelessWidget {
+  final DndPreset? selected;
+  final DateTime? prayerTime;
+  final ValueChanged<DndPreset> onPick;
+  const _PresetsEditor({
+    required this.selected,
+    required this.onPick,
+    this.prayerTime,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -588,11 +586,78 @@ class _PillsEditor extends StatelessWidget {
           spacing: 8.w,
           runSpacing: 8.h,
           children: [
-            for (final m in DndSettings.presetMinutes)
-              _Pill(
-                label: m == 60 ? '1 hour' : '$m min',
-                selected: selected == m,
-                onTap: () => onPick(m),
+            for (final preset in DndSettings.presets)
+              _PresetChip(
+                preset: preset,
+                prayerTime: prayerTime,
+                selected: selected == preset,
+                onTap: () => onPick(preset),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A preset card: its name, the shape of the window and (when a prayer time
+/// is known) the exact clock range it would give.
+class _PresetChip extends StatelessWidget {
+  final DndPreset preset;
+  final DateTime? prayerTime;
+  final bool selected;
+  final VoidCallback onTap;
+  const _PresetChip({
+    required this.preset,
+    required this.prayerTime,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? _onSelected : AppColors.textSecondary;
+    return Pressable(
+      onTap: onTap,
+      haptic: true,
+      scale: AppMotion.pressScaleSmall,
+      child: AnimatedContainer(
+        duration: context.motion.duration(AppMotion.fast),
+        curve: AppMotion.entrance,
+        constraints: BoxConstraints(minWidth: 132.w),
+        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 9.h),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.amber : AppColors.parchment,
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(
+            color: selected ? AppColors.amberDeep : AppColors.borderWarm,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              preset.name,
+              style: TextStyle(
+                fontSize: 12.5.sp,
+                fontWeight: FontWeight.w800,
+                color: selected ? _onSelected : AppColors.inkText,
+              ),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              _shape(preset.leadMinutes, preset.afterMinutes),
+              style: TextStyle(fontSize: 11.sp, color: fg),
+            ),
+            if (prayerTime != null)
+              Text(
+                _range(prayerTime!, preset.leadMinutes, preset.afterMinutes),
+                style: TextStyle(
+                  fontSize: 11.sp,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
               ),
           ],
         ),
@@ -606,8 +671,8 @@ class _PillsEditor extends StatelessWidget {
 class _CustomBody extends StatelessWidget {
   final DndSettings settings;
   final Map<PrayerName, DateTime> times;
-  final Future<void> Function(PrayerName, int) onSet;
-  final Future<void> Function(int) onSetAll;
+  final Future<void> Function(PrayerName, int, int) onSet;
+  final Future<void> Function(int, int) onSetAll;
   final Future<void> Function(PrayerName) onClear;
 
   const _CustomBody({
@@ -629,15 +694,18 @@ class _CustomBody extends StatelessWidget {
         return _CustomEditor(
           key: ValueKey(prayer),
           time: times[prayer],
-          initial: minutes ?? DndSettings.defaultCustomMinutes,
+          initialLead: minutes == null
+              ? DndSettings.defaultLeadMinutes
+              : settings.leadFor(prayer),
+          initialAfter: minutes ?? DndSettings.defaultCustomMinutes,
           configured: minutes != null,
-          onSave: (m) async {
+          onSave: (lead, after) async {
             close();
-            await onSet(prayer, m);
+            await onSet(prayer, lead, after);
           },
-          onSaveAll: (m) async {
+          onSaveAll: (lead, after) async {
             close();
-            await onSetAll(m);
+            await onSetAll(lead, after);
           },
         );
       },
@@ -647,15 +715,17 @@ class _CustomBody extends StatelessWidget {
 
 class _CustomEditor extends StatefulWidget {
   final DateTime? time;
-  final int initial;
+  final int initialLead;
+  final int initialAfter;
   final bool configured;
-  final Future<void> Function(int) onSave;
-  final Future<void> Function(int) onSaveAll;
+  final Future<void> Function(int lead, int after) onSave;
+  final Future<void> Function(int lead, int after) onSaveAll;
 
   const _CustomEditor({
     super.key,
     required this.time,
-    required this.initial,
+    required this.initialLead,
+    required this.initialAfter,
     required this.configured,
     required this.onSave,
     required this.onSaveAll,
@@ -666,9 +736,19 @@ class _CustomEditor extends StatefulWidget {
 }
 
 class _CustomEditorState extends State<_CustomEditor> {
-  late double _value = widget.initial.toDouble();
+  /// Track runs from -maxLead (left) to +maxAfter (right); the prayer sits
+  /// at 0 and is the fixed reference the two handles move around.
+  static const _min = -DndSettings.maxLeadMinutes;
+  static const _max = DndSettings.maxCustomMinutes;
+  static const _overlay = 14.0;
 
-  int get _minutes => _value.round();
+  late RangeValues _values = RangeValues(
+    -widget.initialLead.toDouble(),
+    widget.initialAfter.toDouble(),
+  );
+
+  int get _lead => (-_values.start).round();
+  int get _after => _values.end.round();
 
   Widget _stat(String label, String value, {bool accent = false}) {
     return Expanded(
@@ -706,10 +786,26 @@ class _CustomEditorState extends State<_CustomEditor> {
     );
   }
 
+  void _onChanged(RangeValues v) {
+    // The prayer is the reference: the left handle can't pass it, and the
+    // right handle must stay at least a minute after it.
+    final next = RangeValues(
+      v.start.clamp(_min.toDouble(), 0),
+      v.end.clamp(1, _max.toDouble()),
+    );
+    if (next.start.round() != _values.start.round() &&
+        next.start.round() % 5 == 0) {
+      HapticFeedback.selectionClick();
+    }
+    if (next.end.round() != _values.end.round() && next.end.round() % 15 == 0) {
+      HapticFeedback.selectionClick();
+    }
+    setState(() => _values = next);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final start = widget.time;
-    final end = start?.add(Duration(minutes: _minutes));
+    final prayer = widget.time;
 
     return Padding(
       padding: EdgeInsets.only(bottom: 14.h),
@@ -717,62 +813,86 @@ class _CustomEditorState extends State<_CustomEditor> {
         children: [
           Row(
             children: [
-              _stat('Start time', start == null ? '—' : _time(start)),
+              _stat(
+                'DND starts',
+                prayer == null
+                    ? '$_lead min before'
+                    : _time(prayer.subtract(Duration(minutes: _lead))),
+              ),
               SizedBox(width: 8.w),
-              _stat('DND duration', formatDndMinutes(_minutes), accent: true),
+              _stat(
+                'Prayer',
+                prayer == null ? '—' : _time(prayer),
+                accent: true,
+              ),
               SizedBox(width: 8.w),
-              _stat('End time', end == null ? '—' : _time(end)),
+              _stat(
+                'DND ends',
+                prayer == null
+                    ? '$_after min after'
+                    : _time(prayer.add(Duration(minutes: _after))),
+              ),
             ],
           ),
           SizedBox(height: 6.h),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 6,
-              activeTrackColor: AppColors.amber,
-              inactiveTrackColor: AppColors.borderWarm,
-              thumbColor: AppColors.amber,
-              overlayColor: AppColors.amber.withValues(alpha: 0.18),
-              activeTickMarkColor: Colors.transparent,
-              inactiveTickMarkColor: Colors.transparent,
-              thumbShape: const RoundSliderThumbShape(
-                enabledThumbRadius: 11,
-                elevation: 2,
-              ),
-              valueIndicatorColor: AppColors.amberDeep,
-              valueIndicatorTextStyle: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            child: Slider(
-              value: _value,
-              min: DndSettings.minCustomMinutes.toDouble(),
-              max: DndSettings.maxCustomMinutes.toDouble(),
-              divisions:
-                  DndSettings.maxCustomMinutes - DndSettings.minCustomMinutes,
-              label: formatDndMinutes(_minutes),
-              semanticFormatterCallback: (v) => formatDndMinutes(v.round()),
-              onChanged: (v) {
-                final before = _minutes;
-                setState(() => _value = v);
-                if (_minutes != before && _minutes % 15 == 0) {
-                  HapticFeedback.selectionClick();
-                }
-              },
-            ),
+          LayoutBuilder(
+            builder: (context, box) {
+              final trackWidth = box.maxWidth - _overlay * 2;
+              final prayerX = _overlay + trackWidth * (-_min / (_max - _min));
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  // The prayer-time reference line behind the handles.
+                  Positioned(
+                    left: prayerX - 1.5,
+                    top: 8,
+                    bottom: 8,
+                    child: Container(
+                      width: 3,
+                      decoration: BoxDecoration(
+                        color: AppColors.amberDeep,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 6,
+                      activeTrackColor: AppColors.amber,
+                      inactiveTrackColor: AppColors.borderWarm,
+                      thumbColor: AppColors.amber,
+                      overlayColor: AppColors.amber.withValues(alpha: 0.18),
+                      activeTickMarkColor: Colors.transparent,
+                      inactiveTickMarkColor: Colors.transparent,
+                      rangeThumbShape: const RoundRangeSliderThumbShape(
+                        enabledThumbRadius: 11,
+                        elevation: 2,
+                      ),
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: _overlay,
+                      ),
+                    ),
+                    child: RangeSlider(
+                      values: _values,
+                      min: _min.toDouble(),
+                      max: _max.toDouble(),
+                      divisions: _max - _min,
+                      semanticFormatterCallback: (v) => v < 0
+                          ? '${formatDndMinutes((-v).round())} before the prayer'
+                          : '${formatDndMinutes(v.round())} after the prayer',
+                      onChanged: _onChanged,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 6.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                for (final t in const [
-                  '1 min',
-                  '30 min',
-                  '1 h',
-                  '1.5 h',
-                  '2 h',
-                ])
+                for (final t in const ['30 min before', 'Prayer', '2 h after'])
                   Text(
                     t,
                     style: TextStyle(
@@ -783,6 +903,15 @@ class _CustomEditorState extends State<_CustomEditor> {
               ],
             ),
           ),
+          SizedBox(height: 4.h),
+          Text(
+            _shape(_lead, _after),
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColors.amberDeep,
+            ),
+          ),
           SizedBox(height: 12.h),
           Row(
             children: [
@@ -790,7 +919,7 @@ class _CustomEditorState extends State<_CustomEditor> {
                 child: OutlinedButton(
                   onPressed: () {
                     HapticFeedback.selectionClick();
-                    widget.onSaveAll(_minutes);
+                    widget.onSaveAll(_lead, _after);
                   },
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.amberDeep,
@@ -814,7 +943,7 @@ class _CustomEditorState extends State<_CustomEditor> {
                 child: FilledButton(
                   onPressed: () {
                     HapticFeedback.mediumImpact();
-                    widget.onSave(_minutes);
+                    widget.onSave(_lead, _after);
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.amber,

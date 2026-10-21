@@ -178,29 +178,73 @@ void main() {
       );
     });
 
-    test(
-      'same-time duplicates are per prayer: different prayers at same minute both kept',
-      () {
-        final t = DateTime(2026, 10, 1, 12);
-        final w = DndWindowPlanner.build(
-          [
-            PrayerTimes(
-              fajr: DateTime(2026, 10, 1, 5),
-              dhuhr: t,
-              asr: t,
-              maghrib: DateTime(2026, 10, 1, 19),
-              isha: DateTime(2026, 10, 1, 20),
-              hijriDate: '',
-            ),
-          ],
-          const DndSettings(
-            durations: {PrayerName.dhuhr: 10, PrayerName.asr: 10},
+    test('prayers at the same minute merge into one continuous window', () {
+      final t = DateTime(2026, 10, 1, 12);
+      final w = DndWindowPlanner.build(
+        [
+          PrayerTimes(
+            fajr: DateTime(2026, 10, 1, 5),
+            dhuhr: t,
+            asr: t,
+            maghrib: DateTime(2026, 10, 1, 19),
+            isha: DateTime(2026, 10, 1, 20),
+            hijriDate: '',
           ),
-          now,
-        );
-        expect(w.map((e) => e.prayerName), containsAll(['dhuhr', 'asr']));
-        expect(w, hasLength(2));
-      },
-    );
+        ],
+        const DndSettings(
+          durations: {PrayerName.dhuhr: 10, PrayerName.asr: 20},
+        ),
+        now,
+      );
+      expect(w, hasLength(1));
+      expect(w.single.start, t);
+      expect(w.single.end, t.add(const Duration(minutes: 20)));
+    });
+
+    test('lead starts the window before the prayer; end stays after it', () {
+      final fajr = DateTime(2026, 10, 1, 5, 55);
+      final w = DndWindowPlanner.build(
+        [
+          PrayerTimes(
+            fajr: fajr,
+            dhuhr: DateTime(2026, 10, 1, 12),
+            asr: DateTime(2026, 10, 1, 15),
+            maghrib: DateTime(2026, 10, 1, 19),
+            isha: DateTime(2026, 10, 1, 20),
+            hijriDate: '',
+          ),
+        ],
+        const DndSettings(
+          durations: {PrayerName.fajr: 20},
+          leads: {PrayerName.fajr: 5},
+        ),
+        now,
+      );
+      expect(w.single.start, DateTime(2026, 10, 1, 5, 50));
+      expect(w.single.end, DateTime(2026, 10, 1, 6, 15));
+    });
+
+    test('a lead running into the previous window merges with it', () {
+      final w = DndWindowPlanner.build(
+        [
+          PrayerTimes(
+            fajr: DateTime(2026, 10, 1, 5),
+            dhuhr: DateTime(2026, 10, 1, 12),
+            asr: DateTime(2026, 10, 1, 12, 20),
+            maghrib: DateTime(2026, 10, 1, 19),
+            isha: DateTime(2026, 10, 1, 20),
+            hijriDate: '',
+          ),
+        ],
+        const DndSettings(
+          durations: {PrayerName.dhuhr: 30, PrayerName.asr: 20},
+          leads: {PrayerName.asr: 15},
+        ),
+        now,
+      );
+      expect(w, hasLength(1));
+      expect(w.single.start, DateTime(2026, 10, 1, 12));
+      expect(w.single.end, DateTime(2026, 10, 1, 12, 40));
+    });
   });
 }

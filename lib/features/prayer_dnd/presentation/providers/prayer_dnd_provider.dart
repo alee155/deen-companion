@@ -10,6 +10,7 @@ import '../../../prayer_times/presentation/providers/prayer_times_loader.dart'
 import '../../../prayer_times/presentation/providers/upcoming_prayer_days.dart';
 import '../../data/prayer_dnd_channel.dart';
 import '../../domain/dnd_settings.dart';
+import '../../domain/dnd_window.dart';
 import '../../domain/dnd_window_planner.dart';
 
 /// Persisted DND preferences. Every setter writes straight to storage; call
@@ -32,6 +33,7 @@ class DndSettingsNotifier extends Notifier<DndSettings> {
       enabled: storage.get<bool>(_box, AppConstants.dndEnabledKey) ?? false,
       mode: mode,
       durations: _readDurations(storage) ?? const {},
+      leads: _readLeads(storage),
     );
   }
 
@@ -73,6 +75,17 @@ class DndSettingsNotifier extends Notifier<DndSettings> {
     return migrated;
   }
 
+  Map<PrayerName, int> _readLeads(LocalStorageService storage) {
+    final raw = storage.get<Map>(_box, AppConstants.dndLeadsKey);
+    final result = <PrayerName, int>{};
+    if (raw == null) return result;
+    for (final prayer in PrayerName.values) {
+      final value = raw[prayer.name];
+      if (value is int && value > 0) result[prayer] = _clampLead(value);
+    }
+    return result;
+  }
+
   Future<void> _persistDurations(Map<PrayerName, int> durations) =>
       _storage.put(_box, AppConstants.dndDurationsKey, {
         for (final e in durations.entries) e.key.name: e.value,
@@ -88,17 +101,44 @@ class DndSettingsNotifier extends Notifier<DndSettings> {
     await _storage.put(_box, AppConstants.dndDurationModeKey, mode.name);
   }
 
-  Future<void> _write(Map<PrayerName, int> next) async {
-    state = state.copyWith(durations: next);
+  Future<void> _write(
+    Map<PrayerName, int> next, {
+    Map<PrayerName, int>? leads,
+  }) async {
+    // A prayer without a duration has no window, so no lead either.
+    final nextLeads = <PrayerName, int>{
+      for (final e in (leads ?? state.leads).entries)
+        if (next.containsKey(e.key) && e.value > 0) e.key: e.value,
+    };
+    state = state.copyWith(durations: next, leads: nextLeads);
     await _persistDurations(next);
+    await _storage.put(_box, AppConstants.dndLeadsKey, {
+      for (final e in nextLeads.entries) e.key.name: e.value,
+    });
   }
+
+  int _clampLead(int minutes) =>
+      minutes.clamp(0, DndSettings.maxLeadMinutes).toInt();
+
+  /// Sets one prayer's whole window: [lead] minutes before it, [after]
+  /// minutes after it.
+  Future<void> setWindow(PrayerName prayer, int lead, int after) => _write(
+    {...state.durations, prayer: _clamp(after)},
+    leads: {...state.leads, prayer: _clampLead(lead)},
+  );
+
+  /// The same window for every prayer.
+  Future<void> setAllWindows(int lead, int after) => _write(
+    {for (final p in PrayerName.values) p: _clamp(after)},
+    leads: {for (final p in PrayerName.values) p: _clampLead(lead)},
+  );
 
   int _clamp(int minutes) =>
       minutes.clamp(DndSettings.minCustomMinutes, DndSettings.maxCustomMinutes);
 
   /// Sets (or replaces) the duration for one prayer.
   Future<void> setDuration(PrayerName prayer, int minutes) =>
-      _write({...state.durations, prayer: _clamp(minutes)});
+      setWindow(prayer, state.leadFor(prayer), minutes);
 
   /// Removes a prayer's configuration; it will no longer trigger DND.
   Future<void> clearDuration(PrayerName prayer) =>
@@ -211,6 +251,36 @@ class PrayerDndService {
       return const DndSyncDisabled();
     }
     return sync();
+  }
+
+  /// DEBUG: arms a one-off window starting [startIn] from now alongside the
+  /// real schedule (when there is one), so DND can be verified without
+  /// waiting for a prayer. Returns the windows armed, or null if the native
+  /// side is unavailable.
+  Future<int?> armTestWindow({
+    Duration startIn = const Duration(minutes: 1),
+    Duration length = const Duration(minutes: 2),
+  }) async {
+    final now = DateTime.now();
+    final settings = ref.read(dndSettingsProvider);
+    var windows = <DndWindow>[];
+    if (settings.enabled && settings.configuredCount > 0) {
+      final loaded = await loadUpcomingPrayerDays(
+        ref,
+        now: now,
+        windowDays: DndWindowPlanner.horizonDays,
+      );
+      if (loaded.error == null) {
+        windows = DndWindowPlanner.build(loaded.days, settings, now);
+      }
+    }
+    final start = now.add(startIn);
+    final armed = await ref.read(prayerDndChannelProvider).pushSchedule([
+      DndWindow(prayerName: 'fajr', start: start, end: start.add(length)),
+      ...windows,
+    ]);
+    FlowLog.log(_tag, 'TEST WINDOW ARMED for ${start.toIso8601String()}');
+    return armed;
   }
 
   Future<DndSyncResult> sync() async {

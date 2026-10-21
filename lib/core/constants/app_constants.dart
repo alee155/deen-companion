@@ -42,6 +42,7 @@ class AppConstants {
   static const String dndCustomMinutesKey = 'prayer_dnd_custom_minutes';
   static const String dndPrayersKey = 'prayer_dnd_prayers';
   static const String dndDurationsKey = 'prayer_dnd_durations';
+  static const String dndLeadsKey = 'prayer_dnd_leads';
   static const String bookmarksBoxName = 'bookmarks_box';
   static const String recentActivityBoxName = 'recent_activity_box';
   static const String settingsBoxName = 'settings_box';
