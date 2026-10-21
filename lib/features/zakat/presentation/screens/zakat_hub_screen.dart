@@ -61,13 +61,16 @@ class _ZakatHubScreenState extends ConsumerState<ZakatHubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // The tall header would overflow the Column once the keyboard shrinks the
+    // body, so it steps aside while the keyboard is up.
+    final keyboardUp = MediaQuery.viewInsetsOf(context).bottom > 0;
     return Scaffold(
       backgroundColor: AppColors.parchment,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: Column(
           children: [
-            _header(),
+            if (!keyboardUp) _header(),
             Expanded(
               child: PageView(
                 controller: _pages,

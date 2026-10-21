@@ -148,7 +148,7 @@ class ZakatFactStrip extends ConsumerWidget {
     if (info == null) return const SizedBox.shrink();
     final facts = factsFor(info);
     return SizedBox(
-      height: 112.h,
+      height: 140.h,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
@@ -173,13 +173,17 @@ class ZakatFactStrip extends ConsumerWidget {
                     children: [
                       Icon(f.icon, size: 15.sp, color: zakatAccent),
                       SizedBox(width: 6.w),
-                      Text(
-                        f.label.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10.sp,
-                          letterSpacing: 1,
-                          fontWeight: FontWeight.w700,
-                          color: zakatAccent,
+                      Flexible(
+                        child: Text(
+                          f.label.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 10.sp,
+                            letterSpacing: 1,
+                            fontWeight: FontWeight.w700,
+                            color: zakatAccent,
+                          ),
                         ),
                       ),
                     ],
@@ -187,6 +191,8 @@ class ZakatFactStrip extends ConsumerWidget {
                   SizedBox(height: 6.h),
                   Text(
                     f.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w700,

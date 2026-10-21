@@ -186,6 +186,21 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView>
     return t;
   }
 
+  /// The action bar stays hidden until there is something to act on.
+  bool get _canProceed {
+    switch (_step) {
+      case 0:
+        final price = _standard == NisabStandard.gold
+            ? _goldPrice
+            : _silverPrice;
+        return zakatNum(price) > 0;
+      case 1:
+        return _selected.any((k) => k != 'debts');
+      default:
+        return _estimatedNet > 0;
+    }
+  }
+
   void _toast(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -322,7 +337,7 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView>
             ),
           ),
         ),
-        if (!showResult) _bottomBar(),
+        if (!showResult && _canProceed) _bottomBar(),
       ],
     );
   }
@@ -995,11 +1010,16 @@ class _ZakatCalculatorViewState extends ConsumerState<ZakatCalculatorView>
                         color: AppColors.heroSurface,
                       ),
                     )
-                  : Text(
-                      last ? 'Calculate zakat' : 'Continue',
-                      style: TextStyle(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w700,
+                  : FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        last ? 'Calculate zakat' : 'Continue',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
             ),
