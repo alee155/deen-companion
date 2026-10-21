@@ -12,6 +12,7 @@ const Map<String, String> exploreIconAssets = {
   'prayer_times': 'assets/images/cl.png',
   'islamic_calendar': 'assets/images/calendar_icon.png',
   'zakat': 'assets/images/zakat_icon.png',
+  'prayer_dnd': 'assets/images/dnd_icon.png',
   'mutashabihat': 'assets/images/mutashabihat.png',
   'juz': 'assets/images/juzz.png',
   'qibla': 'assets/images/compass.png',

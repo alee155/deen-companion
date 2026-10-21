@@ -169,6 +169,15 @@ class ExploreCatalog {
       group: 'Tools',
       route: '/zakat',
     ),
+    ExploreCategory(
+      id: 'prayer_dnd',
+      label: 'Prayer DND',
+      description: 'Silence your phone during prayer times',
+      icon: Icons.do_not_disturb_on_outlined,
+      accent: ExploreAccent.tools,
+      group: 'Tools',
+      route: '/prayer-dnd',
+    ),
   ];
 
   static const List<String> homePreviewIds = [
