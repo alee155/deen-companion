@@ -4,12 +4,15 @@ import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class HomeCategory {
-  final String iconPath;
+  /// Illustrated asset; a null path means [icon] is drawn instead.
+  final String? iconPath;
+  final IconData? icon;
   final String label;
   final String route;
 
   const HomeCategory({
-    required this.iconPath,
+    this.iconPath,
+    this.icon,
     required this.label,
     required this.route,
   });
@@ -36,9 +39,27 @@ const List<HomeCategory> homeCategories = [
     label: 'Hadith',
     route: '/hadith',
   ),
+  HomeCategory(
+    iconPath: 'assets/images/dua_icon.png',
+    label: 'Duas',
+    route: '/duas',
+  ),
+  HomeCategory(
+    iconPath: 'assets/images/compass.png',
+    label: 'Qibla',
+    route: '/qibla',
+  ),
+  HomeCategory(
+    iconPath: 'assets/images/calendar_icon.png',
+    label: 'Calendar',
+    route: '/islamic-calendar',
+  ),
+  // Always last: the rest of the features.
+  HomeCategory(icon: Icons.grid_view_rounded, label: 'More', route: '/explore'),
 ];
 
-/// The row of quick-access category cards under Home's slider header. Purely
+/// Two rows of four quick-access category cards under Home's slider header,
+/// the last one being "More". Purely
 /// presentational — routing and the "which one is highlighted" state live
 /// with the caller.
 class HomeCategoryGrid extends StatelessWidget {
@@ -51,18 +72,33 @@ class HomeCategoryGrid extends StatelessWidget {
     required this.onSelected,
   });
 
+  static const _columns = 4;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(homeCategories.length, (index) {
-        return _CategoryCard(
-          data: homeCategories[index],
-          isSelected: selectedIndex == index,
-          onTap: () => onSelected(index),
-        ).slideInAt(index, columns: 4, distance: 18);
-      }),
+    final rows = (homeCategories.length / _columns).ceil();
+    return Column(
+      children: [
+        for (var r = 0; r < rows; r++) ...[
+          if (r > 0) SizedBox(height: 16.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              for (var c = 0; c < _columns; c++) _cell(r * _columns + c),
+            ],
+          ),
+        ],
+      ],
     );
+  }
+
+  Widget _cell(int index) {
+    if (index >= homeCategories.length) return SizedBox(width: 62.h);
+    return _CategoryCard(
+      data: homeCategories[index],
+      isSelected: selectedIndex == index,
+      onTap: () => onSelected(index),
+    ).slideInAt(index, columns: _columns, distance: 18);
   }
 }
 
@@ -107,7 +143,15 @@ class _CategoryCard extends StatelessWidget {
             ),
             child: Padding(
               padding: EdgeInsets.all(14.w),
-              child: Image.asset(data.iconPath, fit: BoxFit.contain),
+              child: data.iconPath != null
+                  ? Image.asset(data.iconPath!, fit: BoxFit.contain)
+                  : Icon(
+                      data.icon,
+                      size: 26.sp,
+                      color: isSelected
+                          ? AppColors.surfaceLight
+                          : AppColors.inkText,
+                    ),
             ),
           ),
           SizedBox(height: 8.h),
