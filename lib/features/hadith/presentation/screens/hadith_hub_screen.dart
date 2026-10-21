@@ -1,5 +1,6 @@
-import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
+// import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
@@ -7,10 +8,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../shared/widgets/deen_app_bar.dart';
 import '../../../../shared/widgets/failure_view.dart';
 import '../../../../shared/widgets/ornament_divider.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
+import '../../../quran/presentation/widgets/quran_hero.dart';
+import '../../domain/entities/hadith_collection.dart';
 import '../providers/hadith_providers.dart';
 import '../widgets/hadith_book_card.dart';
 
@@ -28,68 +30,89 @@ class HadithHubScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: DeenAppBar(
-        title: 'Hadith',
-        subtitle: 'The collections',
-        actions: [
-          IconButton(
-            tooltip: 'Search hadith',
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () => context.push('/hadith/search'),
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Column(
+          children: [
+            QuranHero(
+              arabicTitle: 'الحديث الشريف',
+              subtitle: 'Words of the Prophet ﷺ',
+              actionIcon: Icons.search_rounded,
+              actionTooltip: 'Search hadith',
+              onAction: () => context.push('/hadith/search'),
+              stats: collectionsAsync.maybeWhen(
+                data: (c) => [
+                  ('${c.length}', 'Collections'),
+                  (_compact(c.fold(0, (n, e) => n + e.totalHadiths)), 'Hadith'),
+                  ('2', 'Languages'),
+                ],
+                orElse: () => const [],
+              ),
+            ),
+            Expanded(child: _body(context, ref, collectionsAsync)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static String _compact(int n) =>
+      n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
+
+  Widget _body(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<HadithCollection>> collectionsAsync,
+  ) {
+    return collectionsAsync.when(
+      data: (collections) => CustomScrollView(
+        slivers: [
+          const SliverToBoxAdapter(child: _ShelfHeading()),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 28.h),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16.h,
+                crossAxisSpacing: 14.w,
+                childAspectRatio: _tileAspectRatio,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                childCount: collections.length,
+                (context, index) {
+                  final collection = collections[index];
+                  return HadithBookCard(
+                    collection: collection,
+                    onTap: () => context.push('/hadith/read/${collection.key}'),
+                  ).slideInAt(index, columns: 2, distance: 20);
+                },
+              ),
+            ),
           ),
         ],
       ),
-      body: collectionsAsync.when(
-        data: (collections) => CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _LibraryIntro(count: collections.length)),
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 28.h),
-              sliver: SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16.h,
-                  crossAxisSpacing: 14.w,
-                  childAspectRatio: _tileAspectRatio,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  childCount: collections.length,
-                  (context, index) {
-                    final collection = collections[index];
-                    return HadithBookCard(
-                      collection: collection,
-                      onTap: () =>
-                          context.push('/hadith/read/${collection.key}'),
-                    ).slideInAt(index, columns: 2, distance: 20);
-                  },
-                ),
-              ),
-            ),
-          ],
+      loading: () => GridView.builder(
+        padding: EdgeInsets.fromLTRB(16.w, 20.h, 16.w, 28.h),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 16.h,
+          crossAxisSpacing: 14.w,
+          childAspectRatio: _tileAspectRatio,
         ),
-        loading: () => GridView.builder(
-          padding: EdgeInsets.fromLTRB(16.w, 20.h, 16.w, 28.h),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 16.h,
-            crossAxisSpacing: 14.w,
-            childAspectRatio: _tileAspectRatio,
-          ),
-          itemCount: 6,
-          itemBuilder: (context, index) => ShimmerBox(
-            width: double.infinity,
-            height: double.infinity,
-            borderRadius: 20.r,
-          ),
+        itemCount: 6,
+        itemBuilder: (context, index) => ShimmerBox(
+          width: double.infinity,
+          height: double.infinity,
+          borderRadius: 20.r,
         ),
-        error: (error, _) => Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(20.w),
-            child: FailureView(
-              failure: failureFrom(error),
-              onRetry: () async =>
-                  ref.invalidate(hadithCollectionsNotifierProvider),
-            ),
+      ),
+      error: (error, _) => Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(20.w),
+          child: FailureView(
+            failure: failureFrom(error),
+            onRetry: () async =>
+                ref.invalidate(hadithCollectionsNotifierProvider),
           ),
         ),
       ),
@@ -97,42 +120,27 @@ class HadithHubScreen extends ConsumerWidget {
   }
 }
 
-/// A short lead-in above the shelf, so the screen opens with a sense of place
-/// rather than dropping straight into a grid.
-class _LibraryIntro extends StatelessWidget {
-  final int count;
-  const _LibraryIntro({required this.count});
+/// "The collections" label with an ornament rule, above the shelf.
+class _ShelfHeading extends StatelessWidget {
+  const _ShelfHeading();
 
   @override
   Widget build(BuildContext context) {
-    final seq = RevealSequence();
     return Padding(
-      padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 16.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 14.h),
+      child: Row(
         children: [
           Text(
-            'Words of the Prophet ﷺ',
+            'The collections',
             style: AppTypography.heroSerif.copyWith(
-              fontSize: 22.sp,
+              fontSize: 18.sp,
               color: AppColors.inkText,
             ),
-          ).slideIn(RevealDirection.topStart, delay: seq.next()),
-          SizedBox(height: 6.h),
-          Text(
-            '$count collections, with the Arabic text and its English '
-            'translation side by side. Tap a book to start reading.',
-            style: AppTypography.bodyLarge.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ).slideIn(RevealDirection.bottomStart, delay: seq.next()),
-          SizedBox(height: 16.h),
-          OrnamentDivider(
-            ruleWidth: 40.w,
-          ).slideIn(RevealDirection.end, delay: seq.next()),
-          const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+          ),
+          SizedBox(width: 12.w),
+          const Expanded(child: OrnamentDivider()),
         ],
-      ),
+      ).slideIn(RevealDirection.topStart),
     );
   }
 }

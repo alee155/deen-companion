@@ -8,14 +8,16 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../shared/widgets/deen_app_bar.dart';
+import '../../../../shared/widgets/favorite_glass_button.dart';
+import '../../../../shared/widgets/islamic_ornaments.dart';
+import '../../../quran/presentation/widgets/quran_hero.dart';
 import '../../../../shared/widgets/failure_view.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../favorites/domain/entities/favorite_item.dart';
-import '../../../favorites/presentation/widgets/favorite_button.dart';
 import '../../../recent_activity/domain/entities/recent_activity_item.dart';
 import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
 import '../../domain/entities/hadith.dart';
@@ -165,97 +167,123 @@ class _HadithReadingScreenState extends ConsumerState<HadithReadingScreen>
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: _focusMode
-          ? null
-          : DeenAppBar(
-              title: collection?.name ?? 'Hadith',
-              subtitle: currentHadith == null
-                  ? collection?.arabicName
-                  : 'Hadith ${currentHadith.hadithNumber}',
-              actions: [
-                if (currentHadith != null)
-                  FavoriteButton(size: 20, item: _favoriteFor(currentHadith)),
-                IconButton(
-                  tooltip: 'Reading settings',
-                  icon: const Icon(Icons.text_fields_rounded),
-                  onPressed: () => showReaderSettingsSheet(context),
-                ),
-                if (currentHadith != null)
-                  _MoreMenu(
-                    onCopy: () => _copy(currentHadith),
-                    onShare: () => _share(currentHadith),
-                    onFocus: _toggleFocusMode,
-                    onSwitchBook: _switchCollection,
-                  ),
-              ],
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Column(
+          children: [
+            AnimatedSize(
+              duration: context.motion.duration(AppMotion.fast),
+              curve: AppMotion.entrance,
+              child: _focusMode
+                  ? const SizedBox(width: double.infinity)
+                  : _hero(collection, currentHadith, listState.value),
             ),
-      body: listState.when(
-        data: (state) {
-          if (state.hadiths.isEmpty) return const _EmptyState();
+            Expanded(child: _content(listState, collection, preferences)),
+          ],
+        ),
+      ),
+    );
+  }
 
-          return SafeArea(
-            // In focus mode the header is gone, so the page has to keep clear
-            // of the status bar itself.
-            top: _focusMode,
-            child: Column(
-              children: [
-                _ReadingProgress(
-                  visible: !_focusMode,
-                  progress: (_page + 1) / state.hadiths.length,
+  Widget _hero(
+    HadithCollection? collection,
+    Hadith? currentHadith,
+    HadithListState? state,
+  ) {
+    final total = collection?.totalHadiths ?? state?.hadiths.length ?? 0;
+    final asset = collection == null
+        ? null
+        : HadithCoverAssets.forKey(collection.key);
+    return QuranHero(
+      arabicTitle: collection?.arabicName ?? 'الحديث',
+      subtitle: currentHadith == null
+          ? (collection?.name ?? 'Hadith')
+          : '${collection?.name ?? 'Hadith'} · Hadith '
+                '${currentHadith.hadithNumber} of $total',
+      backgroundAsset: asset,
+      progress: state == null || state.hadiths.isEmpty
+          ? null
+          : (_page + 1) / state.hadiths.length,
+      actions: [
+        if (currentHadith != null)
+          FavoriteGlassButton(item: _favoriteFor(currentHadith)),
+        GlassIconButton(
+          icon: Icons.text_fields_rounded,
+          tooltip: 'Reading settings',
+          onPressed: () => showReaderSettingsSheet(context),
+        ),
+        if (currentHadith != null)
+          _MoreMenu(
+            onCopy: () => _copy(currentHadith),
+            onShare: () => _share(currentHadith),
+            onFocus: _toggleFocusMode,
+            onSwitchBook: _switchCollection,
+          ),
+      ],
+    );
+  }
+
+  Widget _content(
+    AsyncValue<HadithListState> listState,
+    HadithCollection? collection,
+    ReadingPreferences preferences,
+  ) {
+    return listState.when(
+      data: (state) {
+        if (state.hadiths.isEmpty) return const _EmptyState();
+
+        return SafeArea(
+          // In focus mode the header is gone, so the page has to keep clear
+          // of the status bar itself.
+          top: _focusMode,
+          child: Column(
+            children: [
+              Expanded(
+                child: PageView.builder(
+                  controller: _controller,
+                  itemCount: state.hadiths.length,
+                  onPageChanged: (index) => _onPageChanged(index, state),
+                  itemBuilder: (context, index) {
+                    final hadith = state.hadiths[index];
+                    return HadithReaderPage(
+                      // Keyed by hadith so the entrance animation replays
+                      // for a genuinely new page and not on every parent
+                      // rebuild — otherwise dragging the size slider would
+                      // re-fade the text under your finger.
+                      key: ValueKey(hadith.id),
+                      hadith: hadith,
+                      collection: collection,
+                      preferences: preferences,
+                      position: index + 1,
+                      total: state.hadiths.length,
+                      hasMore: state.hasMore,
+                      onTapBody: _toggleFocusMode,
+                    ).appear();
+                  },
                 ),
-                _HadithHeaderBanner(
-                  visible: !_focusMode,
-                  collection: collection,
-                  totalHadiths:
-                      collection?.totalHadiths ?? state.hadiths.length,
-                ),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _controller,
-                    itemCount: state.hadiths.length,
-                    onPageChanged: (index) => _onPageChanged(index, state),
-                    itemBuilder: (context, index) {
-                      final hadith = state.hadiths[index];
-                      return HadithReaderPage(
-                        // Keyed by hadith so the entrance animation replays
-                        // for a genuinely new page and not on every parent
-                        // rebuild — otherwise dragging the size slider would
-                        // re-fade the text under your finger.
-                        key: ValueKey(hadith.id),
-                        hadith: hadith,
-                        collection: collection,
-                        preferences: preferences,
-                        position: index + 1,
-                        total: state.hadiths.length,
-                        hasMore: state.hasMore,
-                        onTapBody: _toggleFocusMode,
-                      ).appear();
-                    },
-                  ),
-                ),
-                _ReaderControls(
-                  visible: !_focusMode,
-                  page: _page,
-                  count: state.hadiths.length,
-                  isLoadingMore: state.isLoadingMore,
-                  onPrevious: _page > 0 ? () => _animateTo(_page - 1) : null,
-                  onNext: _page < state.hadiths.length - 1
-                      ? () => _animateTo(_page + 1)
-                      : null,
-                ),
-              ],
-            ),
-          );
-        },
-        loading: () => const _ReaderSkeleton(),
-        error: (error, _) => Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(20.w),
-            child: FailureView(
-              failure: failureFrom(error),
-              onRetry: () async => ref.invalidate(
-                hadithListNotifierProvider(widget.collectionKey),
               ),
+              _ReaderControls(
+                visible: !_focusMode,
+                page: _page,
+                count: state.hadiths.length,
+                isLoadingMore: state.isLoadingMore,
+                onPrevious: _page > 0 ? () => _animateTo(_page - 1) : null,
+                onNext: _page < state.hadiths.length - 1
+                    ? () => _animateTo(_page + 1)
+                    : null,
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const _ReaderSkeleton(),
+      error: (error, _) => Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(20.w),
+          child: FailureView(
+            failure: failureFrom(error),
+            onRetry: () async => ref.invalidate(
+              hadithListNotifierProvider(widget.collectionKey),
             ),
           ),
         ),
@@ -281,7 +309,11 @@ class _MoreMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<VoidCallback>(
       tooltip: 'More',
-      icon: const Icon(Icons.more_vert_rounded),
+      icon: Icon(Icons.more_vert_rounded, color: AppColors.onHeroSurface),
+      style: IconButton.styleFrom(
+        backgroundColor: AppColors.onHeroSurface.withValues(alpha: 0.12),
+        fixedSize: Size(40.w, 40.w),
+      ),
       color: AppColors.surfaceLight,
       onSelected: (action) => action(),
       itemBuilder: (context) => [
@@ -329,198 +361,6 @@ class _MenuRow extends StatelessWidget {
         const SizedBox(width: 12),
         Text(label, style: TextStyle(color: AppColors.inkText)),
       ],
-    );
-  }
-}
-
-/// The fixed banner above the reader — the collection's own cover art (or a
-/// drawn fallback for the books that don't have one) with a black wash for
-/// legibility, the collection's name at the top-left and its hadith count at
-/// the top-right. Collapses away entirely in focus mode, same as the
-/// progress rule and the controls beneath the pager.
-class _HadithHeaderBanner extends StatelessWidget {
-  final bool visible;
-  final HadithCollection? collection;
-  final int totalHadiths;
-
-  const _HadithHeaderBanner({
-    required this.visible,
-    required this.collection,
-    required this.totalHadiths,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedSize(
-      duration: context.motion.duration(AppMotion.fast),
-      curve: AppMotion.entrance,
-      child: !visible
-          ? const SizedBox(width: double.infinity)
-          : SizedBox(
-              width: double.infinity,
-              height: 108.h,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  _HadithBannerArt(collection: collection),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.45),
-                          Colors.black.withValues(alpha: 0.30),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 14.h,
-                    left: 16.w,
-                    right: 16.w,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                (collection?.name ?? 'Hadith').toUpperCase(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.caption.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                              SizedBox(height: 4.h),
-                              Text(
-                                collection?.arabicName ?? '',
-                                textDirection: TextDirection.rtl,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.arabicBody.copyWith(
-                                  fontSize: 26.sp,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 10.w,
-                            vertical: 5.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(20.r),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: Text(
-                            '$totalHadiths Hadiths',
-                            style: AppTypography.caption.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
-}
-
-/// The banner's background art: the collection's own cover photo when one
-/// exists, otherwise a drawn gradient so the three 40-hadith books still get
-/// a considered look instead of a placeholder.
-class _HadithBannerArt extends StatelessWidget {
-  final HadithCollection? collection;
-  const _HadithBannerArt({required this.collection});
-
-  @override
-  Widget build(BuildContext context) {
-    final asset = collection == null
-        ? null
-        : HadithCoverAssets.forKey(collection!.key);
-
-    if (asset == null) return const _HadithBannerFallback();
-    return Image.asset(
-      asset,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stack) => const _HadithBannerFallback(),
-    );
-  }
-}
-
-class _HadithBannerFallback extends StatelessWidget {
-  const _HadithBannerFallback();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: AppColors.heroGradient,
-        ),
-      ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned(
-            top: -18.h,
-            right: -18.w,
-            child: Icon(
-              Icons.brightness_7_rounded,
-              size: 96.sp,
-              color: AppColors.gold.withValues(alpha: 0.14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Hairline progress rule. Glides as pages turn instead of jumping, and
-/// collapses to nothing in focus mode.
-class _ReadingProgress extends StatelessWidget {
-  final bool visible;
-  final double progress;
-
-  const _ReadingProgress({required this.visible, required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: context.motion.duration(AppMotion.fast),
-      curve: AppMotion.entrance,
-      height: visible ? 3.h : 0,
-      color: AppColors.borderWarm,
-      alignment: Alignment.centerLeft,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(end: progress.clamp(0.0, 1.0)),
-        duration: context.motion.duration(AppMotion.fast),
-        curve: AppMotion.entrance,
-        builder: (context, value, _) => FractionallySizedBox(
-          alignment: Alignment.centerLeft,
-          widthFactor: value,
-          child: Container(color: AppColors.hadithAccent),
-        ),
-      ),
     );
   }
 }
