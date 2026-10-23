@@ -172,7 +172,7 @@ AttentionReport attentionFromJson(Object? j) {
   for (final a in _list(m['members'])) {
     final flags = [
       for (final f in a['flags'] as List<dynamic>)
-        if (AttentionFlag.parse(f as String?) case final flag?) flag,
+        ?AttentionFlag.parse(f as String?),
     ];
     if (flags.isEmpty) continue;
     members.add(

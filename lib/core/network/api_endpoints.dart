@@ -57,8 +57,8 @@ class ApiEndpoints {
     int? reciter,
   }) {
     final params = <String, String>{
-      if (script != null) 'script': script,
-      if (translation != null) 'translation': translation,
+      'script': ?script,
+      'translation': ?translation,
       if (reciter != null) 'reciter': '$reciter',
     };
 
@@ -78,7 +78,7 @@ class ApiEndpoints {
         .replace(
           queryParameters: {
             'q': query,
-            if (translation != null) 'translation': translation,
+            'translation': ?translation,
             if (limit != null) 'limit': '$limit',
           },
         )
@@ -194,7 +194,7 @@ class ApiEndpoints {
         .replace(
           queryParameters: {
             'q': query,
-            if (collection != null) 'collection': collection,
+            'collection': ?collection,
             'limit': '$limit',
           },
         )

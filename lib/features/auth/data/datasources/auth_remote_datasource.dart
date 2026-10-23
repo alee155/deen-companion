@@ -59,7 +59,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'name': name,
         'email': email,
         'password': password,
-        if (timezone != null) 'timezone': timezone,
+        'timezone': ?timezone,
       },
     ),
     AuthTokenResponseModel.fromJson,

@@ -32,7 +32,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
         final Object body = imagePath == null
             ? {'name': name}
             : FormData.fromMap({
-                if (name != null) 'name': name,
+                'name': ?name,
                 'file': await MultipartFile.fromFile(
                   imagePath,
                   filename: 'avatar${_extension(imagePath)}',
