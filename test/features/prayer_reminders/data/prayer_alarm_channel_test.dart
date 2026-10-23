@@ -94,10 +94,10 @@ void main() {
     test('settings openers call the matching native methods', () async {
       handle((c) async => null);
       await ch.openFullScreenIntentSettings();
-      await ch.requestIgnoreBatteryOptimizations();
+      await ch.openBatterySettings();
       expect(calls.map((c) => c.method), [
         'openFullScreenIntentSettings',
-        'requestIgnoreBatteryOptimizations',
+        'openBatterySettings',
       ]);
     });
   });

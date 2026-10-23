@@ -69,13 +69,7 @@ void main() {
       () => scheduler.requestExactAlarmPermission(),
     ).thenAnswer((_) async => true);
     when(() => alarm.canUseFullScreenIntent()).thenAnswer((_) async => true);
-    when(
-      () => alarm.isIgnoringBatteryOptimizations(),
-    ).thenAnswer((_) async => true);
     when(() => alarm.openFullScreenIntentSettings()).thenAnswer((_) async {});
-    when(
-      () => alarm.requestIgnoreBatteryOptimizations(),
-    ).thenAnswer((_) async {});
     when(() => daily.sync()).thenAnswer((_) async {});
     when(
       () => reminders.syncIfEnabled(),
@@ -114,9 +108,7 @@ void main() {
     test('reports each Android requirement independently', () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       when(() => scheduler.canScheduleExact()).thenAnswer((_) async => false);
-      when(
-        () => alarm.isIgnoringBatteryOptimizations(),
-      ).thenAnswer((_) async => false);
+      when(() => alarm.canUseFullScreenIntent()).thenAnswer((_) async => false);
       notif.granted = false;
       location.availability = const LocationAvailability(
         serviceEnabled: true,
@@ -128,9 +120,8 @@ void main() {
         ReliabilityRequirement.location,
         ReliabilityRequirement.notifications,
         ReliabilityRequirement.exactAlarms,
-        ReliabilityRequirement.batteryOptimization,
+        ReliabilityRequirement.fullScreenAlerts,
       ]);
-      expect(s[ReliabilityRequirement.fullScreenAlerts], isTrue);
     });
 
     test(
@@ -155,7 +146,6 @@ void main() {
         final s = await svc(make()).check();
         expect(s[ReliabilityRequirement.exactAlarms], isTrue);
         expect(s[ReliabilityRequirement.fullScreenAlerts], isTrue);
-        expect(s[ReliabilityRequirement.batteryOptimization], isTrue);
         verifyNever(() => scheduler.canScheduleExact());
         verifyNever(() => alarm.canUseFullScreenIntent());
       },
@@ -225,23 +215,14 @@ void main() {
       verify(() => scheduler.requestExactAlarmPermission()).called(1);
     });
 
-    test(
-      'full-screen and battery open their system screens then await resume',
-      () async {
-        final c = make();
-        final f1 = svc(c).request(ReliabilityRequirement.fullScreenAlerts);
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        verify(() => alarm.openFullScreenIntentSettings()).called(1);
-        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-        await f1;
-
-        final f2 = svc(c).request(ReliabilityRequirement.batteryOptimization);
-        await Future<void>.delayed(const Duration(milliseconds: 20));
-        verify(() => alarm.requestIgnoreBatteryOptimizations()).called(1);
-        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-        await f2;
-      },
-    );
+    test('full-screen opens its system screen then awaits resume', () async {
+      final c = make();
+      final f1 = svc(c).request(ReliabilityRequirement.fullScreenAlerts);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      verify(() => alarm.openFullScreenIntentSettings()).called(1);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await f1;
+    });
 
     test(
       'a throwing platform call is swallowed and the status is refreshed',
@@ -277,28 +258,26 @@ void main() {
       () async {
         debugDefaultTargetPlatformOverride = TargetPlatform.android;
         notif.granted = false;
-        var batteryOk = false;
+        var fullScreenOk = false;
         when(
-          () => alarm.isIgnoringBatteryOptimizations(),
-        ).thenAnswer((_) async => batteryOk);
-        when(() => alarm.requestIgnoreBatteryOptimizations()).thenAnswer((
-          _,
-        ) async {
-          batteryOk = true;
+          () => alarm.canUseFullScreenIntent(),
+        ).thenAnswer((_) async => fullScreenOk);
+        when(() => alarm.openFullScreenIntentSettings()).thenAnswer((_) async {
+          fullScreenOk = true;
         });
         notif.requestResult = PermissionRequestResult.granted;
         // Granting notifications flips the status for the next check.
         final c = make();
         final steps = <ReliabilityRequirement?>[];
         final run = svc(c).setUpAll(onStep: steps.add);
-        // notifications (no wait) then battery (waits for resume)
+        // notifications (no wait) then full-screen (waits for resume)
         await Future<void>.delayed(const Duration(milliseconds: 50));
         notif.granted = true;
         binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
         await run;
         expect(steps.first, ReliabilityRequirement.notifications);
         expect(steps.last, isNull);
-        expect(steps, contains(ReliabilityRequirement.batteryOptimization));
+        expect(steps, contains(ReliabilityRequirement.fullScreenAlerts));
         verifyNever(() => scheduler.requestExactAlarmPermission());
         verify(() => daily.sync()).called(1);
         verify(() => reminders.syncIfEnabled()).called(1);
@@ -319,9 +298,7 @@ void main() {
 
     test('a second call while one is running is ignored', () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      when(
-        () => alarm.isIgnoringBatteryOptimizations(),
-      ).thenAnswer((_) async => false);
+      when(() => alarm.canUseFullScreenIntent()).thenAnswer((_) async => false);
       final c = make();
       final first = svc(c).setUpAll();
       await Future<void>.delayed(const Duration(milliseconds: 20));

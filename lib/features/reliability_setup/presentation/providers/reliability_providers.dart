@@ -19,7 +19,7 @@ import '../../domain/reliability_requirement.dart';
 /// on. One place, one order, one prompt at a time — Android drops a request
 /// made while another dialog is on screen, so requests are never concurrent.
 ///
-/// System-settings steps (alarms, full-screen, battery) return to the app via
+/// System-settings steps (alarms, full-screen) return to the app via
 /// a resume, so the service watches lifecycle both to re-check status and to
 /// know when the user is back.
 class ReliabilityService with WidgetsBindingObserver {
@@ -51,17 +51,16 @@ class ReliabilityService with WidgetsBindingObserver {
         .read(notificationPermissionServiceProvider)
         .isGranted();
 
-    // The remaining three are Android concepts (and answer "fine" where the
+    // The remaining two are Android concepts (and answer "fine" where the
     // OS has no such gate: exact alarms before Android 12, full-screen
     // alerts before 14).
-    var exact = true, fullScreen = true, battery = true;
+    var exact = true, fullScreen = true;
     if (_isAndroid) {
       final alarm = ref.read(prayerAlarmChannelProvider);
       exact = await ref
           .read(dailyNotificationSchedulerProvider)
           .canScheduleExact();
       fullScreen = await alarm.canUseFullScreenIntent();
-      battery = await alarm.isIgnoringBatteryOptimizations();
     }
 
     return {
@@ -69,7 +68,6 @@ class ReliabilityService with WidgetsBindingObserver {
       ReliabilityRequirement.notifications: notifications,
       ReliabilityRequirement.exactAlarms: exact,
       ReliabilityRequirement.fullScreenAlerts: fullScreen,
-      ReliabilityRequirement.batteryOptimization: battery,
     };
   }
 
@@ -100,8 +98,6 @@ class ReliabilityService with WidgetsBindingObserver {
               .requestExactAlarmPermission();
         case ReliabilityRequirement.fullScreenAlerts:
           await _viaSettings(alarm.openFullScreenIntentSettings);
-        case ReliabilityRequirement.batteryOptimization:
-          await _viaSettings(alarm.requestIgnoreBatteryOptimizations);
       }
     } catch (error, stackTrace) {
       AppLogger.e(

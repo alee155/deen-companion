@@ -169,9 +169,8 @@ class _DailyContentDebugPanelState
                 child: const Text('Exact alarms'),
               ),
               TextButton(
-                onPressed: () => ref
-                    .read(prayerAlarmChannelProvider)
-                    .requestIgnoreBatteryOptimizations(),
+                onPressed: () =>
+                    ref.read(prayerAlarmChannelProvider).openBatterySettings(),
                 child: const Text('Battery'),
               ),
             ],

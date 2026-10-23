@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../prayer_reminders/data/prayer_alarm_channel.dart';
 import '../../domain/reliability_requirement.dart';
 import '../providers/reliability_providers.dart';
 
@@ -138,7 +140,20 @@ class _SetupSheetState extends ConsumerState<_SetupSheet> {
                 ),
               ),
             ),
-            SizedBox(height: 12.h),
+            if (defaultTargetPlatform == TargetPlatform.android)
+              TextButton.icon(
+                onPressed: () =>
+                    ref.read(prayerAlarmChannelProvider).openBatterySettings(),
+                icon: Icon(Icons.battery_saver_rounded, size: 16.sp),
+                label: Text(
+                  'Alarms late on your phone? Open battery settings',
+                  style: TextStyle(fontSize: 12.sp),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                ),
+              ),
+            SizedBox(height: 4.h),
             if (!done)
               SizedBox(
                 height: 52.h,

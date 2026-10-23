@@ -23,11 +23,6 @@ enum ReliabilityRequirement {
     icon: Icons.lock_clock_rounded,
     title: 'Full-screen alerts',
     why: 'Lets the prayer alarm ring over your lock screen.',
-  ),
-  batteryOptimization(
-    icon: Icons.battery_saver_rounded,
-    title: 'Unrestricted battery',
-    why: 'Stops Android delaying or silencing alarms while your phone is idle.',
   );
 
   const ReliabilityRequirement({

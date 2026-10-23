@@ -144,8 +144,8 @@ object AlarmMethodChannelHandler {
                 val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
                 result.success(pm.isIgnoringBatteryOptimizations(context.packageName))
             }
-            "requestIgnoreBatteryOptimizations" -> {
-                requestIgnoreBatteryOptimizations(context)
+            "openBatterySettings" -> {
+                openBatterySettings(context)
                 result.success(null)
             }
             "requestNotificationPermission" -> {
@@ -256,11 +256,23 @@ object AlarmMethodChannelHandler {
         }
     }
 
-    private fun requestIgnoreBatteryOptimizations(context: Context) {
-        val intent =
-                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = Uri.parse("package:${context.packageName}")
-                }
-        context.startActivity(intent)
+    /**
+     * The system list of battery-optimisation settings — needs no permission,
+     * unlike ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS. Falls back to the
+     * app's own settings page on devices without that screen.
+     */
+    private fun openBatterySettings(context: Context) {
+        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            context.startActivity(intent)
+        } catch (e: android.content.ActivityNotFoundException) {
+            context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+            )
+        }
     }
 }

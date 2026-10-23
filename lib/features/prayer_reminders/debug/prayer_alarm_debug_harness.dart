@@ -28,13 +28,6 @@ class PrayerAlarmDebugHarness extends StatelessWidget {
       await _channel.invokeMethod('openFullScreenIntentSettings');
     }
 
-    final ignoringBattery =
-        await _channel.invokeMethod<bool>('checkIgnoreBatteryOptimizations') ??
-        false;
-    if (!ignoringBattery) {
-      await _channel.invokeMethod('requestIgnoreBatteryOptimizations');
-    }
-
     final triggerAt = DateTime.now().add(const Duration(seconds: 70));
     await _channel.invokeMethod('pushSchedule', {
       'entries': [

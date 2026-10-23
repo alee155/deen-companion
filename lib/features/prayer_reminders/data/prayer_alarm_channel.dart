@@ -73,8 +73,10 @@ class PrayerAlarmChannel {
   Future<bool> isIgnoringBatteryOptimizations() async =>
       await _invoke<bool>('checkIgnoreBatteryOptimizations') ?? true;
 
-  Future<void> requestIgnoreBatteryOptimizations() =>
-      _invoke<void>('requestIgnoreBatteryOptimizations');
+  /// Opens the system battery-optimisation list. Deliberately not the
+  /// one-tap "allow unrestricted" request, which Google Play restricts: the
+  /// user chooses, and nothing in the app depends on the answer.
+  Future<void> openBatterySettings() => _invoke<void>('openBatterySettings');
 
   Future<T?> _invoke<T>(String method, [Object? arguments]) async {
     try {

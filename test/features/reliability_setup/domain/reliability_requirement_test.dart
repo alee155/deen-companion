@@ -9,7 +9,6 @@ void main() {
         ReliabilityRequirement.notifications,
         ReliabilityRequirement.exactAlarms,
         ReliabilityRequirement.fullScreenAlerts,
-        ReliabilityRequirement.batteryOptimization,
       ]);
     });
 
@@ -37,11 +36,11 @@ void main() {
         ReliabilityRequirement.location: true,
         ReliabilityRequirement.notifications: false,
         ReliabilityRequirement.exactAlarms: true,
-        ReliabilityRequirement.batteryOptimization: false,
+        ReliabilityRequirement.fullScreenAlerts: false,
       });
       expect(s.missing, [
         ReliabilityRequirement.notifications,
-        ReliabilityRequirement.batteryOptimization,
+        ReliabilityRequirement.fullScreenAlerts,
       ]);
       expect(s.allGranted, isFalse);
     });
