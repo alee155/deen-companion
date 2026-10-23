@@ -46,18 +46,20 @@ class _AsmaSearchScreenState extends ConsumerState<AsmaSearchScreen> {
       ),
       body: searchState.when(
         data: (results) {
-          if (results == null)
+          if (results == null) {
             return Center(
               child: Text(
                 'Try "merciful", "king", or "light".',
               ).slideIn(RevealDirection.bottom),
             );
-          if (results.isEmpty)
+          }
+          if (results.isEmpty) {
             return Center(
               child: const Text(
                 'No names found.',
               ).slideIn(RevealDirection.bottom),
             );
+          }
           return GridView.builder(
             padding: const EdgeInsets.all(20),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

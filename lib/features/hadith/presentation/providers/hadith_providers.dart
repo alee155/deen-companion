@@ -131,12 +131,13 @@ class HadithListNotifier extends FamilyStreamNotifier<HadithListState, String> {
         totalPages: pageResult.totalPages,
       ),
       failure: (failure) {
-        if (existing.isNotEmpty)
+        if (existing.isNotEmpty) {
           return HadithListState(
             hadiths: existing,
             page: page - 1,
             totalPages: page,
           );
+        }
         throw failure;
       },
     );

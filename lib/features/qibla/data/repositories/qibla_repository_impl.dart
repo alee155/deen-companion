@@ -49,8 +49,9 @@ class QiblaRepositoryImpl implements QiblaRepository {
 
     if (!forceRefresh) {
       final cached = cacheStore.read(key, QiblaInfoModel.fromJson);
-      if (cached != null && !cached.isStale(_cacheTtl))
+      if (cached != null && !cached.isStale(_cacheTtl)) {
         return Success(cached.data.toEntity());
+      }
     }
 
     if (!await networkInfo.isConnected) {

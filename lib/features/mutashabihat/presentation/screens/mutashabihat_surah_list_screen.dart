@@ -212,7 +212,7 @@ class _ListSkeleton extends StatelessWidget {
     return ListView.separated(
       padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 24.h),
       itemCount: 6,
-      separatorBuilder: (_, __) => SizedBox(height: 12.h),
+      separatorBuilder: (_, _) => SizedBox(height: 12.h),
       itemBuilder: (context, index) => Container(
         padding: EdgeInsets.all(14.w),
         decoration: BoxDecoration(

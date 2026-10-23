@@ -121,8 +121,9 @@ class FlowLog {
 
   static Object? _redactEntry(String key, Object? value) {
     final k = _normalize(key);
-    if (k == 'snapurl')
+    if (k == 'snapurl') {
       return value is String ? describeSignedUrl(value) : value;
+    }
     if (_secret.contains(k)) return value == null ? null : '***';
     if (_masked.contains(k)) return value is String ? mask(value) : value;
     return redact(value);

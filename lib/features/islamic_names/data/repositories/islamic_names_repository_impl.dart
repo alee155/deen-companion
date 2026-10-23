@@ -46,8 +46,9 @@ class IslamicNamesRepositoryImpl implements IslamicNamesRepository {
         _cacheKey,
         (json) => json['list'] as List<dynamic>,
       );
-      if (cachedRaw != null && !cachedRaw.isStale(_cacheTtl))
+      if (cachedRaw != null && !cachedRaw.isStale(_cacheTtl)) {
         return Success(getCachedNames()!);
+      }
     }
 
     if (!await networkInfo.isConnected) {

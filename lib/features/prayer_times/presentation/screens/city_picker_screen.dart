@@ -150,6 +150,7 @@ class _CityPickerScreenState extends ConsumerState<CityPickerScreen> {
               ),
               onTap: () async {
                 await ref.read(manualCityProvider.notifier).select(city);
+                // ignore: use_build_context_synchronously
                 if (mounted) context.pop(true);
               },
             );

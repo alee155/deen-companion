@@ -114,8 +114,9 @@ class IslamicCalendarRepositoryImpl implements IslamicCalendarRepository {
 
     if (!forceRefresh) {
       final cached = cacheStore.read(key, HijriConversionModel.fromJson);
-      if (cached != null && !cached.isStale(_conversionCacheTtl))
+      if (cached != null && !cached.isStale(_conversionCacheTtl)) {
         return Success(cached.data.toEntity());
+      }
     }
 
     if (!await networkInfo.isConnected) {
@@ -157,8 +158,9 @@ class IslamicCalendarRepositoryImpl implements IslamicCalendarRepository {
 
     if (!forceRefresh) {
       final cached = cacheStore.read(key, HijriConversionModel.fromJson);
-      if (cached != null && !cached.isStale(_conversionCacheTtl))
+      if (cached != null && !cached.isStale(_conversionCacheTtl)) {
         return Success(cached.data.toEntity());
+      }
     }
 
     if (!await networkInfo.isConnected) {
@@ -212,8 +214,9 @@ class IslamicCalendarRepositoryImpl implements IslamicCalendarRepository {
         _monthsCacheKey,
         (json) => json['list'] as List<dynamic>,
       );
-      if (cachedRaw != null && !cachedRaw.isStale(_monthsCacheTtl))
+      if (cachedRaw != null && !cachedRaw.isStale(_monthsCacheTtl)) {
         return Success(getCachedMonths()!);
+      }
     }
 
     if (!await networkInfo.isConnected) {
@@ -271,8 +274,9 @@ class IslamicCalendarRepositoryImpl implements IslamicCalendarRepository {
         _eventsCacheKey,
         IslamicEventsBundleModel.fromJson,
       );
-      if (cached != null && !cached.isStale(_eventsCacheTtl))
+      if (cached != null && !cached.isStale(_eventsCacheTtl)) {
         return Success(getCachedEvents()!);
+      }
     }
 
     if (!await networkInfo.isConnected) {

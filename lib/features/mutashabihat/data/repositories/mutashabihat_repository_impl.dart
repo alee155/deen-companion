@@ -50,8 +50,9 @@ class MutashabihatRepositoryImpl implements MutashabihatRepository {
         _infoCacheKey,
         MutashabihatInfoModel.fromJson,
       );
-      if (cached != null && !cached.isStale(_staticCacheTtl))
+      if (cached != null && !cached.isStale(_staticCacheTtl)) {
         return Success(cached.data.toEntity());
+      }
     }
 
     if (!await networkInfo.isConnected) {
@@ -156,8 +157,9 @@ class MutashabihatRepositoryImpl implements MutashabihatRepository {
 
     if (!forceRefresh) {
       final cached = cacheStore.read(key, MutashabihatSurahPageModel.fromJson);
-      if (cached != null && !cached.isStale(_staticCacheTtl))
+      if (cached != null && !cached.isStale(_staticCacheTtl)) {
         return Success(cached.data.toEntity());
+      }
     }
 
     if (!await networkInfo.isConnected) {

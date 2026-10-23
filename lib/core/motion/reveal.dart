@@ -93,8 +93,9 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
     if (fade == null) return widget.child;
     Widget result = widget.child;
     if (_scale != null) result = ScaleTransition(scale: _scale!, child: result);
-    if (_slide != null)
+    if (_slide != null) {
       result = SlideTransition(position: _slide!, child: result);
+    }
     return FadeTransition(opacity: fade, child: result);
   }
 }

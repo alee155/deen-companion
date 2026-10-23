@@ -169,10 +169,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                                   ),
                                   validator: (v) {
                                     final t = v?.trim() ?? '';
-                                    if (t.isEmpty)
+                                    if (t.isEmpty) {
                                       return 'Please enter a group name.';
-                                    if (t.length < 3)
+                                    }
+                                    if (t.length < 3) {
                                       return 'Group name must be at least 3 characters.';
+                                    }
                                     return null;
                                   },
                                   decoration: groupInputDecoration(

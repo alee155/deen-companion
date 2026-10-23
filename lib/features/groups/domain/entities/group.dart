@@ -34,7 +34,7 @@ class Group {
 
   // The API doesn't report these yet; the existing card UI still renders
   // them, so they carry neutral defaults until the backend does.
-  // TODO(groups-backend): map real member count / privacy when available.
+
   final GroupPrivacy privacy;
   final int memberCount;
   final bool requiresApproval;

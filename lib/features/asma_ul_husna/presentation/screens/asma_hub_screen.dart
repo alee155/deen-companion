@@ -265,7 +265,7 @@ class _AsmaHubScreenState extends ConsumerState<AsmaHubScreen> {
                       height: 120.h,
                       borderRadius: 24.r,
                     ),
-                    error: (_, __) => const SizedBox.shrink(),
+                    error: (_, _) => const SizedBox.shrink(),
                   ),
                 ],
               ),

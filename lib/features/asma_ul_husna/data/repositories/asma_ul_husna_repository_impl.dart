@@ -53,8 +53,9 @@ class AsmaUlHusnaRepositoryImpl implements AsmaUlHusnaRepository {
         _allNamesCacheKey,
         (json) => json['list'] as List<dynamic>,
       );
-      if (cachedRaw != null && !cachedRaw.isStale(_staticCacheTtl))
+      if (cachedRaw != null && !cachedRaw.isStale(_staticCacheTtl)) {
         return Success(getCachedAllNames()!);
+      }
     }
 
     if (!await networkInfo.isConnected) {
@@ -98,8 +99,9 @@ class AsmaUlHusnaRepositoryImpl implements AsmaUlHusnaRepository {
 
     if (!forceRefresh) {
       final cached = cacheStore.read(key, AsmaDailyModel.fromJson);
-      if (cached != null && !cached.isStale(_staticCacheTtl))
+      if (cached != null && !cached.isStale(_staticCacheTtl)) {
         return Success(cached.data.toEntity());
+      }
     }
 
     if (!await networkInfo.isConnected) {

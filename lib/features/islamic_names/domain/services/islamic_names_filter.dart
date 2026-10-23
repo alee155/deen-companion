@@ -17,8 +17,9 @@ class IslamicNamesFilter {
   }) {
     return names.where((n) {
       if (genderFilter != 'all' && n.gender != genderFilter) return false;
-      if (originFilters.isNotEmpty && !originFilters.contains(n.origin))
+      if (originFilters.isNotEmpty && !originFilters.contains(n.origin)) {
         return false;
+      }
       if (query.isNotEmpty) {
         final q = query.toLowerCase();
         return n.name.toLowerCase().contains(q) ||
