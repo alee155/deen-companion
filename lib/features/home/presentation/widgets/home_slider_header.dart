@@ -14,6 +14,7 @@ import '../../../daily_content/presentation/providers/daily_content_providers.da
 import '../../../islamic_calendar/presentation/providers/islamic_calendar_providers.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
 import '../../../prayer_times/presentation/providers/prayer_times_provider.dart';
+import '../providers/day_phase_provider.dart';
 import '../providers/home_provider.dart';
 
 const _prayerLabels = {
@@ -24,16 +25,9 @@ const _prayerLabels = {
   PrayerName.isha: 'Isha',
 };
 
-const List<String> _sliderImages = [
-  'assets/images/slider_1.jpg',
-  'assets/images/slider_2.jpg',
-  'assets/images/slider_3.jpg',
-  'assets/images/slider_4.jpg',
-  'assets/images/slider_5.jpg',
-];
-
-/// The image slider + greeting + date/location + next-prayer summary at the
-/// top of Home. Self-contained: owns its own slide timer and reads every
+/// The time-of-day GIF backdrop + greeting + date/location + next-prayer
+/// summary at the top of Home. Self-contained: the backdrop follows
+/// [dayPhaseProvider] and the header reads every
 /// piece of real data (Hijri date, location, next prayer) itself, so the
 /// screen that hosts it only needs to give it a height and a tap target for
 /// the avatar.
@@ -52,32 +46,6 @@ class HomeSliderHeader extends ConsumerStatefulWidget {
 }
 
 class _HomeSliderHeaderState extends ConsumerState<HomeSliderHeader> {
-  late final PageController _pageController;
-  Timer? _sliderTimer;
-  int _currentIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-    _sliderTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (!_pageController.hasClients) return;
-      final nextIndex = (_currentIndex + 1) % _sliderImages.length;
-      _pageController.animateToPage(
-        nextIndex,
-        duration: context.motion.duration(AppMotion.value),
-        curve: AppMotion.standard,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _sliderTimer?.cancel();
-    _pageController.dispose();
-    super.dispose();
-  }
-
   String get _greeting {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good Morning';
@@ -101,13 +69,7 @@ class _HomeSliderHeaderState extends ConsumerState<HomeSliderHeader> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          PageView.builder(
-            controller: _pageController,
-            itemCount: _sliderImages.length,
-            onPageChanged: (index) => setState(() => _currentIndex = index),
-            itemBuilder: (context, index) =>
-                Image.asset(_sliderImages[index], fit: BoxFit.cover),
-          ),
+          _DayPhaseBackdrop(period: ref.watch(dayPhaseProvider)),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -210,28 +172,6 @@ class _HomeSliderHeaderState extends ConsumerState<HomeSliderHeader> {
                         delay: const Duration(milliseconds: 300),
                         fade: false,
                       ),
-                      Row(
-                        children: List.generate(_sliderImages.length, (index) {
-                          final isActive = _currentIndex == index;
-                          return AnimatedContainer(
-                            duration: context.motion.duration(AppMotion.fast),
-                            curve: AppMotion.entrance,
-                            margin: EdgeInsets.only(right: 5.w),
-                            width: isActive ? 22.w : 6.w,
-                            height: 5.h,
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? AppColors.emeraldInk
-                                  : Colors.white.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(5.r),
-                            ),
-                          );
-                        }),
-                      ).slideIn(
-                        RevealDirection.bottomEnd,
-                        delay: const Duration(milliseconds: 340),
-                        distance: 16,
-                      ),
                     ],
                   ),
                 ],
@@ -239,6 +179,27 @@ class _HomeSliderHeaderState extends ConsumerState<HomeSliderHeader> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Full-bleed GIF for the current [DayPhase], cross-fading when it changes.
+class _DayPhaseBackdrop extends StatelessWidget {
+  final DayPhase period;
+  const _DayPhaseBackdrop({required this.period});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: context.motion.duration(AppMotion.slow),
+      child: Image.asset(
+        period.gifAsset,
+        key: ValueKey(period),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        gaplessPlayback: true,
       ),
     );
   }
