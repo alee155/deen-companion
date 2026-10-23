@@ -5,7 +5,8 @@ import 'motion_tokens.dart';
 
 /// Bottom-tab body: keeps every branch alive (like `IndexedStack`, so scroll
 /// position and state survive) but softly fades the newly selected tab in
-/// instead of snapping. Pass to `StatefulShellRoute.navigatorContainerBuilder`.
+/// instead of snapping. Fade only: a slide made the whole screen jump upward
+/// on every tab change. Pass to `StatefulShellRoute.navigatorContainerBuilder`.
 class AnimatedBranchContainer extends StatefulWidget {
   const AnimatedBranchContainer({
     super.key,
@@ -32,10 +33,6 @@ class _AnimatedBranchContainerState extends State<AnimatedBranchContainer>
     begin: 0.35,
     end: 1,
   ).animate(CurvedAnimation(parent: _controller, curve: AppMotion.entrance));
-  late final Animation<Offset> _offset = Tween<Offset>(
-    begin: const Offset(0, 0.015),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _controller, curve: AppMotion.entrance));
 
   @override
   void didUpdateWidget(AnimatedBranchContainer old) {
@@ -55,19 +52,16 @@ class _AnimatedBranchContainerState extends State<AnimatedBranchContainer>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _opacity,
-      child: SlideTransition(
-        position: _offset,
-        child: IndexedStack(
-          index: widget.currentIndex,
-          children: [
-            for (var i = 0; i < widget.children.length; i++)
-              // Inactive tabs stop ticking (their own animations pause).
-              TickerMode(
-                enabled: i == widget.currentIndex,
-                child: widget.children[i],
-              ),
-          ],
-        ),
+      child: IndexedStack(
+        index: widget.currentIndex,
+        children: [
+          for (var i = 0; i < widget.children.length; i++)
+            // Inactive tabs stop ticking (their own animations pause).
+            TickerMode(
+              enabled: i == widget.currentIndex,
+              child: widget.children[i],
+            ),
+        ],
       ),
     );
   }
