@@ -2,11 +2,11 @@ import 'package:equatable/equatable.dart';
 import '../error/failures.dart';
 
 /// Every use case in every feature implements this contract.
-/// [Type] is the success return type, [Params] is the input.
-/// Returning `Result<Type>` (see below) instead of throwing keeps
+/// [T] is the success return type, [Params] is the input.
+/// Returning `Result<T>` (see below) instead of throwing keeps
 /// error handling explicit all the way up to the UI.
-abstract class UseCase<Type, Params> {
-  Future<Result<Type>> call(Params params);
+abstract class UseCase<T, Params> {
+  Future<Result<T>> call(Params params);
 }
 
 /// Lightweight Either-style result type — avoids pulling in dartz/fpdart

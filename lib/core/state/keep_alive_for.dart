@@ -13,7 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// listens again. The returned link lets the caller drop the data early (for
 /// example when the signed-in account changes, so one user's data is never
 /// shown to the next).
-KeepAliveLink keepAliveFor(AutoDisposeRef<Object?> ref, Duration ttl) {
+KeepAliveLink keepAliveFor(Ref<Object?> ref, Duration ttl) {
   final link = ref.keepAlive();
   Timer? timer;
   ref.onCancel(() {

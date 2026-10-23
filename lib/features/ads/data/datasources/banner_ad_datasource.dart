@@ -25,14 +25,15 @@ class BannerAdDataSource {
   }) async {
     debugPrint('[Ads] [Banner] adUnitId = $adUnitId');
 
-    final size = await AdSize.getAnchoredAdaptiveBannerAdSize(
-      Orientation.portrait,
-      width.truncate(),
-    );
+    final size =
+        await AdSize.getLargeAnchoredAdaptiveBannerAdSizeWithOrientation(
+          Orientation.portrait,
+          width.truncate(),
+        );
 
     if (size == null) {
       debugPrint(
-        '[Ads] [Banner] getAnchoredAdaptiveBannerAdSize returned null for width=$width',
+        '[Ads] [Banner] getLargeAnchoredAdaptiveBannerAdSizeWithOrientation returned null for width=$width',
       );
       AppLogger.e('Banner ad: could not resolve an adaptive size');
       return null;

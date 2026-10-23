@@ -7,7 +7,7 @@ import 'auth_session_provider.dart';
 /// signs in, so one person's numbers (and the names on a board) are never
 /// shown to the next. Use it for any auto-dispose provider holding
 /// account-specific data.
-KeepAliveLink keepAliveForSession(AutoDisposeRef<Object?> ref, Duration ttl) {
+KeepAliveLink keepAliveForSession(Ref<Object?> ref, Duration ttl) {
   final link = keepAliveFor(ref, ttl);
   ref.listen(authSessionProvider.select((s) => s.userId), (_, _) {
     link.close();
