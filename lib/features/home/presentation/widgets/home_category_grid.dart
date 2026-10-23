@@ -98,9 +98,24 @@ class HomeCategoryGrid extends StatelessWidget {
       data: homeCategories[index],
       isSelected: selectedIndex == index,
       onTap: () => onSelected(index),
-    ).slideInAt(index, columns: _columns, distance: 18);
+    ).appearOneByOne(index);
   }
 }
+
+extension on Widget {
+  /// Cards appear strictly one after another, left to right and row by row:
+  /// a short fade, rise and scale-up per card. Unlike [AppMotion.stagger]
+  /// this is per card (not per row) and uncapped — there are only eight.
+  Widget appearOneByOne(int index) => Reveal(
+    delay: const Duration(milliseconds: 150) + _cardStep * index,
+    duration: AppMotion.normal,
+    rise: AppMotion.rise,
+    scaleFrom: 0.8,
+    child: this,
+  );
+}
+
+const _cardStep = Duration(milliseconds: 60);
 
 class _CategoryCard extends StatelessWidget {
   final HomeCategory data;
