@@ -1,3 +1,4 @@
+import ActivityKit
 import AlarmKit
 import Flutter
 import SwiftUI
@@ -127,6 +128,17 @@ final class PrayerAlarmController {
     return armed
   }
 
+  /// The adhan on a device. The Simulator's tone library cannot play alarm
+  /// sounds and crashes SpringBoard when handed a custom one, so debug runs
+  /// there use the system default.
+  private var alarmSound: ActivityKit.AlertConfiguration.AlertSound {
+    #if targetEnvironment(simulator)
+      return .default
+    #else
+      return .named(soundFile)
+    #endif
+  }
+
   private func configuration(
     label: String, prayer: String, date: Date, snoozeSeconds: Double?
   ) -> AlarmManager.AlarmConfiguration<PrayerAlarmMetadata> {
@@ -163,6 +175,6 @@ final class PrayerAlarmController {
       },
       schedule: .fixed(date),
       attributes: attributes,
-      sound: .named(soundFile))
+      sound: alarmSound)
   }
 }
