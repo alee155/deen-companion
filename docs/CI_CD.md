@@ -11,6 +11,7 @@ push / pull request
       ├─ quality ───────────► format (changed files) → analyze → test      (always)
       │
       ├─ android ───────────► signed AAB + APK + symbols                   (only [Release], after quality)
+      ├─ ios ───────────────► signed build uploaded to TestFlight          (only [Release], after quality)
       │
       └─ pipeline-status ───► single required check for branch protection
 ```
@@ -77,6 +78,9 @@ manual approval.
 | `ANDROID_KEY_ALIAS` | `keyAlias` from `android/key.properties` |
 | `ANDROID_KEY_PASSWORD` | `keyPassword` from `android/key.properties` |
 | `ADMOB_APP_ID` | `admobAppId` from `android/admob.properties` |
+| `ASC_KEY_ID` | iOS: Key ID of an App Store Connect API key (*Users and Access → Integrations → App Store Connect API*; role **Admin**, so Xcode can create the distribution certificate) |
+| `ASC_ISSUER_ID` | iOS: the Issuer ID shown on that same page |
+| `ASC_KEY_P8_BASE64` | iOS: the downloaded `AuthKey_<id>.p8`, base64: `base64 -i AuthKey_XXXX.p8 \| pbcopy` |
 
 The workflow recreates the same git-ignored files you use locally
 (`config/prod.json`, `android/key.properties`, `android/admob.properties`, the
@@ -88,6 +92,7 @@ GitHub masks them in logs.
 
 | Variable | Purpose |
 | --- | --- |
+| `IOS_BUILD_NUMBER_OFFSET` | Same idea for TestFlight: a build number must exceed every build already uploaded for that version. Defaults to `0`. |
 | `ANDROID_BUILD_NUMBER_OFFSET` | **Set this before the first release.** Google Play needs a `versionCode` higher than any already uploaded. Set it to the highest uploaded code (for example `10`); the first CI build is then `10 + run number`. Defaults to `0`. |
 
 ### 4. Branch protection (recommended)
@@ -123,11 +128,19 @@ never burns build minutes.
 obfuscation and split debug info. The build fails if the APK turns out to be
 signed with a debug key.
 
-**iOS** is not part of the pipeline: the app is currently shipped on Android only.
-When iOS is needed, add a job on a `macos` runner that builds with
-`flutter build ipa` using an Apple distribution certificate, an App Store
-provisioning profile and an App Store Connect API key stored as `release`
-environment secrets.
+**iOS** builds a release with the same entry point, config file, obfuscation and
+build-name/number rules, archives it, and uploads it to TestFlight. It runs on
+`macos-latest` with the latest stable Xcode (prayer alarms need the iOS 26 SDK).
+Signing uses Xcode's automatic signing with the App Store Connect API key, so no
+certificate or provisioning profile is stored as a secret. Needs, once:
+
+- the app record in App Store Connect (bundle id `com.devsouq.deen-companion.app`),
+- the three `ASC_*` secrets above and the `release` environment,
+- the Apple team in `DEVELOPMENT_TEAM` (read from the Xcode project).
+
+The Dart symbols for de-obfuscating crashes are kept as an artifact for 90 days.
+The job has not yet run on GitHub: the first release run is the real test, so
+expect to fix small things (runner Xcode version, API key role).
 
 **Not included (add when needed):** automatic Play Store upload (needs a Google
 service account and the Play Developer API), GitHub Releases, and Slack/email

@@ -1,7 +1,8 @@
 name: CI/CD
 
 # Every push to main / release branches and every pull request runs the quality
-# gate. Release builds (signed Android bundle + APK) are
+# gate. Release builds (signed Android bundle + APK, iOS build uploaded to
+# TestFlight) are
 # produced ONLY for pushes whose commit message contains "[Release]".
 #
 # Setup, secrets and how to cut a release: docs/CI_CD.md
@@ -263,13 +264,140 @@ jobs:
           rm -f android/key.properties android/admob.properties config/prod.json \
             "$RUNNER_TEMP/upload-keystore.jks"
 
+  ios:
+    name: iOS release (TestFlight)
+    needs: [plan, quality]
+    if: needs.plan.outputs.release == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    environment: release
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      # TestFlight needs a build number that only ever goes up per version.
+      IOS_BUILD_NUMBER_OFFSET: ${{ vars.IOS_BUILD_NUMBER_OFFSET || '0' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        # AlarmKit (prayer alarms) needs the iOS 26 SDK or newer.
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: ./.github/actions/setup-flutter
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      - uses: ./.github/actions/write-prod-config
+        with:
+          config-json: ${{ secrets.PROD_CONFIG_JSON }}
+
+      - name: Write App Store Connect API key
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8_BASE64; do
+            [[ -n "${!name// }" ]] || missing+=("$name")
+          done
+          if (( ${#missing[@]} )); then
+            echo "::error::Missing release secret(s): ${missing[*]}. See docs/CI_CD.md."
+            exit 1
+          fi
+          key="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_KEY_P8_BASE64" | base64 --decode > "$key"
+          chmod 600 "$key"
+          echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
+
+      - name: Build Flutter app (no signing yet)
+        run: |
+          set -euo pipefail
+          build_number=$(( GITHUB_RUN_NUMBER + IOS_BUILD_NUMBER_OFFSET ))
+          echo "BUILD_NUMBER=$build_number" >> "$GITHUB_ENV"
+          flutter build ios --release --no-codesign \
+            -t lib/main_prod.dart \
+            --dart-define-from-file=config/prod.json \
+            --build-name="$VERSION" --build-number="$build_number" \
+            --obfuscate --split-debug-info=build/symbols
+
+      - name: Archive
+        # Automatic signing with the API key: Xcode creates and fetches the
+        # distribution certificate and App Store profile itself, so no
+        # certificate or profile has to be stored as a secret.
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Export and upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          team="$(sed -n 's/.*DEVELOPMENT_TEAM = \([A-Z0-9]*\);.*/\1/p' ios/Runner.xcodeproj/project.pbxproj | head -1)"
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${team}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          {
+            echo "### iOS release"
+            echo "- Version: \`$VERSION+$BUILD_NUMBER\`"
+            echo "- Uploaded to App Store Connect (TestFlight processing takes a few minutes)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Dart debug symbols
+        # Needed to de-obfuscate crash stack traces for this exact build.
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-symbols-${{ needs.plan.outputs.version }}+${{ env.BUILD_NUMBER }}
+          path: build/symbols
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Remove secrets from the runner
+        if: always()
+        run: |
+          rm -f config/prod.json "${ASC_KEY_PATH:-/dev/null}"
+
   # ---------------------------------------------------------------------------
   # One stable status to require in branch protection: green only if nothing
   # failed or was cancelled (skipped release jobs are fine).
   # ---------------------------------------------------------------------------
   pipeline-status:
     name: Pipeline status
-    needs: [plan, quality, android]
+    needs: [plan, quality, android, ios]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
