@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/utils/logger.dart';
+import '../domain/prayer_alarm_launch.dart';
 
 /// One scheduled reminder, as the native side expects it.
 class PrayerAlarmEntry {
@@ -83,6 +84,26 @@ class PrayerAlarmChannel {
   /// one-tap "allow unrestricted" request, which Google Play restricts: the
   /// user chooses, and nothing in the app depends on the answer.
   Future<void> openBatterySettings() => _invoke<void>('openBatterySettings');
+
+  /// iOS only: the alarm the user opened the app from, once. Null when the
+  /// app was started some other way.
+  Future<PrayerAlarmLaunch?> consumeAlarmOpen() async {
+    final raw = await _invoke<Map<Object?, Object?>>('consumeAlarmOpen');
+    return raw == null ? null : PrayerAlarmLaunch.fromMap(raw);
+  }
+
+  /// iOS only: rings again in [minutes]. False if it could not be armed.
+  Future<bool> snoozeAlarm({
+    required int minutes,
+    required String prayerName,
+    required String label,
+  }) async =>
+      await _invoke<bool>('snoozeAlarm', {
+        'minutes': minutes,
+        'prayerName': prayerName,
+        'label': label,
+      }) ??
+      false;
 
   Future<T?> _invoke<T>(String method, [Object? arguments]) async {
     try {

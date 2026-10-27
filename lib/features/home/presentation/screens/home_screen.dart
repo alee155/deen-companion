@@ -19,6 +19,7 @@ import '../../../quran/domain/entities/surah_summary.dart';
 import '../../../recent_activity/domain/entities/recent_activity_item.dart';
 import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
 import '../providers/home_recitations_provider.dart';
+import '../../../prayer_reminders/presentation/providers/prayer_alarm_launch_service.dart';
 import '../widgets/home_category_grid.dart';
 import '../widgets/home_recitation_list.dart';
 import '../widgets/home_slider_header.dart';
@@ -45,6 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// need, so no alert ever fails later because of a missing permission.
   Future<void> _startUp() async {
     await ref.read(dailyNotificationServiceProvider).onHomeReady();
+    await ref.read(prayerAlarmLaunchServiceProvider).onHomeReady();
 
     // Android drops a permission request made while another dialog is up,
     // and Home's prayer times ask for location on their own — so wait for

@@ -1,4 +1,6 @@
 import 'package:deen_companion/features/audio_player/presentation/screens/audio_player_screen.dart';
+import 'package:deen_companion/features/prayer_reminders/domain/prayer_alarm_launch.dart';
+import 'package:deen_companion/features/prayer_reminders/presentation/screens/prayer_alarm_screen.dart';
 import 'package:deen_companion/features/explore/presentation/screens/all_features_screen.dart';
 import 'package:deen_companion/features/favorites/presentation/screens/favorites_screen.dart';
 import 'package:deen_companion/features/groups/presentation/screens/create_group_screen.dart';
@@ -188,6 +190,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      // Opened from the "Open" button on a ringing iOS prayer alarm.
+      GoRoute(
+        path: '/prayer-alarm',
+        builder: (context, state) =>
+            PrayerAlarmScreen(launch: state.extra as PrayerAlarmLaunch),
       ),
       GoRoute(
         path: '/daily-content',
