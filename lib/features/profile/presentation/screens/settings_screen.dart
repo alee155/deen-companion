@@ -22,6 +22,7 @@ import '../../../prayer_reminders/presentation/providers/reminders_provider.dart
 import '../../../prayer_times/presentation/providers/prayer_calculation_settings_provider.dart';
 import '../../../prayer_times/presentation/widgets/calculation_settings_sheets.dart';
 import '../widgets/dnd_settings_tile.dart';
+import '../widgets/prayer_silence_guide_tile.dart';
 import '../../../theme/presentation/providers/theme_period_provider.dart';
 import '../widgets/settings_about_card.dart';
 import '../widgets/settings_auto_theme_tile.dart';
@@ -356,6 +357,12 @@ class SettingsScreen extends ConsumerWidget {
                 DndSettingsTile(
                   onTap: () => context.push('/prayer-dnd'),
                 ).slideIn(RevealDirection.bottomEnd, onVisible: true),
+                SizedBox(height: 30.h),
+              ] else if (PlatformSupport.prayerSilenceGuide) ...[
+                const PrayerSilenceGuideTile().slideIn(
+                  RevealDirection.bottomEnd,
+                  onVisible: true,
+                ),
                 SizedBox(height: 30.h),
               ] else
                 SizedBox(height: 18.h),
