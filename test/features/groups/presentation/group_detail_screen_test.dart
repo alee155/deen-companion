@@ -133,24 +133,29 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('delete is locked until the group name is typed', (tester) async {
+  testWidgets('delete spells out what is lost and can be backed out of', (
+    tester,
+  ) async {
     await _pump(tester, me: 'admin1');
     await tester.tap(find.byIcon(Icons.more_horiz_rounded));
     await _settle(tester);
     await tester.tap(find.text('Delete group'));
     await _settle(tester);
-    // Destructive confirmation state is showing, button disabled.
+
+    // The confirmation names the group and every consequence.
     expect(find.textContaining('can’t be undone'), findsOneWidget);
-    FilledButton button() => tester.widget<FilledButton>(
-      find.widgetWithText(FilledButton, 'Delete group'),
+    expect(find.textContaining('is removed for all 2 members'), findsOneWidget);
+    expect(
+      find.textContaining('streaks and activity are lost'),
+      findsOneWidget,
     );
-    expect(button().onPressed, isNull);
-    await tester.enterText(find.byType(TextField), 'wrong name');
-    await tester.pump();
-    expect(button().onPressed, isNull);
-    await tester.enterText(find.byType(TextField), 'Namaz Family Group');
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(button().onPressed, isNotNull);
+    expect(find.textContaining('invite link stops working'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Delete group'), findsOneWidget);
+
+    // Keeping the group closes the sheet without deleting anything.
+    await tester.tap(find.text('Keep group'));
+    await _settle(tester);
+    expect(find.textContaining('can’t be undone'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 
