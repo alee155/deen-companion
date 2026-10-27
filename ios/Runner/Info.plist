@@ -26,8 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Deen Companion uses your location to calculate accurate prayer times and the Qibla direction for where you are.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Deen Companion lets you choose a photo from your library for your profile or group picture.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Deen Companion uses the camera so you can take a photo to share as a snap with your group.</string>
 	<key>UIApplicationSceneManifest</key>
@@ -51,6 +57,10 @@
 			</array>
 		</dict>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
