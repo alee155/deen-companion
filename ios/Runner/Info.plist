@@ -32,6 +32,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Deen Companion only uses your location while the app is open, to calculate accurate prayer times and the Qibla direction for where you are.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Deen Companion uses your location to calculate accurate prayer times and the Qibla direction for where you are.</string>
 	<key>NSMicrophoneUsageDescription</key>
