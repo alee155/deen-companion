@@ -134,7 +134,7 @@ build-name/number rules, archives it, and uploads it to TestFlight. It runs on
 Signing uses Xcode's automatic signing with the App Store Connect API key, so no
 certificate or provisioning profile is stored as a secret. Needs, once:
 
-- the app record in App Store Connect (bundle id `com.devsouq.deencompanion.app`),
+- the app record in App Store Connect (bundle id `com.devsouq.deencompanion.ios`),
 - the three `ASC_*` secrets above and the `release` environment,
 - the Apple team in `DEVELOPMENT_TEAM` (read from the Xcode project).
 
