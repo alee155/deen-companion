@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/group_live/presentation/providers/group_live_store.dart';
 import 'dart:async';
 
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../group_live/_live_support.dart';
 
 class _Session extends AuthSessionNotifier {
   @override
@@ -74,6 +76,9 @@ Future<Completer<GroupDetail>> _pumpScreen(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        groupSummaryRemoteDataSourceProvider.overrideWithValue(
+          FakeSummaryRemote(),
+        ),
         authSessionProvider.overrideWith(_Session.new),
         groupDetailProvider('g1').overrideWith((ref) => completer.future),
         groupPrayersProvider.overrideWith((ref, key) async => const []),
@@ -262,6 +267,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            groupSummaryRemoteDataSourceProvider.overrideWithValue(
+              FakeSummaryRemote(),
+            ),
             authSessionProvider.overrideWith(_Session.new),
             groupDetailProvider(
               'g1',

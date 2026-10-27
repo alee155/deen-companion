@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/group_live/presentation/providers/group_live_store.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/widgets/snap_photo_viewer.dart';
 import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
@@ -22,6 +23,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/streaks/domain/entities/group_streaks.dart';
 import '../../streaks/_streaks_support.dart';
+import '../../group_live/_live_support.dart';
 
 class _Session extends AuthSessionNotifier {
   @override
@@ -128,6 +130,9 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        groupSummaryRemoteDataSourceProvider.overrideWithValue(
+          FakeSummaryRemote(),
+        ),
         authSessionProvider.overrideWith(_Session.new),
         groupDetailProvider('g1').overrideWith((ref) async => _detail),
         streaksRepositoryProvider.overrideWithValue(

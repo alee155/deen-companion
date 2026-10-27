@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/group_live/presentation/providers/group_live_store.dart';
 import 'package:deen_companion/core/config/flavor_config.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
 import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
@@ -18,6 +19,7 @@ import 'package:go_router/go_router.dart';
 
 import '../streaks/_streaks_support.dart';
 import '_stats_support.dart';
+import '../group_live/_live_support.dart';
 
 class _Session extends AuthSessionNotifier {
   @override
@@ -58,6 +60,9 @@ Future<void> pump(WidgetTester tester, {FakeStreaksRepo? streaks}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        groupSummaryRemoteDataSourceProvider.overrideWithValue(
+          FakeSummaryRemote(),
+        ),
         authSessionProvider.overrideWith(_Session.new),
         groupDetailProvider('g1').overrideWith((ref) async => _detail),
         groupPrayersProvider.overrideWith((ref, key) async => const []),

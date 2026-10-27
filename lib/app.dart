@@ -7,6 +7,7 @@ import 'core/motion/motion.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
+import 'features/group_live/presentation/providers/realtime_providers.dart';
 import 'features/theme/presentation/providers/theme_period_provider.dart';
 import 'features/theme/presentation/widgets/theme_crossfade.dart';
 
@@ -18,6 +19,8 @@ class DeenApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     final variant = ref.watch(activeThemeVariantProvider);
     final motionLevel = ref.watch(motionLevelProvider);
+    // Live group updates: connected while signed in, closed at sign-out.
+    ref.watch(realtimeServiceProvider);
 
     return ScreenUtilInit(
       designSize: const Size(375, 812),

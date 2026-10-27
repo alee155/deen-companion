@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/group_live/presentation/providers/group_live_store.dart';
 import 'dart:async';
 
 import 'package:deen_companion/core/config/flavor_config.dart';
@@ -21,6 +22,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../prayer_logs/presentation/_prayer_log_test_support.dart';
 import '../../streaks/_streaks_support.dart';
+import '../../group_live/_live_support.dart';
 
 /// A session whose user a test can switch.
 class _Session extends AuthSessionNotifier {
@@ -96,6 +98,9 @@ _Harness _harness() {
   final feed = _FeedRepo();
   final container = ProviderContainer(
     overrides: [
+      groupSummaryRemoteDataSourceProvider.overrideWithValue(
+        FakeSummaryRemote(),
+      ),
       authSessionProvider.overrideWith(_Session.new),
       groupsRepositoryProvider.overrideWithValue(groups),
       prayerLogsRepositoryProvider.overrideWithValue(feed),

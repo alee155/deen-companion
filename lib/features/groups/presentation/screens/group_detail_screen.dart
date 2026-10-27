@@ -17,8 +17,9 @@ import '../../../prayer_logs/presentation/widgets/snap_photo_viewer.dart';
 import '../../../prayer_logs/presentation/prayer_labels.dart';
 import '../../../prayer_logs/presentation/widgets/prayer_dots_row.dart';
 import '../../domain/entities/group_detail.dart';
+import '../../../group_live/presentation/providers/group_live_store.dart';
+import '../../../group_live/presentation/widgets/live_status_chip.dart';
 import '../../../streaks/domain/entities/group_streaks.dart';
-import '../../../streaks/presentation/providers/streaks_providers.dart';
 import '../providers/groups_providers.dart';
 import '../widgets/delete_group_sheet.dart';
 import '../widgets/edit_group_sheet.dart';
@@ -114,6 +115,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           'the current data stays on screen',
     );
     ref.invalidate(groupPrayersProvider(_feedKey));
+    // Numbers and members come from the summary (a 304 when nothing moved).
+    unawaited(ref.read(groupLiveProvider(widget.groupId).notifier).refresh());
     if (detail) ref.invalidate(groupDetailProvider(widget.groupId));
   }
 
@@ -216,6 +219,19 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Deleted by the admin, or this user was removed: leave the screen.
+    ref.listen(groupLiveProvider(widget.groupId).select((s) => s.gone), (
+      _,
+      gone,
+    ) {
+      if (gone == null || !mounted) return;
+      _toast(
+        gone == GroupGone.deleted
+            ? 'This group was deleted'
+            : 'You’re no longer a member of this group',
+      );
+      Navigator.of(context).maybePop();
+    });
     final async = ref.watch(groupDetailProvider(widget.groupId));
     final myId = ref.watch(authSessionProvider).userId;
     final group = async.valueOrNull;
@@ -310,14 +326,12 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   );
 
   Widget _content(GroupDetail g, String? myId, bool isAdmin) {
-    final board = ref.watch(groupStreakBoardProvider(g.id)).valueOrNull;
+    final board = ref.watch(liveGroupBoardProvider(g.id));
 
     // Today's prayers per member, for the circles on each card. Absent while
     // loading or if it failed (e.g. offline): the cards then show no circles
     // rather than a row of "not logged".
-    final feed = ref
-        .watch(groupPrayersProvider((groupId: g.id, date: null)))
-        .valueOrNull;
+    final feed = ref.watch(liveGroupFeedProvider(g.id));
     final prayersByMember = {
       for (final m in feed ?? const <GroupMemberPrayers>[]) m.userId: m,
     };
@@ -338,8 +352,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
         _cooldown = Timer(minGap, () {});
         ref.invalidate(groupDetailProvider(g.id));
         ref.invalidate(groupPrayersProvider);
-        ref.invalidate(groupStreakBoardProvider(g.id));
-        await ref.read(groupDetailProvider(g.id).future);
+        await Future.wait([
+          ref.read(groupDetailProvider(g.id).future),
+          ref.read(groupLiveProvider(g.id).notifier).refresh(),
+        ]);
       },
       child: CustomScrollView(
         controller: _scroll,
@@ -396,6 +412,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                       ),
                     ),
                   ),
+                  const Spacer(),
+                  const LiveStatusChip(),
                 ],
               ),
             ),

@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/group_live/presentation/providers/group_live_store.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
 import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:deen_companion/features/groups/data/datasources/groups_remote_datasource.dart';
@@ -13,6 +14,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../streaks/_streaks_support.dart';
+import '../../group_live/_live_support.dart';
 
 class _Session extends AuthSessionNotifier {
   final String id;
@@ -79,6 +81,9 @@ Future<_InviteRemote> _pump(WidgetTester tester, {required String me}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        groupSummaryRemoteDataSourceProvider.overrideWithValue(
+          FakeSummaryRemote(),
+        ),
         authSessionProvider.overrideWith(() => _Session(me)),
         groupDetailProvider('g1').overrideWith((ref) async => _detail),
         groupsRemoteDataSourceProvider.overrideWithValue(remote),
