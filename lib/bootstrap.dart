@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'app.dart';
 import 'core/di/providers.dart';
+import 'core/storage/fresh_install_guard.dart';
+import 'core/storage/token_storage.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'core/utils/logger.dart';
 import 'features/ads/presentation/providers/ads_providers.dart';
@@ -42,6 +44,11 @@ Future<void> bootstrap() async {
   debugPrint(
     '[Boot] storage.init() done at +${DateTime.now().difference(bootStart).inMilliseconds}ms',
   );
+
+  await FreshInstallGuard(
+    storage: storageService,
+    tokens: container.read(tokenStorageProvider),
+  ).run();
 
   container.read(themeModeNotifierProvider);
 
