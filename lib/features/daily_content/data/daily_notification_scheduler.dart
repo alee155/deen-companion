@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -49,6 +50,14 @@ class DailyNotificationScheduler {
       await _plugin.initialize(
         settings: const InitializationSettings(
           android: AndroidInitializationSettings(_smallIcon),
+          // The plugin throws on iOS without these. Nothing is requested
+          // here: the permission prompt belongs to the app's own setup flow
+          // (see NotificationPermissionService), not to plugin init.
+          iOS: DarwinInitializationSettings(
+            requestAlertPermission: false,
+            requestBadgePermission: false,
+            requestSoundPermission: false,
+          ),
         ),
         onDidReceiveNotificationResponse: (response) {
           final payload = response.payload;
@@ -84,7 +93,9 @@ class DailyNotificationScheduler {
 
   /// Whether the OS lets the app schedule exact alarms. On Android 14+ this
   /// is denied by default; without it only inexact scheduling is possible.
+  /// iOS has no such gate: local notifications fire at their scheduled time.
   Future<bool> canScheduleExact() async {
+    if (defaultTargetPlatform == TargetPlatform.iOS) return true;
     try {
       return await _android?.canScheduleExactNotifications() ?? false;
     } catch (_) {
@@ -184,6 +195,13 @@ class DailyNotificationScheduler {
           visibility: NotificationVisibility.public,
           ticker: entry.title,
           styleInformation: BigTextStyleInformation(entry.body),
+        ),
+        // Shown as a banner even while the app is open, with sound.
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBanner: true,
+          presentList: true,
+          presentSound: true,
         ),
       ),
       androidScheduleMode: mode,

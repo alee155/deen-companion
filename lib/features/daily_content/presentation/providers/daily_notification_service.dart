@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -156,9 +157,16 @@ class DailyNotificationService with WidgetsBindingObserver {
 
     // One slot per calendar day, at Fajr + offset, future only.
     final byDay = <String, DateTime>{};
+    // iOS keeps at most 64 pending local notifications for the whole app, and
+    // prayer reminders share that budget, so honour the configured window
+    // there. Android has no such cap and keeps arming every cached day.
+    final horizon = defaultTargetPlatform == TargetPlatform.iOS
+        ? now.add(Duration(days: config.windowDays))
+        : null;
     for (final day in loaded.days) {
       final at = day.fajr.add(config.offsetAfterFajr);
       if (!at.isAfter(now)) continue;
+      if (horizon != null && at.isAfter(horizon)) continue;
       byDay.putIfAbsent(DailyContentSelector.dateKey(day.fajr), () => at);
     }
     final dayKeys = byDay.keys.toList()..sort();
