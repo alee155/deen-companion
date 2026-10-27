@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Everything the OS must allow before reminders and notifications can fire
@@ -34,6 +35,22 @@ enum ReliabilityRequirement {
   final IconData icon;
   final String title;
   final String why;
+}
+
+/// Wording per platform: on iOS the last requirement is the alarm permission
+/// (AlarmKit), not Android's full-screen intent.
+extension ReliabilityRequirementText on ReliabilityRequirement {
+  bool get _ios => defaultTargetPlatform == TargetPlatform.iOS;
+
+  String get displayTitle =>
+      this == ReliabilityRequirement.fullScreenAlerts && _ios
+      ? 'Prayer alarms'
+      : title;
+
+  String get displayWhy =>
+      this == ReliabilityRequirement.fullScreenAlerts && _ios
+      ? 'Lets the prayer alarm ring even on silent or in a Focus mode.'
+      : why;
 }
 
 typedef ReliabilityStatus = Map<ReliabilityRequirement, bool>;

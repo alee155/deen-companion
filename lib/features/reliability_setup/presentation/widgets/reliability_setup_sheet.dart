@@ -248,7 +248,7 @@ class _Row extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  requirement.title,
+                  requirement.displayTitle,
                   style: TextStyle(
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w700,
@@ -257,7 +257,7 @@ class _Row extends StatelessWidget {
                 ),
                 SizedBox(height: 2.h),
                 Text(
-                  requirement.why,
+                  requirement.displayWhy,
                   style: TextStyle(
                     fontSize: 11.5.sp,
                     height: 1.35,

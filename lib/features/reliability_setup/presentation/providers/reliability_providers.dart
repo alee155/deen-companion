@@ -32,6 +32,7 @@ class ReliabilityService with WidgetsBindingObserver {
   bool _running = false;
 
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
+  bool get _isIos => defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -63,11 +64,21 @@ class ReliabilityService with WidgetsBindingObserver {
       fullScreen = await alarm.canUseFullScreenIntent();
     }
 
+    // iOS has no exact-alarm gate, and its alarm permission (AlarmKit, iOS
+    // 26+) is asked only where it exists; older iOS reminds by notification.
+    var alarmsOnIos = false;
+    if (_isIos) {
+      final alarm = ref.read(prayerAlarmChannelProvider);
+      alarmsOnIos = await alarm.alarmKitAvailable();
+      if (alarmsOnIos) fullScreen = await alarm.canUseFullScreenIntent();
+    }
+
     return {
       ReliabilityRequirement.location: location.hasPermission,
       ReliabilityRequirement.notifications: notifications,
-      ReliabilityRequirement.exactAlarms: exact,
-      ReliabilityRequirement.fullScreenAlerts: fullScreen,
+      if (!_isIos) ReliabilityRequirement.exactAlarms: exact,
+      if (!_isIos || alarmsOnIos)
+        ReliabilityRequirement.fullScreenAlerts: fullScreen,
     };
   }
 
@@ -97,7 +108,15 @@ class ReliabilityService with WidgetsBindingObserver {
               .read(dailyNotificationSchedulerProvider)
               .requestExactAlarmPermission();
         case ReliabilityRequirement.fullScreenAlerts:
-          await _viaSettings(alarm.openFullScreenIntentSettings);
+          if (_isIos) {
+            // Shows the system prompt the first time; once it has been
+            // answered "no" the only way back is the Settings app.
+            if (!await alarm.notificationsEnabled()) {
+              await _viaSettings(alarm.openFullScreenIntentSettings);
+            }
+          } else {
+            await _viaSettings(alarm.openFullScreenIntentSettings);
+          }
       }
     } catch (error, stackTrace) {
       AppLogger.e(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -37,9 +39,27 @@ class DailyNotificationScheduler {
   /// real id (real ids are the yyyyMMdd integer of the day).
   static const _debugNotificationId = 99000001;
 
+  /// Ids at or above this belong to other features sharing the plugin (the
+  /// iOS prayer-reminder fallback); this class never cancels or reports them.
+  static const foreignIdBase = 300000000;
+
+  /// Payload prefix of those notifications: a tap on one just opens the app.
+  static const foreignPayloadPrefix = 'prayer:';
+
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  final Completer<void> _ready = Completer<void>();
+
+  /// The shared plugin instance, for features that schedule their own
+  /// notifications. Wait for [whenReady] before scheduling.
+  FlutterLocalNotificationsPlugin get plugin => _plugin;
+
+  /// Completes once [init] has finished, so a caller that races app start-up
+  /// never schedules on an uninitialised plugin. Bounded: a failed init must
+  /// not hang the caller.
+  Future<void> whenReady() =>
+      _ready.future.timeout(const Duration(seconds: 10), onTimeout: () {});
 
   /// Call once at launch. [onTap] receives the payload (notification id) of
   /// a notification tapped while the process is alive.
@@ -61,9 +81,12 @@ class DailyNotificationScheduler {
         ),
         onDidReceiveNotificationResponse: (response) {
           final payload = response.payload;
-          if (payload != null) onTap(payload);
+          if (payload != null && !payload.startsWith(foreignPayloadPrefix)) {
+            onTap(payload);
+          }
         },
       );
+      if (!_ready.isCompleted) _ready.complete();
       // Channel importance / lock-screen visibility are fixed at creation,
       // so the earlier channel (created with weaker settings) is replaced.
       await _android?.deleteNotificationChannel(channelId: 'daily_content_v2');
@@ -78,7 +101,11 @@ class DailyNotificationScheduler {
     try {
       final details = await _plugin.getNotificationAppLaunchDetails();
       if (details?.didNotificationLaunchApp ?? false) {
-        return details?.notificationResponse?.payload;
+        final payload = details?.notificationResponse?.payload;
+        if (payload != null && payload.startsWith(foreignPayloadPrefix)) {
+          return null;
+        }
+        return payload;
       }
     } catch (error, stackTrace) {
       AppLogger.e('Reading launch details failed', error, stackTrace);
@@ -151,7 +178,7 @@ class DailyNotificationScheduler {
       final pending = await _plugin.pendingNotificationRequests();
       return {
         for (final p in pending)
-          if (p.payload != null) p.payload!,
+          if (p.id < foreignIdBase && p.payload != null) p.payload!,
       };
     } catch (error, stackTrace) {
       AppLogger.e('Reading pending notifications failed', error, stackTrace);
@@ -231,6 +258,7 @@ class DailyNotificationScheduler {
       final pending = await _plugin.pendingNotificationRequests();
       for (final p in pending) {
         if (keepDebug && p.id == _debugNotificationId) continue;
+        if (p.id >= foreignIdBase) continue;
         await _plugin.cancel(id: p.id);
       }
     } catch (error, stackTrace) {

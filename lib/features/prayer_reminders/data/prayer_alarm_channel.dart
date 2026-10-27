@@ -64,6 +64,12 @@ class PrayerAlarmChannel {
   Future<bool> notificationsEnabled() async =>
       await _invoke<bool>('requestNotificationPermission') ?? false;
 
+  /// iOS only: whether AlarmKit (iOS 26+) can ring alarms through silent and
+  /// Focus. False everywhere else, including older iOS, where reminders fall
+  /// back to ordinary notifications.
+  Future<bool> alarmKitAvailable() async =>
+      await _invoke<bool>('alarmKitAvailable') ?? false;
+
   Future<bool> canUseFullScreenIntent() async =>
       await _invoke<bool>('checkFullScreenIntentPermission') ?? true;
 

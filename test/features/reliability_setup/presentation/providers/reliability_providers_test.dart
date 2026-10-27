@@ -139,9 +139,9 @@ void main() {
     );
 
     test(
-      'non-Android: Android-only gates are assumed fine and never queried',
+      'neither Android nor iOS: Android-only gates are assumed fine',
       () async {
-        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
         when(() => scheduler.canScheduleExact()).thenAnswer((_) async => false);
         final s = await svc(make()).check();
         expect(s[ReliabilityRequirement.exactAlarms], isTrue);
@@ -150,6 +150,30 @@ void main() {
         verifyNever(() => alarm.canUseFullScreenIntent());
       },
     );
+
+    test(
+      'iOS with AlarmKit: no exact-alarm row, alarm permission asked',
+      () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        when(() => alarm.alarmKitAvailable()).thenAnswer((_) async => true);
+        when(
+          () => alarm.canUseFullScreenIntent(),
+        ).thenAnswer((_) async => false);
+        final s = await svc(make()).check();
+        expect(s.containsKey(ReliabilityRequirement.exactAlarms), isFalse);
+        expect(s[ReliabilityRequirement.fullScreenAlerts], isFalse);
+        verifyNever(() => scheduler.canScheduleExact());
+      },
+    );
+
+    test('iOS without AlarmKit: no alarm rows at all', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      when(() => alarm.alarmKitAvailable()).thenAnswer((_) async => false);
+      final s = await svc(make()).check();
+      expect(s.containsKey(ReliabilityRequirement.exactAlarms), isFalse);
+      expect(s.containsKey(ReliabilityRequirement.fullScreenAlerts), isFalse);
+      verifyNever(() => alarm.canUseFullScreenIntent());
+    });
   });
 
   group('request()', () {

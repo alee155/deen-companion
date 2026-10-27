@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
@@ -9,6 +10,7 @@ import '../../../prayer_times/presentation/providers/prayer_times_loader.dart'
     show prayerTimesUpdatedProvider;
 import '../../../prayer_times/presentation/providers/upcoming_prayer_days.dart';
 import '../../data/prayer_alarm_channel.dart';
+import '../../data/prayer_notification_fallback.dart';
 import '../../domain/prayer_reminder_prefs.dart';
 
 const _prayerLabels = {
@@ -150,7 +152,7 @@ class PrayerReminderService {
       // Every prayer switched off: nothing to arm, and anything armed
       // earlier must go.
       FlowLog.log(_tag, 'NO PRAYER SELECTED -> CANCELLING ALL ALARMS');
-      await channel.cancelAll();
+      await cancelAll();
       return const ReminderSyncScheduled(0, 0);
     }
 
@@ -170,7 +172,19 @@ class PrayerReminderService {
       'snoozeOnFor': entries.where((e) => e.snoozeEnabled).length,
     });
 
-    final armed = await channel.pushSchedule(entries);
+    var armed = await channel.pushSchedule(entries);
+    if (_isIos && (armed == null || armed == 0)) {
+      // No AlarmKit (iOS before 26) or its permission was declined: ordinary
+      // notifications still remind, they just can't ring through silent.
+      FlowLog.log(
+        _tag,
+        'ALARMKIT UNAVAILABLE -> FALLING BACK TO NOTIFICATIONS',
+      );
+      armed = await ref
+          .read(prayerNotificationFallbackProvider)
+          .pushSchedule(entries);
+      if (armed == 0) armed = null;
+    }
     if (armed == null) {
       FlowLog.error(_tag, 'NATIVE SCHEDULER UNAVAILABLE on this device');
       return const ReminderSyncFailed(
@@ -192,7 +206,10 @@ class PrayerReminderService {
   Future<void> cancelAll() async {
     FlowLog.log(_tag, 'CANCELLING ALL ALARMS (reminders switched off)');
     await ref.read(prayerAlarmChannelProvider).cancelAll();
+    if (_isIos) await ref.read(prayerNotificationFallbackProvider).cancelAll();
   }
+
+  bool get _isIos => defaultTargetPlatform == TargetPlatform.iOS;
 
   List<PrayerAlarmEntry> _buildEntries(
     List<PrayerTimes> days,
