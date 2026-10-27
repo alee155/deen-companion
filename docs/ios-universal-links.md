@@ -19,7 +19,7 @@ Serve this at
   "applinks": {
     "details": [
       {
-        "appIDs": ["22SSYM39V3.com.devsouq.deen-companion.app"],
+        "appIDs": ["22SSYM39V3.com.devsouq.deencompanion.app"],
         "components": [{ "/": "/invite/*" }]
       }
     ]
