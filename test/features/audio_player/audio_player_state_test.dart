@@ -76,5 +76,28 @@ void main() {
       const s = AudioPlayerState(track: track);
       expect(s.copyWith(track: null).track, track);
     });
+
+    test('plays at normal speed until told otherwise', () {
+      expect(const AudioPlayerState().speed, 1.0);
+    });
+
+    test('copyWith can change the speed and nothing else', () {
+      const s = AudioPlayerState(track: track, isLooping: true);
+      final c = s.copyWith(speed: 1.25);
+
+      expect(c.speed, 1.25);
+      expect(c.track, track);
+      expect(c.isLooping, isTrue);
+    });
+
+    test('the speed survives changes to other fields', () {
+      const s = AudioPlayerState(speed: 1.5);
+      final c = s.copyWith(
+        isPlaying: true,
+        position: const Duration(seconds: 3),
+      );
+
+      expect(c.speed, 1.5);
+    });
   });
 }

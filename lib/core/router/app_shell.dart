@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/audio_player/presentation/providers/audio_player_provider.dart';
+import '../../features/audio_player/presentation/providers/surah_navigation.dart';
 import '../../features/audio_player/presentation/widgets/mini_player_bar.dart';
 import '../motion/motion.dart';
 import '../widgets/floating_nav_bar.dart';
@@ -68,6 +69,7 @@ class AppShell extends ConsumerWidget {
                   : MiniPlayerBar(
                       key: const ValueKey('mini'),
                       title: audioState.track!.titleEnglish,
+                      titleArabic: audioState.track!.titleArabic,
                       subtitle: audioState.track!.reciterName,
                       isPlaying: audioState.isPlaying,
                       progress: audioState.duration.inMilliseconds == 0
@@ -78,6 +80,7 @@ class AppShell extends ConsumerWidget {
                       onPlayPause: () => ref
                           .read(audioPlayerNotifierProvider.notifier)
                           .togglePlayPause(),
+                      onNext: () => playAdjacentSurah(ref, delta: 1),
                       onClose: () =>
                           ref.read(audioPlayerNotifierProvider.notifier).stop(),
                     ),

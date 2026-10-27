@@ -13,6 +13,9 @@ class AudioPlayerState {
   final Duration duration;
   final bool isLooping;
 
+  /// Playback speed multiplier (1.0 = normal).
+  final double speed;
+
   /// Time remaining on the sleep timer, ticking down once per second.
   /// Null means no timer is running.
   final Duration? sleepTimerRemaining;
@@ -23,6 +26,7 @@ class AudioPlayerState {
     this.position = Duration.zero,
     this.duration = Duration.zero,
     this.isLooping = false,
+    this.speed = 1.0,
     this.sleepTimerRemaining,
   });
 
@@ -35,6 +39,7 @@ class AudioPlayerState {
     Duration? position,
     Duration? duration,
     bool? isLooping,
+    double? speed,
     Duration? sleepTimerRemaining,
     bool clearTrack = false,
     bool clearSleepTimer = false,
@@ -45,6 +50,7 @@ class AudioPlayerState {
       position: position ?? this.position,
       duration: duration ?? this.duration,
       isLooping: isLooping ?? this.isLooping,
+      speed: speed ?? this.speed,
       sleepTimerRemaining: clearSleepTimer
           ? null
           : (sleepTimerRemaining ?? this.sleepTimerRemaining),
@@ -115,7 +121,11 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     // A new track starting is exactly when a leftover sleep timer from
     // the previous track should NOT silently keep running against it.
     _sleepTimerTicker?.cancel();
-    state = AudioPlayerState(track: track, isLooping: wasLooping);
+    state = AudioPlayerState(
+      track: track,
+      isLooping: wasLooping,
+      speed: state.speed,
+    );
     try {
       await _player.setAudioSource(
         AudioSource.uri(
@@ -140,6 +150,12 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
         stackTrace,
       );
     }
+  }
+
+  /// Plays faster or slower without changing pitch. Kept across surahs.
+  Future<void> setSpeed(double speed) async {
+    await _player.setSpeed(speed);
+    state = state.copyWith(speed: speed);
   }
 
   Future<void> togglePlayPause() async {
