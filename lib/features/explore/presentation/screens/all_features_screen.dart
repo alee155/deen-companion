@@ -78,7 +78,7 @@ class _AllFeaturesScreenState extends ConsumerState<AllFeaturesScreen> {
   @override
   Widget build(BuildContext context) {
     final query = _search.text.trim().toLowerCase();
-    final all = ExploreCatalog.all;
+    final all = ExploreCatalog.available;
     final matches = all
         .where(
           (c) =>

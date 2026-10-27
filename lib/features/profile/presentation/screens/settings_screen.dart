@@ -1,3 +1,4 @@
+import '../../../../core/device/platform_support.dart';
 import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -351,10 +352,13 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ).slideIn(RevealDirection.bottom, onVisible: true),
               SizedBox(height: 12.h),
-              DndSettingsTile(
-                onTap: () => context.push('/prayer-dnd'),
-              ).slideIn(RevealDirection.bottomEnd, onVisible: true),
-              SizedBox(height: 30.h),
+              if (PlatformSupport.prayerDnd) ...[
+                DndSettingsTile(
+                  onTap: () => context.push('/prayer-dnd'),
+                ).slideIn(RevealDirection.bottomEnd, onVisible: true),
+                SizedBox(height: 30.h),
+              ] else
+                SizedBox(height: 18.h),
 
               const SettingsSectionLabel('ISLAMIC CALENDAR').slideIn(
                 RevealDirection.topStart,

@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/share_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/seal_number_badge.dart';
@@ -64,7 +64,8 @@ class _MutashabihatSimilarVerseCardState
     ).showSnackBar(const SnackBar(content: Text('Verse copied')));
   }
 
-  Future<void> _share() => Share.share(
+  Future<void> _share() => shareText(
+    context,
     _shareTextFor(widget.verse),
     subject: widget.verse.surahNameEnglish,
   );

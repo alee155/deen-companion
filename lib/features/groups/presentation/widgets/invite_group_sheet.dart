@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/share_text.dart';
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
@@ -181,7 +181,8 @@ class _InviteGroupSheetState extends ConsumerState<InviteGroupSheet> {
                     icon: Icons.ios_share_rounded,
                     onPressed: resetting
                         ? null
-                        : () => Share.share(
+                        : () => shareText(
+                            context,
                             'Join “${widget.group.name}” on Deen Companion: '
                             '${invite.url}',
                           ),

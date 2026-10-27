@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/share_text.dart';
 
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -125,7 +125,8 @@ class _DailyContentScreenState extends ConsumerState<DailyContentScreen> {
                                 'Ayah ${data.ayah.verseKey}',
                             arabic: data.ayah.arabic,
                             translation: data.ayah.translation,
-                            onShare: () => Share.share(data.ayah.toShareText()),
+                            onShare: () =>
+                                shareText(context, data.ayah.toShareText()),
                           ).slideIn(RevealDirection.bottom, distance: 18),
                           SizedBox(height: 16.h),
                           DailyReadingSection(
@@ -142,7 +143,7 @@ class _DailyContentScreenState extends ConsumerState<DailyContentScreen> {
                                 ? null
                                 : 'Grade: ${data.hadith.grade.trim()}',
                             onShare: () =>
-                                Share.share(data.hadith.toShareText()),
+                                shareText(context, data.hadith.toShareText()),
                           ).slideIn(
                             RevealDirection.bottom,
                             distance: 18,

@@ -1,3 +1,4 @@
+import '../../../../core/device/platform_support.dart';
 import 'package:flutter/material.dart';
 import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -126,15 +127,16 @@ class _PrayerSettingsSheet extends ConsumerWidget {
                 context.push('/reminders');
               },
             ),
-            tile(
-              Icons.do_not_disturb_on_rounded,
-              'Do Not Disturb',
-              'Silence your phone during prayer',
-              () {
-                Navigator.of(context).pop();
-                context.push('/prayer-dnd');
-              },
-            ),
+            if (PlatformSupport.prayerDnd)
+              tile(
+                Icons.do_not_disturb_on_rounded,
+                'Do Not Disturb',
+                'Silence your phone during prayer',
+                () {
+                  Navigator.of(context).pop();
+                  context.push('/prayer-dnd');
+                },
+              ),
             tile(Icons.my_location_rounded, 'Refresh location & times', '', () {
               Navigator.of(context).pop();
               ref.read(prayerTimesNotifierProvider.notifier).refresh();

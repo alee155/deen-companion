@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/device/platform_support.dart';
 import '../../core/theme/app_colors.dart';
 
 /// Which accent family a catalog entry belongs to.
@@ -178,6 +179,12 @@ class ExploreCatalog {
       group: 'Tools',
       route: '/prayer-dnd',
     ),
+  ];
+
+  /// The entries this platform can actually open.
+  static List<ExploreCategory> get available => [
+    for (final c in all)
+      if (c.id != 'prayer_dnd' || PlatformSupport.prayerDnd) c,
   ];
 
   static const List<String> homePreviewIds = [

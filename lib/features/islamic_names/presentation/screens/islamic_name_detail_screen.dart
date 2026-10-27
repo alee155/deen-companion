@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/share_text.dart';
 
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -99,7 +99,8 @@ class _IslamicNameDetailScreenState
   }
 
   void _share() {
-    Share.share(
+    shareText(
+      context,
       '${name.name} (${name.arabic}) — ${name.meaning}.\n'
       'Discover more Islamic names in Deen Companion.',
     );

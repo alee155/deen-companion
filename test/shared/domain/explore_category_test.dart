@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:deen_companion/core/theme/app_colors.dart';
 import 'package:deen_companion/shared/domain/explore_category.dart';
 import 'package:deen_companion/shared/domain/explore_icon_assets.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -61,5 +62,21 @@ void main() {
       if (seen.isEmpty || seen.last != c.group) seen.add(c.group);
     }
     expect(seen.toSet(), hasLength(seen.length));
+  });
+
+  group('available', () {
+    tearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    test('offers Prayer DND on Android', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      expect(ExploreCatalog.available.map((c) => c.id), contains('prayer_dnd'));
+    });
+
+    test('hides Prayer DND on iOS and keeps everything else', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      final ids = ExploreCatalog.available.map((c) => c.id).toList();
+      expect(ids, isNot(contains('prayer_dnd')));
+      expect(ids, hasLength(ExploreCatalog.all.length - 1));
+    });
   });
 }

@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/share_text.dart';
 
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -123,7 +123,7 @@ class _HadithReadingScreenState extends ConsumerState<HadithReadingScreen>
   }
 
   Future<void> _share(Hadith hadith) =>
-      Share.share(hadith.toShareText(), subject: hadith.collectionName);
+      shareText(context, hadith.toShareText(), subject: hadith.collectionName);
 
   /// Switch books without going back to the library first.
   Future<void> _switchCollection() async {

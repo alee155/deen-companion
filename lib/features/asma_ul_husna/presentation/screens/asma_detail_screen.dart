@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/share_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../shared/widgets/warm_gradient_scaffold.dart';
@@ -215,7 +215,7 @@ class _AsmaDetailScreenState extends ConsumerState<AsmaDetailScreen> {
               color: AppColors.textMuted,
               size: 20.sp,
             ),
-            onPressed: () => Share.share(_shareText(_current)),
+            onPressed: () => shareText(context, _shareText(_current)),
           ),
           Padding(
             padding: EdgeInsets.only(right: 8.w),

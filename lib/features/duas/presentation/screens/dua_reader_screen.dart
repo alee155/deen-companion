@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/share_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../shared/widgets/islamic_ornaments.dart';
@@ -546,7 +546,7 @@ class _DuaReaderScreenState extends ConsumerState<DuaReaderScreen>
                 SizedBox(width: 8.w),
                 _roundAction(
                   Icons.ios_share_rounded,
-                  () => Share.share(_text(d)),
+                  () => shareText(context, _text(d)),
                 ),
               ],
             ),

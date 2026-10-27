@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/share_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/providers/reading_preferences_provider.dart';
@@ -52,8 +52,11 @@ class JuzVerseTile extends StatelessWidget {
     );
   }
 
-  Future<void> _share() =>
-      Share.share(_shareTextFor(verse, _translation), subject: verse.surahName);
+  Future<void> _share(BuildContext context) => shareText(
+    context,
+    _shareTextFor(verse, _translation),
+    subject: verse.surahName,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +100,7 @@ class JuzVerseTile extends StatelessWidget {
                   ),
                 ),
                 PopupMenuItem(
-                  value: _share,
+                  value: () => _share(context),
                   child: Row(
                     children: [
                       Icon(
