@@ -1,4 +1,5 @@
 import 'package:deen_companion/core/cache/cache_first_stream_notifier.dart';
+import 'package:deen_companion/core/connectivity/presentation/providers/connectivity_providers.dart';
 import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,6 +34,19 @@ class _FN extends FamilyCacheFirstStreamNotifier<String, int> {
 }
 
 final _fp = StreamNotifierProvider.family<_FN, String, int>(_FN.new);
+
+class _Flaky extends FamilyCacheFirstStreamNotifier<String, int> {
+  static bool offline = true;
+
+  @override
+  String? readCache(int arg) => null;
+  @override
+  Future<Result<String>> fetchFresh(int arg) async {
+    return offline ? const Error(NetworkFailure()) : Success('fresh$arg');
+  }
+}
+
+final _flaky = StreamNotifierProvider.family<_Flaky, String, int>(_Flaky.new);
 
 Future<List<AsyncValue<String>>> _collect(
   ProviderContainer c,
@@ -117,6 +131,84 @@ void main() {
     test('error without cache for arg', () async {
       final seen = await _collect(c, _fp(3));
       expect(seen.last.error, isA<NetworkFailure>());
+    });
+  });
+
+  group('when the connection comes back', () {
+    void restore() => c.read(connectionRestoredProvider.notifier).state++;
+
+    test('a screen whose first load failed fills in by itself', () async {
+      _cfg.result = const Error(NetworkFailure());
+      final seen = <AsyncValue<String>>[];
+      c.listen(_p, (_, n) => seen.add(n), fireImmediately: true);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(seen.last.hasError, isTrue);
+
+      _cfg.result = const Success('fresh');
+      restore();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(c.read(_p).value, 'fresh');
+      expect(_cfg.fetches, 2);
+    });
+
+    test(
+      'cached content shown after a failed refresh is brought up to date',
+      () async {
+        _cfg
+          ..cache = 'old'
+          ..result = const Error(NetworkFailure());
+        c.listen(_p, (_, _) {}, fireImmediately: true);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(c.read(_p).value, 'old');
+
+        _cfg.result = const Success('new');
+        restore();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(c.read(_p).value, 'new');
+      },
+    );
+
+    test('a screen that loaded fine is left alone', () async {
+      c.listen(_p, (_, _) {}, fireImmediately: true);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(_cfg.fetches, 1);
+
+      restore();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(_cfg.fetches, 1, reason: 'no needless request');
+    });
+
+    test('it retries once per return, not in a loop', () async {
+      _cfg.result = const Error(NetworkFailure());
+      c.listen(_p, (_, _) {}, fireImmediately: true);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      restore();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(
+        _cfg.fetches,
+        2,
+        reason: 'still offline: one retry, then it waits',
+      );
+    });
+
+    test('family screens recover too, each by its own argument', () async {
+      _Flaky.offline = true;
+      c.listen(_flaky(7), (_, _) {}, fireImmediately: true);
+      c.listen(_flaky(8), (_, _) {}, fireImmediately: true);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(c.read(_flaky(7)).hasError, isTrue);
+
+      _Flaky.offline = false;
+      restore();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(c.read(_flaky(7)).value, 'fresh7');
+      expect(c.read(_flaky(8)).value, 'fresh8');
     });
   });
 }

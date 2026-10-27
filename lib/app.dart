@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'core/connectivity/presentation/widgets/connectivity_banner.dart';
 import 'core/constants/app_constants.dart';
 import 'core/motion/motion.dart';
 import 'core/router/app_router.dart';
@@ -58,9 +59,13 @@ class DeenApp extends ConsumerWidget {
           // navigation survive) and fades, see [ThemeCrossfade].
           builder: (context, child) => MotionScope(
             level: motionLevel,
-            child: ThemeCrossfade(
-              variant: variant,
-              child: child ?? const SizedBox(),
+            // Connection status sits above the whole app (screens, sheets and
+            // dialogs alike), so it is visible wherever the user is.
+            child: ConnectivityBanner(
+              child: ThemeCrossfade(
+                variant: variant,
+                child: child ?? const SizedBox(),
+              ),
             ),
           ),
         );
