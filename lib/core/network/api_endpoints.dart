@@ -12,6 +12,10 @@ class ApiEndpoints {
   static const String deenHost = 'deencompanion.dgexpense.com';
   static const String _deenBase = 'https://$deenHost/api';
 
+  /// Socket.IO namespace for live group events. Outside `/api`; the token goes
+  /// in the handshake `auth` object, never in the URL.
+  static const String realtime = 'https://$deenHost/realtime';
+
   /// Aladhan Prayer Times API
   static const String _aladhanBase = 'https://api.aladhan.com/v1';
 
@@ -236,6 +240,8 @@ class ApiEndpoints {
       '$_deenBase/invites/${Uri.encodeComponent(token)}/join';
   static String groupAvatar(String id) =>
       '$_deenBase/groups/${Uri.encodeComponent(id)}/avatar';
+  static String groupSummary(String id) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/summary';
   static String groupMember(String groupId, String userId) =>
       '$_deenBase/groups/$groupId/members/$userId';
   static String groupLeave(String groupId) =>

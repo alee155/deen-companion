@@ -96,6 +96,17 @@ class MyGroupsNotifier extends AsyncNotifier<List<Group>> {
     return result;
   }
 
+  /// The group is gone for this user (deleted, or they were removed): drop it
+  /// from the list without a request.
+  void dropLocally(String groupId) {
+    final groups = state.valueOrNull;
+    if (groups == null || groups.every((g) => g.id != groupId)) return;
+    state = AsyncData([
+      for (final g in groups)
+        if (g.id != groupId) g,
+    ]);
+  }
+
   /// Admin only.
   Future<Result<void>> deleteGroup(String groupId) async {
     final result = await ref
