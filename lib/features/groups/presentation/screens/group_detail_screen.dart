@@ -32,6 +32,9 @@ import '../widgets/remove_member_sheet.dart';
 import '../../../snaps/presentation/providers/snap_providers.dart';
 import '../../../snaps/presentation/snap_entry.dart';
 import '../widgets/send_snap_button.dart';
+import '../../../moderation/domain/entities/report_target.dart';
+import '../../../moderation/presentation/moderation_flows.dart';
+import '../../../moderation/presentation/providers/moderation_providers.dart';
 import '../widgets/member_detail_sheet.dart';
 import '../widgets/snap_widgets.dart';
 
@@ -481,11 +484,24 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     final isMe = m.userId == myId;
     // Admins can open anyone's details; other members only their own.
     final canOpen = isAdmin || isMe;
+    // A blocked member's snaps are hidden from the viewer.
+    final isBlocked = ref.watch(blockedUserIdsProvider).contains(m.userId);
     // Photos are for the other members: the sender does not open their own.
-    final photoAvailable = !isMe && prayers?.latestPhotoLog != null;
+    final photoAvailable =
+        !isMe && !isBlocked && prayers?.latestPhotoLog != null;
+    final safetyUser = SafetyUser(
+      id: m.userId,
+      name: m.displayName,
+      avatarUrl: m.avatarUrl,
+    );
     return MemberSnapTile(
       member: m,
       hasPhoto: photoAvailable,
+      isBlocked: isBlocked,
+      // Everyone can report or block another member, whatever their role.
+      onMore: isMe
+          ? null
+          : () => showUserSafetyActions(context, ref, user: safetyUser),
       streak: streak,
       prayersToday: prayers?.loggedCount,
       pointsToday: prayers?.totalPoints,
@@ -505,9 +521,12 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               ? null
               : PrayerDotsRow(
                   member: prayers,
-                  viewable: !isMe,
+                  viewable: !isMe && !isBlocked,
                   showLabels: true,
                   size: 36,
+                  onSnapAction: isMe
+                      ? null
+                      : (log, action) => _onSnapAction(m, log.id, action),
                 ),
         );
         if (action == MemberSheetAction.remove && mounted) {
@@ -541,6 +560,12 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       if (f.userId == m.userId) theirs = f;
     }
     final log = theirs?.latestPhotoLog;
+    if (ref.read(blockedUserIdsProvider).contains(m.userId)) {
+      _toast(
+        'You’ve blocked ${m.displayName}. Unblock them to see their snaps.',
+      );
+      return;
+    }
     if (log == null) {
       FlowLog.log('GROUP FEED', 'NO PHOTO AVAILABLE for ${m.displayName}');
       _toast('No photo to show right now');
@@ -550,13 +575,39 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       'GROUP FEED',
       'OPENING ${m.displayName}\'S ${log.prayer.name.toUpperCase()} PHOTO',
     );
-    await showSnapPhoto(
+    final action = await showSnapPhoto(
       context,
       url: log.snapUrl!,
       title: m.displayName,
       subtitle: '${log.prayer.label} · ${timeAgo(log.loggedAt)}',
       avatar: MemberAvatar(member: m, size: 38.w),
       duration: log.viewDuration(),
+      canModerate: true,
     );
+    if (action != null && mounted) _onSnapAction(m, log.id, action);
+  }
+
+  /// The viewer's ⋯ menu: report this snap, or block the person.
+  void _onSnapAction(GroupMember m, String logId, SnapViewerAction action) {
+    final user = SafetyUser(
+      id: m.userId,
+      name: m.displayName,
+      avatarUrl: m.avatarUrl,
+    );
+    switch (action) {
+      case SnapViewerAction.report:
+        startReport(
+          context,
+          ref,
+          ReportSnapTarget(
+            snapId: logId,
+            userId: m.userId,
+            userName: m.displayName,
+          ),
+          avatarUrl: m.avatarUrl,
+        );
+      case SnapViewerAction.block:
+        startBlock(context, ref, user);
+    }
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
 import '../../domain/group_member_prayers.dart';
+import '../../domain/prayer_log.dart';
 import '../prayer_labels.dart';
 import 'snap_photo_viewer.dart';
 
@@ -25,18 +26,28 @@ class PrayerDotsRow extends StatelessWidget {
   /// Off for a compact row; on where there is room, such as the member sheet.
   final bool showLabels;
 
+  /// When set, the opened photo has a ⋯ menu (report / block), and this is told
+  /// which prayer's photo and what was chosen. Null on the viewer's own row.
+  final void Function(PrayerLog log, SnapViewerAction action)? onSnapAction;
+
   const PrayerDotsRow({
     super.key,
     required this.member,
     this.size = 22,
     this.viewable = true,
     this.showLabels = false,
+    this.onSnapAction,
   });
 
   @override
   Widget build(BuildContext context) {
-    Widget dot(PrayerName p) =>
-        _Dot(member: member, prayer: p, size: size, viewable: viewable);
+    Widget dot(PrayerName p) => _Dot(
+      member: member,
+      prayer: p,
+      size: size,
+      viewable: viewable,
+      onSnapAction: onSnapAction,
+    );
 
     if (showLabels) {
       return Row(
@@ -78,11 +89,13 @@ class _Dot extends StatelessWidget {
   final PrayerName prayer;
   final double size;
   final bool viewable;
+  final void Function(PrayerLog log, SnapViewerAction action)? onSnapAction;
   const _Dot({
     required this.member,
     required this.prayer,
     required this.size,
     required this.viewable,
+    required this.onSnapAction,
   });
 
   @override
@@ -95,12 +108,16 @@ class _Dot extends StatelessWidget {
       child: GestureDetector(
         onTap: url == null || !viewable
             ? null
-            : () => showSnapPhoto(
-                context,
-                url: url,
-                title: '${member.displayName} · ${prayer.label}',
-                duration: log!.viewDuration(),
-              ),
+            : () async {
+                final action = await showSnapPhoto(
+                  context,
+                  url: url,
+                  title: '${member.displayName} · ${prayer.label}',
+                  duration: log!.viewDuration(),
+                  canModerate: onSnapAction != null,
+                );
+                if (action != null) onSnapAction?.call(log, action);
+              },
         child: Container(
           width: size.w,
           height: size.w,

@@ -1,4 +1,5 @@
 import 'package:deen_companion/features/audio_player/presentation/screens/audio_player_screen.dart';
+import 'package:deen_companion/features/moderation/presentation/screens/blocked_users_screen.dart';
 import 'package:deen_companion/features/prayer_reminders/domain/prayer_alarm_launch.dart';
 import 'package:deen_companion/features/prayer_reminders/presentation/screens/prayer_alarm_screen.dart';
 import 'package:deen_companion/features/explore/presentation/screens/all_features_screen.dart';
@@ -147,6 +148,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/groups/:groupId/stats',
         builder: (context, state) =>
             GroupStatisticsScreen(groupId: state.pathParameters['groupId']!),
+      ),
+      // Settings > Blocked users.
+      GoRoute(
+        path: '/blocked-users',
+        builder: (context, state) => const BlockedUsersScreen(),
       ),
       // Send-a-snap flow (camera → crop → timer → choose groups). From the
       // groups list the user chooses; from a group it is already chosen.

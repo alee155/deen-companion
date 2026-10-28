@@ -21,6 +21,7 @@ import '../../../prayer_reminders/debug/prayer_alarm_debug_harness.dart';
 import '../../../prayer_reminders/presentation/providers/reminders_provider.dart';
 import '../../../prayer_times/presentation/providers/prayer_calculation_settings_provider.dart';
 import '../../../prayer_times/presentation/widgets/calculation_settings_sheets.dart';
+import '../../../moderation/presentation/providers/moderation_providers.dart';
 import '../widgets/dnd_settings_tile.dart';
 import '../widgets/prayer_silence_guide_tile.dart';
 import '../../../theme/presentation/providers/theme_period_provider.dart';
@@ -124,6 +125,7 @@ class SettingsScreen extends ConsumerWidget {
     final themeChoice = ref.watch(themeModeNotifierProvider);
     final calcSettings = ref.watch(prayerCalculationSettingsProvider);
     final remindersOn = ref.watch(remindersEnabledProvider);
+    final blockedCount = ref.watch(blockedUserIdsProvider).length;
     final hijriAdjustment = ref.watch(hijriAdjustmentProvider);
     final dailyContentOn = ref.watch(dailyNotificationEnabledProvider);
 
@@ -469,6 +471,56 @@ class SettingsScreen extends ConsumerWidget {
                       onChanged: (v) => ref
                           .read(dailyNotificationEnabledProvider.notifier)
                           .set(v),
+                    ),
+                  ],
+                ),
+              ).slideIn(RevealDirection.bottomEnd, onVisible: true),
+              SizedBox(height: 30.h),
+
+              const SettingsSectionLabel('SAFETY').slideIn(
+                RevealDirection.bottomStart,
+                onVisible: true,
+                duration: AppMotion.normal,
+                distance: 16,
+              ),
+              SizedBox(height: 12.h),
+              SettingsBentoTile(
+                color: Colors.transparent,
+                bordered: true,
+                onTap: () => context.push('/blocked-users'),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Blocked users',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.inkText,
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            blockedCount == 0
+                                ? 'No one is blocked.'
+                                : blockedCount == 1
+                                ? '1 person is blocked.'
+                                : '$blockedCount people are blocked.',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.block_rounded,
+                      color: AppColors.textSecondary,
+                      size: 24.sp,
                     ),
                   ],
                 ),

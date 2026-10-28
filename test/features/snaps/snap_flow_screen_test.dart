@@ -51,19 +51,6 @@ const _group = GroupDetail(
   ],
 );
 
-const _alone = GroupDetail(
-  id: 'g1',
-  name: 'Solo',
-  members: [
-    GroupMember(
-      userId: 'me',
-      name: 'Me Myself',
-      email: 'me@b.c',
-      role: GroupRole.admin,
-    ),
-  ],
-);
-
 late FakeCameraService camera;
 late FakeProcessor processor;
 late FakeSnapRepository repo;

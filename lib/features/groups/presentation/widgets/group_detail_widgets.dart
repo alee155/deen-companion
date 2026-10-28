@@ -395,6 +395,12 @@ class MemberSnapTile extends StatelessWidget {
   final int? prayersToday;
   final int? pointsToday;
 
+  /// Opens the safety menu (report / block). Null on the viewer's own row.
+  final VoidCallback? onMore;
+
+  /// The viewer has blocked this member: their snaps are hidden.
+  final bool isBlocked;
+
   const MemberSnapTile({
     super.key,
     required this.member,
@@ -407,6 +413,8 @@ class MemberSnapTile extends StatelessWidget {
     this.streak,
     this.prayersToday,
     this.pointsToday,
+    this.onMore,
+    this.isBlocked = false,
   });
 
   @override
@@ -462,7 +470,7 @@ class MemberSnapTile extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: 3.h),
-                  if (hasFigures)
+                  if (hasFigures || isBlocked)
                     // A Wrap, so a long name or large text moves a figure to a
                     // second line instead of overflowing the row.
                     Wrap(
@@ -470,6 +478,7 @@ class MemberSnapTile extends StatelessWidget {
                       runSpacing: 2.h,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
+                        if (isBlocked) const _BlockedTag(),
                         if (prayersToday != null)
                           _Figure(
                             icon: Icons.check_circle_outline_rounded,
@@ -500,6 +509,21 @@ class MemberSnapTile extends StatelessWidget {
             ),
             SizedBox(width: 8.w),
             SnapBox(hasPhoto: hasPhoto, onTap: hasPhoto ? onOpenSnap : null),
+            if (onMore != null)
+              IconButton(
+                tooltip: 'More about ${member.displayName}',
+                onPressed: onMore,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints.tightFor(width: 34.w, height: 40.h),
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  size: 20.sp,
+                  color: AppColors.textMuted,
+                ),
+              )
+            else
+              SizedBox(width: 4.w),
           ],
         ),
       ),
@@ -508,6 +532,31 @@ class MemberSnapTile extends StatelessWidget {
 
   TextStyle get _meta =>
       TextStyle(fontSize: 11.sp, color: AppColors.textSecondary);
+}
+
+/// "Blocked", beside a member's name.
+class _BlockedTag extends StatelessWidget {
+  const _BlockedTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Text(
+        'BLOCKED',
+        style: TextStyle(
+          fontSize: 8.5.sp,
+          letterSpacing: 0.8,
+          fontWeight: FontWeight.w800,
+          color: AppColors.error,
+        ),
+      ),
+    );
+  }
 }
 
 /// A small icon + number on a member's row.

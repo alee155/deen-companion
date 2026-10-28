@@ -62,20 +62,29 @@ class SnapPhoto extends StatelessWidget {
   }
 }
 
+/// What the viewer's menu asked for. The viewer closes, and the caller decides
+/// what to do (it holds no moderation logic itself).
+enum SnapViewerAction { report, block }
+
 /// Full-screen, Snapchat-style photo viewer: the whole photo is shown as the
 /// sender framed it (never cropped), a progress bar runs along the top for
 /// [duration] — the sender's chosen view time, counted from when the photo is
 /// on screen — and closes it when full, the sender sits in the header. Tap to close, hold to pause, swipe down to dismiss.
-Future<void> showSnapPhoto(
+///
+/// With [canModerate] (someone else's snap), a ⋯ menu offers to report the snap
+/// or block the person; the viewer then closes with that choice, which is the
+/// result. The countdown pauses while the menu is open.
+Future<SnapViewerAction?> showSnapPhoto(
   BuildContext context, {
   required String url,
   required String title,
   String? subtitle,
   Widget? avatar,
   Duration duration = const Duration(seconds: 6),
+  bool canModerate = false,
 }) {
   HapticFeedback.selectionClick();
-  return showGeneralDialog<void>(
+  return showGeneralDialog<SnapViewerAction>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Close snap',
@@ -97,6 +106,7 @@ Future<void> showSnapPhoto(
       subtitle: subtitle,
       avatar: avatar,
       duration: duration,
+      canModerate: canModerate,
     ),
   );
 }
@@ -107,12 +117,14 @@ class _SnapPhotoViewer extends StatefulWidget {
   final String? subtitle;
   final Widget? avatar;
   final Duration duration;
+  final bool canModerate;
   const _SnapPhotoViewer({
     required this.url,
     required this.title,
     required this.subtitle,
     required this.avatar,
     required this.duration,
+    required this.canModerate,
   });
 
   @override
@@ -144,6 +156,15 @@ class _SnapPhotoViewerState extends State<_SnapPhotoViewer>
 
   void _close() {
     if (mounted) Navigator.of(context).maybePop();
+  }
+
+  /// The menu was dismissed without a choice: carry on counting down.
+  void _resume() {
+    if (_started && mounted) _progress.forward().whenComplete(_close);
+  }
+
+  void _choose(SnapViewerAction action) {
+    if (mounted) Navigator.of(context).pop(action);
   }
 
   @override
@@ -249,6 +270,34 @@ class _SnapPhotoViewerState extends State<_SnapPhotoViewer>
                               ],
                             ),
                           ),
+                          if (widget.canModerate)
+                            PopupMenuButton<SnapViewerAction>(
+                              tooltip: 'More',
+                              icon: const Icon(
+                                Icons.more_horiz_rounded,
+                                color: Colors.white,
+                              ),
+                              color: const Color(0xFF2A211B),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16.r),
+                              ),
+                              onOpened: _progress.stop,
+                              onCanceled: _resume,
+                              onSelected: _choose,
+                              itemBuilder: (_) => [
+                                _menuItem(
+                                  SnapViewerAction.report,
+                                  Icons.flag_outlined,
+                                  'Report snap',
+                                ),
+                                _menuItem(
+                                  SnapViewerAction.block,
+                                  Icons.block_rounded,
+                                  'Block this person',
+                                  destructive: true,
+                                ),
+                              ],
+                            ),
                           IconButton(
                             tooltip: 'Close',
                             onPressed: _close,
@@ -267,6 +316,36 @@ class _SnapPhotoViewerState extends State<_SnapPhotoViewer>
       ),
     );
   }
+}
+
+PopupMenuItem<SnapViewerAction> _menuItem(
+  SnapViewerAction value,
+  IconData icon,
+  String label, {
+  bool destructive = false,
+}) {
+  final color = destructive ? const Color(0xFFFF8A7A) : Colors.white;
+  return PopupMenuItem<SnapViewerAction>(
+    value: value,
+    child: Row(
+      children: [
+        Icon(icon, size: 20.sp, color: color),
+        SizedBox(width: 10.w),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Darkens the photo's top or bottom edge so white text stays readable.

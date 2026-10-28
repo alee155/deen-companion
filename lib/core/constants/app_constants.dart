@@ -37,6 +37,9 @@ class AppConstants {
   static const String prayerReminderPrefsKey = 'prayer_reminder_prefs';
   static const String remindersEnabledKey = 'prayer_reminders_enabled';
   static const String dndEnabledKey = 'prayer_dnd_enabled';
+
+  /// People the user has blocked (suffixed with the account id).
+  static const String blockedUsersKey = 'blocked_users';
   static const String dndDurationModeKey = 'prayer_dnd_duration_mode';
   static const String dndPresetMinutesKey = 'prayer_dnd_preset_minutes';
   static const String dndCustomMinutesKey = 'prayer_dnd_custom_minutes';
