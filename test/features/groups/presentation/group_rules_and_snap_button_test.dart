@@ -1,5 +1,6 @@
 import 'package:deen_companion/features/group_live/presentation/providers/group_live_store.dart';
 import 'package:deen_companion/core/config/flavor_config.dart';
+import 'package:deen_companion/core/theme/app_colors.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
 import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
@@ -112,6 +113,17 @@ Future<void> _settle(WidgetTester tester) async {
   }
 }
 
+/// Whether the camera button is drawn in its unavailable (grey) state.
+bool _isGrey(WidgetTester tester) {
+  final material = tester.widget<Material>(
+    find.descendant(
+      of: find.byType(SendSnapButton),
+      matching: find.byType(Material),
+    ),
+  );
+  return material.color != AppColors.emeraldInk;
+}
+
 void main() {
   setUpAll(() => FlavorConfig(flavor: Flavor.dev, enableLogging: false));
 
@@ -196,7 +208,7 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('says the prayer is logged and when the next one starts', (
+    testWidgets('stays visible, grey, when this prayer already has its snap', (
       tester,
     ) async {
       await _pump(
@@ -204,13 +216,37 @@ void main() {
         me: 'admin1',
         current: openState(logged: true, logId: 'l1'),
       );
-      expect(find.byType(SendSnapButton), findsNothing);
-      expect(find.text('Asr logged'), findsOneWidget);
-      expect(find.textContaining('Next: Maghrib at'), findsOneWidget);
+      expect(find.byType(SendSnapButton), findsOneWidget);
+      expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
+      expect(_isGrey(tester), isTrue);
+      // The old text pill is gone: the camera is the only control.
+      expect(find.text('Asr logged'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('says no prayer is open while no window is open', (
+    testWidgets(
+      'tapping the grey button says why, and does not open the flow',
+      (tester) async {
+        await _pump(
+          tester,
+          me: 'admin1',
+          current: openState(logged: true, logId: 'l1'),
+        );
+        await tester.tap(find.byType(SendSnapButton));
+        await _settle(tester);
+
+        expect(find.byType(SnackBar), findsOneWidget);
+        expect(
+          find.textContaining('You’ve already sent your Asr snap'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Maghrib starts at'), findsOneWidget);
+        expect(find.text('SNAP FLOW'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets('stays visible, grey, while no prayer window is open', (
       tester,
     ) async {
       await _pump(
@@ -224,9 +260,62 @@ void main() {
           ),
         ),
       );
-      expect(find.byType(SendSnapButton), findsNothing);
-      expect(find.text('No prayer is open right now'), findsOneWidget);
-      expect(find.textContaining('Isha starts at'), findsOneWidget);
+      expect(find.byType(SendSnapButton), findsOneWidget);
+      expect(_isGrey(tester), isTrue);
+      expect(find.text('No prayer is open right now'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets(
+      'outside the allowed time it explains that snaps are sent during a prayer time',
+      (tester) async {
+        await _pump(
+          tester,
+          me: 'admin1',
+          current: CurrentPrayerState(
+            now: DateTime.now(),
+            next: NextPrayer(
+              prayer: PrayerName.isha,
+              startsAt: DateTime.now().add(const Duration(hours: 1)),
+            ),
+          ),
+        );
+        await tester.tap(find.byType(SendSnapButton));
+        await _settle(tester);
+
+        expect(
+          find.textContaining(
+            'Snaps can only be sent while a prayer time is open.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Isha starts at'), findsOneWidget);
+        expect(find.text('SNAP FLOW'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets('a second tap replaces the toast instead of stacking', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        me: 'admin1',
+        current: openState(logged: true, logId: 'l1'),
+      );
+      await tester.tap(find.byType(SendSnapButton));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byType(SendSnapButton));
+      await _settle(tester);
+      expect(find.byType(SnackBar), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('is green and glowing while a snap can be sent', (
+      tester,
+    ) async {
+      await _pump(tester, me: 'admin1');
+      expect(_isGrey(tester), isFalse);
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -318,6 +407,87 @@ void main() {
       await pumpButton(tester, () => taps++);
       await tester.tap(find.byType(SendSnapButton));
       expect(taps, 1);
+    });
+
+    group('when a snap cannot be sent', () {
+      Future<void> pumpUnavailable(
+        WidgetTester tester,
+        VoidCallback onTap,
+      ) async {
+        await tester.pumpWidget(
+          ScreenUtilInit(
+            designSize: const Size(390, 844),
+            builder: (_, _) => MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: SendSnapButton(available: false, onPressed: onTap),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+
+      testWidgets('keeps the camera icon', (tester) async {
+        await pumpUnavailable(tester, () {});
+        expect(find.byIcon(Icons.camera_alt_rounded), findsOneWidget);
+      });
+
+      testWidgets('turns grey, not the brand colour', (tester) async {
+        await pumpUnavailable(tester, () {});
+        final material = tester.widget<Material>(
+          find.descendant(
+            of: find.byType(SendSnapButton),
+            matching: find.byType(Material),
+          ),
+        );
+        expect(material.color, isNot(AppColors.emeraldInk));
+        final c = material.color!;
+        // Grey: its colour channels are close to each other.
+        final spread =
+            [c.r, c.g, c.b].reduce((a, b) => a > b ? a : b) -
+            [c.r, c.g, c.b].reduce((a, b) => a < b ? a : b);
+        expect(spread, lessThan(0.2));
+      });
+
+      testWidgets('loses its glow', (tester) async {
+        await pumpUnavailable(tester, () {});
+        final container = tester.widget<AnimatedContainer>(
+          find.descendant(
+            of: find.byType(SendSnapButton),
+            matching: find.byType(AnimatedContainer),
+          ),
+        );
+        final shadows = (container.decoration as BoxDecoration).boxShadow!;
+        expect(shadows.every((s) => s.spreadRadius == 0), isTrue);
+        expect(shadows.every((s) => s.blurRadius <= 12), isTrue);
+      });
+
+      testWidgets('is still tappable, so the caller can explain', (
+        tester,
+      ) async {
+        var taps = 0;
+        await pumpUnavailable(tester, () => taps++);
+        await tester.tap(find.byType(SendSnapButton));
+        expect(taps, 1);
+      });
+
+      testWidgets('says so to screen readers and how to hear why', (
+        tester,
+      ) async {
+        final handle = tester.ensureSemantics();
+        await pumpUnavailable(tester, () {});
+        final node = tester.getSemantics(find.byType(SendSnapButton));
+        expect(node.label, contains('unavailable'));
+        expect(node.hint, contains('hear why'));
+        handle.dispose();
+      });
+
+      testWidgets('its tooltip says it is unavailable', (tester) async {
+        await pumpUnavailable(tester, () {});
+        expect(find.byTooltip('Snap unavailable right now'), findsOneWidget);
+      });
     });
   });
 }

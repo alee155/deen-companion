@@ -20,11 +20,10 @@ import '../_support/dio_test_support.dart';
 import '../prayer_logs/presentation/_prayer_log_test_support.dart';
 
 const _draft = SnapDraft(
-  groupId: 'g1',
+  groupIds: ['g1', 'g2'],
   imagePath: '/tmp/prepared.jpg',
   viewSeconds: 10,
   caption: 'ignored by the API',
-  recipientIds: ['u2', 'u3'],
 );
 
 PrayerLogFailure _noWindow() => PrayerLogFailure(

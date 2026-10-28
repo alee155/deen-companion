@@ -252,14 +252,14 @@ void main() {
         final n = c.read(snapComposerProvider('g1').notifier);
         await n.onCaptured('/tmp/a.jpg');
         n.onCropped(Uint8List.fromList([9]));
-        await n.continueToRecipients();
-        expect(c.read(snapComposerProvider('g1')).step, SnapStep.recipients);
+        await n.continueToGroups();
+        expect(c.read(snapComposerProvider('g1')).step, SnapStep.groups);
         expect(
           c.read(snapComposerProvider('g1')).prepared!.compressedBytes,
           1000,
         );
         n.backToEdit();
-        await n.continueToRecipients();
+        await n.continueToGroups();
         expect(processor.compressCalls, 1);
       },
     );
@@ -269,12 +269,12 @@ void main() {
       final n = c.read(snapComposerProvider('g1').notifier);
       await n.onCaptured('/tmp/a.jpg');
       n.onCropped(Uint8List.fromList([9]));
-      await n.continueToRecipients();
+      await n.continueToGroups();
       n.backToEdit();
       n.recrop();
       n.onCropped(Uint8List.fromList([8]));
       expect(c.read(snapComposerProvider('g1')).prepared, isNull);
-      await n.continueToRecipients();
+      await n.continueToGroups();
       expect(processor.compressCalls, 2);
     });
 
@@ -286,14 +286,14 @@ void main() {
       final n = c.read(snapComposerProvider('g1').notifier);
       await n.onCaptured('/tmp/a.jpg');
       n.onCropped(Uint8List.fromList([9]));
-      await n.continueToRecipients();
+      await n.continueToGroups();
       final s = c.read(snapComposerProvider('g1'));
       expect(s.step, SnapStep.edit);
       expect(s.errorMessage, 'Couldn’t prepare the photo.');
     });
 
     test(
-      'send hands the repository the full draft (and the flow stays on recipients for the screen to close)',
+      'send hands the repository the full draft (and the flow stays on the groups step for the screen to close)',
       () async {
         final c = open();
         final n = c.read(snapComposerProvider('g1').notifier);
@@ -301,16 +301,15 @@ void main() {
         n.onCropped(Uint8List.fromList([9]));
         n.setTimer(10);
         n.setCaption('  Surah Al-Mulk ');
-        await n.continueToRecipients();
-        final ok = await n.send(['u2', 'u3']);
+        await n.continueToGroups();
+        final ok = await n.send(['g1', 'g2']);
         expect(ok, isTrue);
         expect(c.read(snapComposerProvider('g1')).isSending, isFalse);
         final d = repo.sent.single;
-        expect(d.groupId, 'g1'); // dynamic, from the route
+        expect(d.groupIds, ['g1', 'g2']);
         expect(d.imagePath, '/tmp/prepared.jpg');
         expect(d.viewSeconds, 10);
         expect(d.caption, 'Surah Al-Mulk');
-        expect(d.recipientIds, ['u2', 'u3']);
       },
     );
 
@@ -320,26 +319,138 @@ void main() {
       await n.onCaptured('/tmp/a.jpg');
       n.onCropped(Uint8List.fromList([9]));
       n.setCaption('   ');
-      await n.continueToRecipients();
-      await n.send(['u2']);
+      await n.continueToGroups();
+      await n.send(['g1']);
       expect(repo.sent.single.caption, isNull);
     });
 
-    test('send failure keeps the user on recipients with the error', () async {
-      repo.failure = serverFailure;
-      final c = open();
-      final n = c.read(snapComposerProvider('g1').notifier);
-      await n.onCaptured('/tmp/a.jpg');
-      n.onCropped(Uint8List.fromList([9]));
-      await n.continueToRecipients();
-      expect(await n.send(['u2']), isFalse);
-      final s = c.read(snapComposerProvider('g1'));
-      expect(s.step, SnapStep.recipients);
-      expect(s.errorMessage, 'upload failed');
-      expect(s.isSending, isFalse);
-      // retry works
-      repo.failure = null;
-      expect(await n.send(['u2']), isTrue);
+    test(
+      'send failure keeps the user on the groups step with the error',
+      () async {
+        repo.failure = serverFailure;
+        final c = open();
+        final n = c.read(snapComposerProvider('g1').notifier);
+        await n.onCaptured('/tmp/a.jpg');
+        n.onCropped(Uint8List.fromList([9]));
+        await n.continueToGroups();
+        expect(await n.send(['g1']), isFalse);
+        final s = c.read(snapComposerProvider('g1'));
+        expect(s.step, SnapStep.groups);
+        expect(s.errorMessage, 'upload failed');
+        expect(s.isSending, isFalse);
+        // retry works
+        repo.failure = null;
+        expect(await n.send(['g1']), isTrue);
+      },
+    );
+
+    group('choosing groups', () {
+      ProviderContainer openFor(String? initial) {
+        final c = make();
+        final sub = c.listen(snapComposerProvider(initial), (_, _) {});
+        addTearDown(sub.close);
+        return c;
+      }
+
+      test('opened from a group: that group is already ticked', () {
+        final s = openFor('g1').read(snapComposerProvider('g1'));
+        expect(s.selectedGroupIds, {'g1'});
+      });
+
+      test('opened from the groups list: nothing is ticked', () {
+        final s = openFor(null).read(snapComposerProvider(null));
+        expect(s.selectedGroupIds, isEmpty);
+      });
+
+      test('toggle ticks and unticks', () {
+        final c = openFor(null);
+        final n = c.read(snapComposerProvider(null).notifier);
+        n.toggleGroup('a');
+        n.toggleGroup('b');
+        expect(c.read(snapComposerProvider(null)).selectedGroupIds, {'a', 'b'});
+        n.toggleGroup('a');
+        expect(c.read(snapComposerProvider(null)).selectedGroupIds, {'b'});
+      });
+
+      test('the preselected group can be unticked too', () {
+        final c = openFor('g1');
+        c.read(snapComposerProvider('g1').notifier).toggleGroup('g1');
+        expect(c.read(snapComposerProvider('g1')).selectedGroupIds, isEmpty);
+      });
+
+      test('setGroups ticks exactly those (select all, and clear)', () {
+        final c = openFor('g1');
+        final n = c.read(snapComposerProvider('g1').notifier);
+        n.setGroups(['a', 'b', 'c']);
+        expect(c.read(snapComposerProvider('g1')).selectedGroupIds, {
+          'a',
+          'b',
+          'c',
+        });
+        n.setGroups(const []);
+        expect(c.read(snapComposerProvider('g1')).selectedGroupIds, isEmpty);
+      });
+
+      test('ticking the same group twice is still one', () {
+        final c = openFor(null);
+        final n = c.read(snapComposerProvider(null).notifier);
+        n.setGroups(['a', 'a', 'a']);
+        expect(c.read(snapComposerProvider(null)).selectedGroupIds, {'a'});
+      });
+
+      test(
+        'retaking the photo keeps the chosen groups and the timer',
+        () async {
+          final c = openFor(null);
+          final n = c.read(snapComposerProvider(null).notifier);
+          n.setGroups(['a', 'b']);
+          n.setTimer(10);
+          await n.onCaptured('/tmp/a.jpg');
+          n.onCropped(Uint8List.fromList([9]));
+          n.retake();
+          final s = c.read(snapComposerProvider(null));
+          expect(s.step, SnapStep.capture);
+          expect(s.selectedGroupIds, {'a', 'b'});
+          expect(s.viewSeconds, 10);
+        },
+      );
+
+      test('sends once for all the groups, in the order given', () async {
+        final c = openFor(null);
+        final n = c.read(snapComposerProvider(null).notifier);
+        await n.onCaptured('/tmp/a.jpg');
+        n.onCropped(Uint8List.fromList([9]));
+        await n.continueToGroups();
+        expect(await n.send(['b', 'a', 'c']), isTrue);
+        expect(
+          repo.sent,
+          hasLength(1),
+          reason: 'one request, not one per group',
+        );
+        expect(repo.sent.single.groupIds, ['b', 'a', 'c']);
+      });
+
+      test('nothing is sent without a group', () async {
+        final c = openFor(null);
+        final n = c.read(snapComposerProvider(null).notifier);
+        await n.onCaptured('/tmp/a.jpg');
+        n.onCropped(Uint8List.fromList([9]));
+        await n.continueToGroups();
+        expect(await n.send(const []), isFalse);
+        expect(repo.sent, isEmpty);
+        expect(c.read(snapComposerProvider(null)).isSending, isFalse);
+      });
+
+      test('two flows do not share a selection', () {
+        final c = make();
+        final a = c.listen(snapComposerProvider('g1'), (_, _) {});
+        final b = c.listen(snapComposerProvider(null), (_, _) {});
+        addTearDown(a.close);
+        addTearDown(b.close);
+        c.read(snapComposerProvider(null).notifier).toggleGroup('x');
+        expect(c.read(snapComposerProvider('g1')).selectedGroupIds, {'g1'});
+        expect(c.read(snapComposerProvider(null)).selectedGroupIds, {'x'});
+      });
     });
 
     test('temp files are cleaned up when the flow closes', () async {
@@ -348,7 +459,7 @@ void main() {
       final n = c.read(snapComposerProvider('g1').notifier);
       await n.onCaptured('/tmp/a.jpg');
       n.onCropped(Uint8List.fromList([9]));
-      await n.continueToRecipients();
+      await n.continueToGroups();
       sub.close();
       c.invalidate(snapComposerProvider('g1'));
       await settle();

@@ -7,15 +7,19 @@ import '../providers/snap_providers.dart';
 import '../widgets/capture_view.dart';
 import '../widgets/crop_view.dart';
 import '../widgets/edit_view.dart';
-import '../widgets/recipients_view.dart';
+import '../widgets/group_picker_view.dart';
 
-/// "Send snap": capture → crop → preview/timer → recipients. A successful
-/// send closes the flow (the caller shows the confirmation).
+/// "Send snap": capture → crop → preview/timer → choose groups. A successful
+/// send closes the flow with the number of groups it went to (the caller shows
+/// the confirmation).
 /// Top-level route (no bottom bar). Steps are state-driven so the back button
 /// walks backwards through the flow instead of dropping the whole snap.
+///
+/// Opened from a group, that group is already ticked ([initialGroupId]);
+/// opened from the groups list, the user ticks the groups themselves.
 class SnapFlowScreen extends ConsumerStatefulWidget {
-  final String groupId;
-  const SnapFlowScreen({super.key, required this.groupId});
+  final String? initialGroupId;
+  const SnapFlowScreen({super.key, this.initialGroupId});
 
   @override
   ConsumerState<SnapFlowScreen> createState() => _SnapFlowScreenState();
@@ -36,37 +40,41 @@ class _SnapFlowScreenState extends ConsumerState<SnapFlowScreen> {
   }
 
   SnapComposerController get _composer =>
-      ref.read(snapComposerProvider(widget.groupId).notifier);
+      ref.read(snapComposerProvider(widget.initialGroupId).notifier);
 
   /// Back walks one step; from the camera it leaves the flow.
   void _back() {
-    final s = ref.read(snapComposerProvider(widget.groupId));
+    final s = ref.read(snapComposerProvider(widget.initialGroupId));
     if (s.isSending || s.isProcessing) return;
     switch (s.step) {
       case SnapStep.capture:
         context.pop();
       case SnapStep.crop || SnapStep.edit:
         _composer.retake();
-      case SnapStep.recipients:
+      case SnapStep.groups:
         _composer.backToEdit();
     }
   }
 
-  Future<void> _send(List<String> recipientIds) async {
-    final ok = await _composer.send(recipientIds);
-    if (ok && mounted) context.pop(true);
+  Future<void> _send(List<String> groupIds) async {
+    final ok = await _composer.send(groupIds);
+    if (ok && mounted) context.pop(groupIds.length);
   }
 
   @override
   Widget build(BuildContext context) {
-    final s = ref.watch(snapComposerProvider(widget.groupId));
-    final detail = ref.watch(groupDetailProvider(widget.groupId)).valueOrNull;
-    final groupName = detail?.name ?? 'Group';
+    final s = ref.watch(snapComposerProvider(widget.initialGroupId));
+    final initial = widget.initialGroupId;
+    // The camera is titled with the group it was opened from, or plainly when
+    // the user is yet to choose.
+    final title = initial == null
+        ? 'New snap'
+        : ref.watch(groupDetailProvider(initial)).valueOrNull?.name ?? 'Group';
 
     final Widget body = switch (s.step) {
       SnapStep.capture => CaptureView(
         key: const ValueKey('capture'),
-        title: groupName,
+        title: title,
         isProcessing: s.isProcessing,
         onCaptured: _composer.onCaptured,
         onClose: _back,
@@ -88,11 +96,11 @@ class _SnapFlowScreenState extends ConsumerState<SnapFlowScreen> {
         onRecrop: _composer.recrop,
         onTimerChanged: _composer.setTimer,
         onCaptionChanged: _composer.setCaption,
-        onNext: _composer.continueToRecipients,
+        onNext: _composer.continueToGroups,
       ),
-      SnapStep.recipients => RecipientsView(
-        key: const ValueKey('recipients'),
-        groupId: widget.groupId,
+      SnapStep.groups => GroupPickerView(
+        key: const ValueKey('groups'),
+        initialGroupId: widget.initialGroupId,
         onBack: _composer.backToEdit,
         onSend: _send,
       ),
@@ -109,7 +117,7 @@ class _SnapFlowScreenState extends ConsumerState<SnapFlowScreen> {
         backgroundColor: Colors.black,
         resizeToAvoidBottomInset: true,
         body: AnnotatedRegion<SystemUiOverlayStyle>(
-          value: s.step == SnapStep.recipients
+          value: s.step == SnapStep.groups
               ? SystemUiOverlayStyle.dark
               : SystemUiOverlayStyle.light,
           child: AnimatedSwitcher(

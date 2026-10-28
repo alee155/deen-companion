@@ -5,25 +5,28 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
-import '../../../auth/presentation/providers/auth_session_provider.dart';
-import '../../../groups/domain/entities/group_detail.dart';
+import '../../../groups/domain/entities/group.dart';
 import '../../../groups/presentation/providers/groups_providers.dart';
+import '../../../groups/presentation/widgets/group_image.dart';
 import '../../../groups/presentation/widgets/group_sheet_widgets.dart';
-import '../../../groups/presentation/widgets/snap_widgets.dart';
 import '../providers/snap_providers.dart';
 
-/// Step 4: who gets the snap. Everyone in the group is always included and
-/// the list is read-only — there is deliberately nothing to toggle.
-class RecipientsView extends ConsumerWidget {
-  final String groupId;
+/// Last step: which groups get the snap. Each of the user's groups has a
+/// checkbox; the group the flow was opened from is already ticked. Everyone in
+/// a ticked group receives the snap, and individual members are deliberately
+/// not shown or chosen.
+class GroupPickerView extends ConsumerWidget {
+  /// The group the flow was opened from, or null when it was opened from the
+  /// groups list. Selects the composer's state.
+  final String? initialGroupId;
   final VoidCallback onBack;
 
-  /// Called with every recipient id when the user taps Send.
-  final void Function(List<String> recipientIds) onSend;
+  /// Called with the ticked groups when the user taps Send.
+  final void Function(List<String> groupIds) onSend;
 
-  const RecipientsView({
+  const GroupPickerView({
     super.key,
-    required this.groupId,
+    required this.initialGroupId,
     required this.onBack,
     required this.onSend,
   });
@@ -34,17 +37,20 @@ class RecipientsView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final composer = ref.watch(snapComposerProvider(groupId));
-    final detailAsync = ref.watch(groupDetailProvider(groupId));
-    final myId = ref.watch(authSessionProvider).userId;
+    final composer = ref.watch(snapComposerProvider(initialGroupId));
+    final controller = ref.read(snapComposerProvider(initialGroupId).notifier);
+    final groupsAsync = ref.watch(myGroupsProvider);
     final prepared = composer.prepared;
 
-    final detail = detailAsync.valueOrNull;
-    final recipients = [
-      for (final m in detail?.members ?? const <GroupMember>[])
-        if (m.userId != myId) m,
+    final groups = groupsAsync.valueOrNull ?? const <Group>[];
+    // Only groups that still exist count: the user may have left one while
+    // taking the photo.
+    final chosen = [
+      for (final g in groups)
+        if (composer.selectedGroupIds.contains(g.id)) g.id,
     ];
-    final canSend = detail != null && recipients.isNotEmpty && prepared != null;
+    final canSend = prepared != null && chosen.isNotEmpty;
+    final allChosen = groups.isNotEmpty && chosen.length == groups.length;
 
     return ColoredBox(
       color: AppColors.parchment,
@@ -94,11 +100,7 @@ class RecipientsView extends ConsumerWidget {
                       SizedBox(width: 8.w),
                       Expanded(
                         child: Text(
-                          detail == null
-                              ? 'Sending to the group'
-                              : 'Sending to ${detail.name}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          'Choose groups',
                           style: TextStyle(
                             fontSize: 16.sp,
                             fontWeight: FontWeight.w700,
@@ -106,24 +108,43 @@ class RecipientsView extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 10.w,
-                          vertical: 3.h,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.worshipAccentBg,
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: Text(
-                          '${recipients.length}',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.worshipAccent,
+                      if (chosen.isNotEmpty)
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 10.w,
+                            vertical: 3.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.worshipAccentBg,
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          child: Text(
+                            '${chosen.length} selected',
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.worshipAccent,
+                            ),
                           ),
                         ),
-                      ),
+                      if (groups.length > 1) ...[
+                        SizedBox(width: 6.w),
+                        TextButton(
+                          onPressed: composer.isSending
+                              ? null
+                              : () => controller.setGroups(
+                                  allChosen
+                                      ? const []
+                                      : groups.map((g) => g.id),
+                                ),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: AppColors.emeraldInk,
+                            padding: EdgeInsets.symmetric(horizontal: 8.w),
+                          ),
+                          child: Text(allChosen ? 'Clear' : 'Select all'),
+                        ),
+                      ],
                     ],
                   ),
                   SizedBox(height: 6.h),
@@ -137,7 +158,7 @@ class RecipientsView extends ConsumerWidget {
                       SizedBox(width: 5.w),
                       Expanded(
                         child: Text(
-                          'Everyone in the group receives this snap.',
+                          'Everyone in the groups you choose receives this snap.',
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: AppColors.textSecondary,
@@ -147,20 +168,21 @@ class RecipientsView extends ConsumerWidget {
                     ],
                   ),
                   SizedBox(height: 12.h),
-                  if (detailAsync.isLoading && detail == null)
+                  if (groupsAsync.isLoading && !groupsAsync.hasValue)
                     ShimmerBox(
                       width: double.infinity,
                       height: 150.h,
                       borderRadius: 22.r,
                     )
-                  else if (detail == null)
-                    SheetNotice(
+                  else if (!groupsAsync.hasValue)
+                    _LoadError(
                       message:
-                          detailAsync.error?.toString() ??
-                          'Couldn’t load the group members.',
+                          groupsAsync.error?.toString() ??
+                          'Couldn’t load your groups.',
+                      onRetry: () => ref.invalidate(myGroupsProvider),
                     )
-                  else if (recipients.isEmpty)
-                    _NoOne()
+                  else if (groups.isEmpty)
+                    const _NoGroups()
                   else
                     Container(
                       clipBehavior: Clip.antiAlias,
@@ -171,12 +193,20 @@ class RecipientsView extends ConsumerWidget {
                       ),
                       child: Column(
                         children: [
-                          for (var i = 0; i < recipients.length; i++) ...[
-                            _Recipient(member: recipients[i]),
-                            if (i != recipients.length - 1)
+                          for (var i = 0; i < groups.length; i++) ...[
+                            _GroupRow(
+                              group: groups[i],
+                              selected: composer.selectedGroupIds.contains(
+                                groups[i].id,
+                              ),
+                              enabled: !composer.isSending,
+                              onChanged: () =>
+                                  controller.toggleGroup(groups[i].id),
+                            ),
+                            if (i != groups.length - 1)
                               Divider(
                                 height: 1,
-                                indent: 66.w,
+                                indent: 74.w,
                                 color: AppColors.borderWarm,
                               ),
                           ],
@@ -192,14 +222,14 @@ class RecipientsView extends ConsumerWidget {
                 children: [
                   SheetNotice(message: composer.errorMessage),
                   SheetButton(
-                    label: recipients.length > 1
-                        ? 'Send to ${recipients.length} members'
-                        : 'Send snap',
+                    label: chosen.isEmpty
+                        ? 'Choose a group'
+                        : chosen.length == 1
+                        ? 'Send to 1 group'
+                        : 'Send to ${chosen.length} groups',
                     icon: Icons.send_rounded,
                     loading: composer.isSending,
-                    onPressed: canSend
-                        ? () => onSend([for (final m in recipients) m.userId])
-                        : null,
+                    onPressed: canSend ? () => onSend(chosen) : null,
                   ),
                 ],
               ),
@@ -320,55 +350,110 @@ class _Chip extends StatelessWidget {
   }
 }
 
-/// A read-only row: always "selected", with a lock so it's clear it can't be
-/// changed.
-class _Recipient extends StatelessWidget {
-  final GroupMember member;
-  const _Recipient({required this.member});
+/// One group with its checkbox. The whole row is the tap target.
+class _GroupRow extends StatelessWidget {
+  final Group group;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onChanged;
+
+  const _GroupRow({
+    required this.group,
+    required this.selected,
+    required this.enabled,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final members = group.memberCount;
     return Semantics(
-      label: '${member.displayName}, included',
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
-        child: Row(
-          children: [
-            MemberAvatar(member: member, size: 42.w),
-            SizedBox(width: 12.w),
-            Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      member.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.inkText,
+      container: true,
+      checked: selected,
+      inMutuallyExclusiveGroup: false,
+      label: '${group.name}, $members ${members == 1 ? 'member' : 'members'}',
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: enabled ? onChanged : null,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+            child: Row(
+              children: [
+                GroupImage(path: group.imagePath, size: 46.w, radius: 14.r),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.inkText,
+                        ),
                       ),
-                    ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        '$members ${members == 1 ? 'member' : 'members'}',
+                        style: TextStyle(
+                          fontSize: 11.5.sp,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: 6.w),
-                  RoleBadge(role: member.role),
-                ],
-              ),
+                ),
+                SizedBox(width: 8.w),
+                Checkbox(
+                  value: selected,
+                  onChanged: enabled ? (_) => onChanged() : null,
+                  activeColor: AppColors.emeraldInk,
+                  checkColor: AppColors.onEmeraldInk,
+                  side: BorderSide(color: AppColors.textMuted, width: 1.6),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(7.r),
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.padded,
+                ),
+              ],
             ),
-            Icon(
-              Icons.check_circle_rounded,
-              size: 22.sp,
-              color: AppColors.emeraldInk.withValues(alpha: 0.85),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _NoOne extends StatelessWidget {
+class _LoadError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _LoadError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SheetNotice(message: message),
+        SizedBox(height: 8.h),
+        Center(
+          child: TextButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Try again'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NoGroups extends StatelessWidget {
+  const _NoGroups();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -380,14 +465,10 @@ class _NoOne extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.person_add_alt_1_rounded,
-            size: 34.sp,
-            color: AppColors.emeraldInk,
-          ),
+          Icon(Icons.groups_rounded, size: 34.sp, color: AppColors.emeraldInk),
           SizedBox(height: 8.h),
           Text(
-            'No one else is in this group yet',
+            'You’re not in any group yet',
             style: TextStyle(
               fontSize: 14.sp,
               fontWeight: FontWeight.w700,
@@ -396,7 +477,7 @@ class _NoOne extends StatelessWidget {
           ),
           SizedBox(height: 4.h),
           Text(
-            'Share the invite link first, then send your snap.',
+            'Create or join a group first, then send your snap.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
           ),

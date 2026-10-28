@@ -148,11 +148,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             GroupStatisticsScreen(groupId: state.pathParameters['groupId']!),
       ),
-      // Send-a-snap flow (camera → crop → timer → recipients).
+      // Send-a-snap flow (camera → crop → timer → choose groups). From the
+      // groups list the user chooses; from a group it is already chosen.
+      GoRoute(
+        path: '/snap',
+        builder: (context, state) => const SnapFlowScreen(),
+      ),
       GoRoute(
         path: '/groups/:groupId/snap',
         builder: (context, state) =>
-            SnapFlowScreen(groupId: state.pathParameters['groupId']!),
+            SnapFlowScreen(initialGroupId: state.pathParameters['groupId']!),
       ),
       // Prayer log: the day view, and the camera flow that logs the open
       // prayer. Top level: no bottom nav.

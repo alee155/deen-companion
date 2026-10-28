@@ -9,8 +9,9 @@ import '../domain/repositories/snap_repository.dart';
 /// Sending a snap is logging the prayer that is open right now, with the photo
 /// as proof: `POST /prayers/logs` takes only the photo. The server decides
 /// which prayer it is from its own clock. The draft's view timer goes along as
-/// `viewDurationSeconds`; the caption and the recipient list are not part of
-/// that API and are not sent.
+/// `viewDurationSeconds`; the caption and the chosen groups are not part of
+/// that API yet, so they are not sent (the group choice is UI until the
+/// backend takes it).
 ///
 /// [log] is the actual upload — `PrayerLogActions.log` in the app, which also
 /// refreshes the screens that show prayer logs afterwards.

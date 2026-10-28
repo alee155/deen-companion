@@ -4,6 +4,8 @@ import 'package:deen_companion/core/permissions/camera_permission_service.dart';
 import 'package:deen_companion/core/permissions/notification_permission_service.dart'
     show PermissionRequestResult;
 import 'package:deen_companion/core/usecase/usecase.dart';
+import 'package:deen_companion/features/groups/domain/entities/group.dart';
+import 'package:deen_companion/features/groups/presentation/providers/groups_providers.dart';
 import 'package:deen_companion/features/snaps/data/camera/camera_session.dart';
 import 'package:deen_companion/features/snaps/domain/entities/snap_draft.dart';
 import 'package:deen_companion/features/snaps/domain/repositories/snap_image_processor.dart';
@@ -208,3 +210,19 @@ class FakeCameraPermission implements CameraPermissionService {
   @override
   Future<void> openSettings() async => settingsOpened++;
 }
+
+/// The signed-in user's groups, fixed by the test.
+class FakeMyGroups extends MyGroupsNotifier {
+  final List<Group> groups;
+  FakeMyGroups(this.groups);
+
+  @override
+  Future<List<Group>> build() async => groups;
+}
+
+/// The user's groups, for tests: three of different sizes.
+const sampleGroups = [
+  Group(id: 'g1', name: 'Namaz Family', memberCount: 8, role: GroupRole.admin),
+  Group(id: 'g2', name: 'Quran Circle', memberCount: 21),
+  Group(id: 'g3', name: 'Friday Friends', memberCount: 1),
+];

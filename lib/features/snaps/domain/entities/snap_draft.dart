@@ -25,20 +25,20 @@ class PreparedImage {
       originalBytes == 0 ? 0 : 1 - compressedBytes / originalBytes;
 }
 
-/// Everything the "send snap" API will need. Recipients are always the whole
-/// group, so [recipientIds] is every member (except the sender).
+/// Everything the "send snap" API will need. A snap goes to groups, and
+/// everyone in a chosen group receives it: the app never picks individual
+/// members, so a draft names [groupIds] and nothing more granular.
 class SnapDraft {
-  final String groupId;
+  /// The groups to send to; at least one.
+  final List<String> groupIds;
   final String imagePath;
   final int viewSeconds;
   final String? caption;
-  final List<String> recipientIds;
 
   const SnapDraft({
-    required this.groupId,
+    required this.groupIds,
     required this.imagePath,
     required this.viewSeconds,
-    required this.recipientIds,
     this.caption,
   });
 }

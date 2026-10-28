@@ -20,8 +20,7 @@ class MockSnapRepository implements SnapRepository {
           'The photo is not uploaded.',
     );
     FlowLog.data('SEND SNAP', 'what would have been sent', {
-      'groupId': draft.groupId,
-      'recipients': draft.recipientIds.length,
+      'groups': draft.groupIds.length,
       'viewSeconds': draft.viewSeconds,
       'hasCaption': draft.caption != null,
     });

@@ -14,6 +14,7 @@ import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import '../../domain/entities/snap_draft.dart';
 import '../../domain/repositories/snap_image_processor.dart';
 import '../../domain/repositories/snap_repository.dart';
+import '../../domain/snap_availability.dart';
 
 final cameraServiceProvider = Provider<CameraService>(
   (ref) => const CameraPluginService(),
@@ -27,6 +28,18 @@ final snapImageProcessorProvider = Provider<SnapImageProcessor>(
 final snapRepositoryProvider = Provider<SnapRepository>(
   (ref) => PrayerLogSnapRepository(log: ref.read(prayerLogActionsProvider).log),
 );
+
+/// Whether a snap can be sent right now, from the server's answer about the
+/// open prayer. Shared by every camera button, so they agree.
+final snapAvailabilityProvider = Provider<SnapAvailability>((ref) {
+  final prayer = ref.watch(currentPrayerProvider);
+  return prayer.when(
+    data: SnapAvailability.fromPrayer,
+    // The lookup failed (offline, say): the server decides on send.
+    error: (_, _) => const SnapAvailability.available(),
+    loading: () => const SnapAvailability.checking(),
+  );
+});
 
 // ---------------------------------------------------------------------------
 // Camera
@@ -202,10 +215,10 @@ final snapCameraControllerProvider =
     );
 
 // ---------------------------------------------------------------------------
-// Composer (capture → crop → preview → recipients, then send)
+// Composer (capture → crop → preview → groups, then send)
 // ---------------------------------------------------------------------------
 
-enum SnapStep { capture, crop, edit, recipients }
+enum SnapStep { capture, crop, edit, groups }
 
 @immutable
 class SnapComposerState {
@@ -219,7 +232,10 @@ class SnapComposerState {
   final int viewSeconds;
   final String caption;
 
-  /// Compressed upload, set once the user moves on to recipients.
+  /// The groups ticked on the last step. A set: ticking twice is not two.
+  final Set<String> selectedGroupIds;
+
+  /// Compressed upload, set once the user moves on to choosing groups.
   final PreparedImage? prepared;
   final bool isProcessing;
   final bool isSending;
@@ -231,6 +247,7 @@ class SnapComposerState {
     this.cropped,
     this.viewSeconds = SnapViewTimer.defaultSeconds,
     this.caption = '',
+    this.selectedGroupIds = const {},
     this.prepared,
     this.isProcessing = false,
     this.isSending = false,
@@ -244,6 +261,7 @@ class SnapComposerState {
     bool clearImages = false,
     int? viewSeconds,
     String? caption,
+    Set<String>? selectedGroupIds,
     PreparedImage? prepared,
     bool clearPrepared = false,
     bool? isProcessing,
@@ -256,6 +274,7 @@ class SnapComposerState {
     cropped: clearImages ? null : (cropped ?? this.cropped),
     viewSeconds: viewSeconds ?? this.viewSeconds,
     caption: caption ?? this.caption,
+    selectedGroupIds: selectedGroupIds ?? this.selectedGroupIds,
     prepared: clearPrepared ? null : (prepared ?? this.prepared),
     isProcessing: isProcessing ?? this.isProcessing,
     isSending: isSending ?? this.isSending,
@@ -263,18 +282,20 @@ class SnapComposerState {
   );
 }
 
-/// Drives the snap flow for one group. All image work and sending go through
+/// Drives the snap flow. The argument is the group the flow was opened from,
+/// already ticked on the last step, or null when it was opened from the groups
+/// list and the user chooses. All image work and sending go through
 /// repositories; the UI only reacts to [SnapComposerState].
 class SnapComposerController
-    extends AutoDisposeFamilyNotifier<SnapComposerState, String> {
+    extends AutoDisposeFamilyNotifier<SnapComposerState, String?> {
   final List<String> _tempPaths = [];
 
   @override
-  SnapComposerState build(String groupId) {
+  SnapComposerState build(String? initialGroupId) {
     // Captured now: providers can't be read once disposal has started.
     final processor = ref.read(snapImageProcessorProvider);
     ref.onDispose(() => processor.cleanUp(_tempPaths));
-    return const SnapComposerState();
+    return SnapComposerState(selectedGroupIds: {?initialGroupId});
   }
 
   /// A photo was taken: prepare it and move to cropping.
@@ -308,9 +329,14 @@ class SnapComposerController
     );
   }
 
-  /// Discard everything and go back to the camera.
+  /// Discard the photo and go back to the camera. The timer and the groups
+  /// already ticked are kept: they are choices about where it goes, not about
+  /// this photo.
   void retake() {
-    state = SnapComposerState(viewSeconds: state.viewSeconds);
+    state = SnapComposerState(
+      viewSeconds: state.viewSeconds,
+      selectedGroupIds: state.selectedGroupIds,
+    );
   }
 
   void recrop() => state = state.copyWith(step: SnapStep.crop);
@@ -319,12 +345,23 @@ class SnapComposerController
 
   void setCaption(String value) => state = state.copyWith(caption: value);
 
-  /// Compress the final image and show the recipients.
-  Future<void> continueToRecipients() async {
+  /// Ticks or unticks a group.
+  void toggleGroup(String groupId) {
+    final next = {...state.selectedGroupIds};
+    if (!next.add(groupId)) next.remove(groupId);
+    state = state.copyWith(selectedGroupIds: next);
+  }
+
+  /// Ticks exactly [groupIds] ("Select all", or clear with none).
+  void setGroups(Iterable<String> groupIds) =>
+      state = state.copyWith(selectedGroupIds: {...groupIds});
+
+  /// Compress the final image and show the groups to choose from.
+  Future<void> continueToGroups() async {
     final cropped = state.cropped;
     if (cropped == null || state.isProcessing) return;
     if (state.prepared != null) {
-      state = state.copyWith(step: SnapStep.recipients, clearError: true);
+      state = state.copyWith(step: SnapStep.groups, clearError: true);
       return;
     }
     state = state.copyWith(isProcessing: true, clearError: true);
@@ -335,7 +372,7 @@ class SnapComposerController
       case Success(:final data):
         _tempPaths.add(data.path);
         state = state.copyWith(
-          step: SnapStep.recipients,
+          step: SnapStep.groups,
           prepared: data,
           isProcessing: false,
         );
@@ -350,15 +387,16 @@ class SnapComposerController
   void backToEdit() =>
       state = state.copyWith(step: SnapStep.edit, clearError: true);
 
-  /// Sends to [recipientIds] — always the whole group (the UI doesn't allow
-  /// choosing). Returns true on success; the screen then closes the flow.
-  Future<bool> send(List<String> recipientIds) async {
+  /// Sends to [groupIds] (everyone in each group receives it). Returns true on
+  /// success; the screen then closes the flow. Nothing is sent without at
+  /// least one group.
+  Future<bool> send(List<String> groupIds) async {
     final prepared = state.prepared;
-    if (prepared == null || state.isSending) return false;
+    if (prepared == null || state.isSending || groupIds.isEmpty) return false;
     FlowLog.log(
       'SEND SNAP',
       'USER TAPPED SEND: photo ${prepared.compressedBytes} bytes, '
-          '${recipientIds.length} recipients',
+          '${groupIds.length} groups',
     );
     state = state.copyWith(isSending: true, clearError: true);
     final caption = state.caption.trim();
@@ -366,11 +404,10 @@ class SnapComposerController
         .read(snapRepositoryProvider)
         .sendSnap(
           SnapDraft(
-            groupId: arg,
+            groupIds: groupIds,
             imagePath: prepared.path,
             viewSeconds: state.viewSeconds,
             caption: caption.isEmpty ? null : caption,
-            recipientIds: recipientIds,
           ),
         );
     switch (result) {
@@ -387,6 +424,6 @@ class SnapComposerController
 }
 
 final snapComposerProvider = NotifierProvider.autoDispose
-    .family<SnapComposerController, SnapComposerState, String>(
+    .family<SnapComposerController, SnapComposerState, String?>(
       SnapComposerController.new,
     );

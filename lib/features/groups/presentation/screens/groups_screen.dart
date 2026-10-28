@@ -9,11 +9,15 @@ import '../../../../shared/widgets/islamic_ornaments.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
+import '../../../snaps/domain/snap_availability.dart';
+import '../../../snaps/presentation/providers/snap_providers.dart';
+import '../../../snaps/presentation/snap_entry.dart';
 import '../../domain/entities/group.dart';
 import '../providers/groups_providers.dart';
 import '../widgets/empty_groups.dart';
 import '../widgets/group_card.dart';
 import '../widgets/group_search_field.dart';
+import '../widgets/send_snap_button.dart';
 
 /// Bottom-tab root for Groups. Create/Streak are pushed as top-level routes
 /// (see app_router) so the bottom navigation bar isn't shown on them.
@@ -71,10 +75,34 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
       );
   }
 
+  /// The camera button. Guests are sent to sign up first (snaps go to groups,
+  /// and groups need an account), like Create group; otherwise it opens the
+  /// snap flow, or explains why it can't.
+  void _snap(SnapAvailability availability) {
+    if (!ref.read(authSessionProvider).isAuthenticated) {
+      HapticFeedback.selectionClick();
+      context.push('/signup?redirect=${Uri.encodeQueryComponent('/groups')}');
+      return;
+    }
+    openSnapFlow(context, ref, availability: availability);
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(myGroupsProvider);
     final query = _search.text.trim().toLowerCase();
+
+    // Greyed (but still shown) when a snap can't be sent: no groups yet, or
+    // the prayer rules say no. Guests see it enabled; tapping it signs them up.
+    final signedIn = ref.watch(
+      authSessionProvider.select((s) => s.isAuthenticated),
+    );
+    final loaded = groupsAsync.valueOrNull;
+    final snapAvailability = signedIn && loaded != null && loaded.isEmpty
+        ? const SnapAvailability.noGroups()
+        : signedIn
+        ? ref.watch(snapAvailabilityProvider)
+        : const SnapAvailability.available();
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
@@ -136,6 +164,17 @@ class _GroupsScreenState extends ConsumerState<GroupsScreen> {
                   // Clears the floating bottom navigation bar.
                   SliverToBoxAdapter(child: SizedBox(height: 130.h)),
                 ],
+              ),
+            ),
+            // Above the floating navigation bar (and the mini player when it is
+            // showing): the screen is told how much space they take.
+            Positioned(
+              right: 20.w,
+              bottom: MediaQuery.paddingOf(context).bottom + 16.h,
+              child: SendSnapButton(
+                size: 58,
+                available: snapAvailability.isAvailable,
+                onPressed: () => _snap(snapAvailability),
               ),
             ),
             Positioned(
