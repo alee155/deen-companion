@@ -58,6 +58,8 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/screens/otp_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
+import '../../features/videos/presentation/screens/video_player_screen.dart';
+import '../../features/videos/presentation/screens/videos_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/prayer_dnd/presentation/screens/prayer_dnd_screen.dart';
 import '../../features/prayer_reminders/presentation/screens/reminders_screen.dart';
@@ -148,6 +150,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/groups/:groupId/stats',
         builder: (context, state) =>
             GroupStatisticsScreen(groupId: state.pathParameters['groupId']!),
+      ),
+      // Home > Bayan of the day.
+      GoRoute(
+        path: '/videos',
+        builder: (context, state) => const VideosScreen(),
+      ),
+      GoRoute(
+        path: '/video/:id',
+        builder: (context, state) =>
+            VideoPlayerScreen(videoId: state.pathParameters['id']!),
       ),
       // Settings > Blocked users.
       GoRoute(
