@@ -68,6 +68,7 @@ PrayerLoggedEvent _logged(
   int points = 30,
   String date = '2026-10-22',
   PrayerName prayer = PrayerName.fajr,
+  bool hasSnap = false,
 }) => PrayerLoggedEvent(
   eventId: id,
   emittedAt: at,
@@ -79,6 +80,7 @@ PrayerLoggedEvent _logged(
     date: date,
     points: 10,
     loggedAt: at,
+    hasSnap: hasSnap,
   ),
   member: MemberSnapshot(
     userId: user,
@@ -153,6 +155,23 @@ void main() {
       expect(state.summary!.group.goalMetCount, 1);
       expect(state.addedLogs.keys, ['l1']);
       expect(state.lastAppliedAt, _t0.add(const Duration(seconds: 3)));
+    },
+  );
+
+  test(
+    'the same log again with a snap is an update: one row, now with the snap',
+    () async {
+      final s = _setup();
+      final n = await _open(s.c);
+      n.apply(_logged('e1', at: _t0.add(const Duration(seconds: 2))));
+      n.apply(
+        _logged('e2', at: _t0.add(const Duration(seconds: 3)), hasSnap: true),
+      );
+      final state = s.c.read(groupLiveProvider('g1'));
+      expect(state.addedLogs.keys, ['l1']);
+      expect(state.addedLogs['l1']!.hasSnap, isTrue);
+      // The numbers are the server's and unchanged: nothing was counted twice.
+      expect(state.summary!.group.goalMetCount, 1);
     },
   );
 
@@ -362,6 +381,28 @@ void main() {
         today: '2026-10-22',
       );
       expect(out.single.logs.map((l) => l.id), ['x']);
+    });
+
+    test('a live update flips a log already in the feed to "has a snap"', () {
+      final out = overlayFeed(
+        [
+          member('a', [log('x', PrayerName.fajr)]),
+        ],
+        added: {
+          'x': LiveLog(
+            id: 'x',
+            userId: 'a',
+            prayer: PrayerName.fajr,
+            date: '2026-10-22',
+            points: 10,
+            loggedAt: _t0,
+            hasSnap: true,
+          ),
+        },
+        removed: const {},
+        today: '2026-10-22',
+      );
+      expect(out.single.logs.single.hasSnap, isTrue);
     });
 
     test('a log from another day has no row in today\'s feed', () {

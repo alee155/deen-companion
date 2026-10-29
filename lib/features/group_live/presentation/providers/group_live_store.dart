@@ -247,7 +247,13 @@ class GroupLiveNotifier
     // A log already in the list (the user logged it and got it from REST) is
     // not added twice; only the numbers apply.
     final added = {...state.addedLogs};
-    added.putIfAbsent(e.log.id, () => e.log);
+    // The same log id again is the owner adding this group to a snap they had
+    // already sent elsewhere: an update to that log, not a new prayer. The
+    // later event is the one that carries the snap.
+    final known = added[e.log.id];
+    if (known == null || (e.log.hasSnap && !known.hasSnap)) {
+      added[e.log.id] = e.log;
+    }
     state = state.copyWith(
       addedLogs: _capped(added),
       removedLogIds: {...state.removedLogIds}..remove(e.log.id),
@@ -366,7 +372,13 @@ List<PrayerLog> _mergeLogs(
 ) {
   final logs = [
     for (final l in m.logs)
-      if (!removed.contains(l.id)) l,
+      if (!removed.contains(l.id))
+        // A live update says this group now has the snap.
+        if (added[l.id] case final a?
+            when a.userId == m.userId && a.hasSnap && !l.hasSnap)
+          l.withSnapSent()
+        else
+          l,
   ];
   final have = {for (final l in logs) l.id};
   for (final a in added.values) {
