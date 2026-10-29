@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/audio_player/presentation/providers/audio_player_provider.dart';
 import '../../features/audio_player/presentation/providers/surah_navigation.dart';
 import '../../features/audio_player/presentation/widgets/mini_player_bar.dart';
+import '../../features/profile/presentation/widgets/gender_prompt_sheet.dart';
 import '../motion/motion.dart';
 import '../widgets/floating_nav_bar.dart';
 
@@ -50,7 +51,8 @@ class AppShell extends ConsumerWidget {
 
     return Scaffold(
       extendBody: true,
-      body: navigationShell,
+      // Asks once, per app run, for the gender of an account that has none.
+      body: GenderPromptHost(child: navigationShell),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
