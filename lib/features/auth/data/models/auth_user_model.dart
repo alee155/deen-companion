@@ -1,4 +1,5 @@
 import '../../domain/entities/auth_user.dart';
+import '../../domain/entities/gender.dart';
 
 class AuthUserModel {
   final String id;
@@ -6,6 +7,7 @@ class AuthUserModel {
   final String email;
   final bool isEmailVerified;
   final String? timezone;
+  final Gender? gender;
 
   const AuthUserModel({
     required this.id,
@@ -13,6 +15,7 @@ class AuthUserModel {
     required this.email,
     required this.isEmailVerified,
     this.timezone,
+    this.gender,
   });
 
   factory AuthUserModel.fromJson(Map<String, dynamic> json) => AuthUserModel(
@@ -21,6 +24,7 @@ class AuthUserModel {
     email: json['email'] as String,
     isEmailVerified: json['isEmailVerified'] as bool? ?? false,
     timezone: json['timezone'] as String?,
+    gender: Gender.parse(json['gender']),
   );
 
   AuthUser toEntity() => AuthUser(
@@ -29,6 +33,7 @@ class AuthUserModel {
     email: email,
     isEmailVerified: isEmailVerified,
     timezone: timezone,
+    gender: gender,
   );
 }
 

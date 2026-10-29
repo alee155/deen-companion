@@ -1,6 +1,7 @@
 import '../../../../core/usecase/usecase.dart';
 import '../entities/auth_session.dart';
 import '../entities/auth_user.dart';
+import '../entities/gender.dart';
 import '../entities/otp_purpose.dart';
 
 abstract class AuthRepository {
@@ -14,11 +15,13 @@ abstract class AuthRepository {
   });
 
   /// Creates the account and emails an OTP. The returned user is NOT signed
-  /// in: their token is held aside until [verifyOtp] succeeds.
+  /// in: their token is held aside until [verifyOtp] succeeds. [gender] is
+  /// required by the backend and can never be changed afterwards.
   Future<Result<AuthUser>> signup({
     required String name,
     required String email,
     required String password,
+    required Gender gender,
   });
 
   /// Verifies the emailed OTP. On success the held token becomes the active

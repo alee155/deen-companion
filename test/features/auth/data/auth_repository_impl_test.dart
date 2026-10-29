@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/auth/domain/entities/gender.dart';
 import 'package:deen_companion/core/error/exceptions.dart';
 import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/core/timezone/device_timezone.dart';
@@ -32,7 +33,10 @@ void main() {
   late MemoryTokens tokens;
   late AuthRepositoryImpl repo;
 
-  setUpAll(() => registerFallbackValue(OtpPurpose.verifyEmail));
+  setUpAll(() {
+    registerFallbackValue(OtpPurpose.verifyEmail);
+    registerFallbackValue(Gender.female);
+  });
 
   setUp(() {
     remote = _MockRemote();
@@ -47,6 +51,7 @@ void main() {
       name: any(named: 'name'),
       email: any(named: 'email'),
       password: any(named: 'password'),
+      gender: any(named: 'gender'),
       timezone: any(named: 'timezone'),
     ),
   );
@@ -75,12 +80,18 @@ void main() {
       stubRegister().thenAnswer(
         (_) async => AuthTokenResponseModel(accessToken: 'tok', user: _user()),
       );
-      await repo.signup(name: 'Alee', email: 'a@b.c', password: 'pw');
+      await repo.signup(
+        name: 'Alee',
+        email: 'a@b.c',
+        password: 'pw',
+        gender: Gender.female,
+      );
       verify(
         () => remote.register(
           name: 'Alee',
           email: 'a@b.c',
           password: 'pw',
+          gender: Gender.female,
           timezone: 'Asia/Karachi',
         ),
       ).called(1);
@@ -90,7 +101,12 @@ void main() {
       stubRegister().thenAnswer(
         (_) async => AuthTokenResponseModel(accessToken: 'tok', user: _user()),
       );
-      final r = await repo.signup(name: 'Alee', email: 'a@b.c', password: 'pw');
+      final r = await repo.signup(
+        name: 'Alee',
+        email: 'a@b.c',
+        password: 'pw',
+        gender: Gender.female,
+      );
       expect((r as Success).data.isEmailVerified, isFalse);
       expect(tokens.pending, 'tok');
       expect(tokens.access, isNull);
@@ -98,7 +114,12 @@ void main() {
 
     test('server message becomes ServerFailure', () async {
       stubRegister().thenThrow(const ServerException('Email already in use'));
-      final r = await repo.signup(name: 'n', email: 'a@b.c', password: 'pw');
+      final r = await repo.signup(
+        name: 'n',
+        email: 'a@b.c',
+        password: 'pw',
+        gender: Gender.female,
+      );
       expect(failureOf(r), isA<ServerFailure>());
       expect(failureOf(r).message, 'Email already in use');
       expect(tokens.pending, isNull);
@@ -107,12 +128,26 @@ void main() {
     test('network / unexpected errors are mapped', () async {
       stubRegister().thenThrow(const NetworkException());
       expect(
-        failureOf(await repo.signup(name: 'n', email: 'a@b.c', password: 'pw')),
+        failureOf(
+          await repo.signup(
+            name: 'n',
+            email: 'a@b.c',
+            password: 'pw',
+            gender: Gender.female,
+          ),
+        ),
         isA<NetworkFailure>(),
       );
       stubRegister().thenThrow(StateError('x'));
       expect(
-        failureOf(await repo.signup(name: 'n', email: 'a@b.c', password: 'pw')),
+        failureOf(
+          await repo.signup(
+            name: 'n',
+            email: 'a@b.c',
+            password: 'pw',
+            gender: Gender.female,
+          ),
+        ),
         isA<UnexpectedFailure>(),
       );
     });

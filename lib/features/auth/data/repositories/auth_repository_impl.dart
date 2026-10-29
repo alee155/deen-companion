@@ -6,6 +6,7 @@ import '../../../../core/usecase/usecase.dart';
 import '../../../../core/utils/logger.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../domain/entities/auth_user.dart';
+import '../../domain/entities/gender.dart';
 import '../../domain/entities/otp_purpose.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_datasource.dart';
@@ -45,11 +46,13 @@ class AuthRepositoryImpl implements AuthRepository {
     required String name,
     required String email,
     required String password,
+    required Gender gender,
   }) => _guard('signup', () async {
     final res = await remote.register(
       name: name,
       email: email,
       password: password,
+      gender: gender,
       timezone: await deviceTimezone?.iana(),
     );
     // Parked, not active: the user isn't signed in until the OTP checks out.

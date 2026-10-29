@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/auth/domain/entities/gender.dart';
 // ignore_for_file: depend_on_referenced_packages
 import 'package:deen_companion/core/constants/app_constants.dart';
 import 'package:deen_companion/core/error/failures.dart';
@@ -191,7 +192,12 @@ void main() {
       repo.signupResult = const Error(ServerFailure('Email already in use'));
       final ok = await container
           .read(signupControllerProvider.notifier)
-          .submit(name: 'n', email: 'a@b.c', password: 'p');
+          .submit(
+            name: 'n',
+            email: 'a@b.c',
+            password: 'p',
+            gender: Gender.female,
+          );
       expect(ok, isFalse);
       expect(
         container.read(signupControllerProvider).errorMessage,
@@ -206,7 +212,12 @@ void main() {
         repo.signupResult = const Success(unverifiedUser);
         final ok = await container
             .read(signupControllerProvider.notifier)
-            .submit(name: 'N', email: 'a@b.c', password: 'p');
+            .submit(
+              name: 'N',
+              email: 'a@b.c',
+              password: 'p',
+              gender: Gender.female,
+            );
         expect(ok, isTrue);
         expect(container.read(authSessionProvider).isGuest, isTrue);
         expect(storage.get<bool>(_box, AppConstants.authGateSeenKey), isNull);
@@ -216,7 +227,12 @@ void main() {
     test('clearError drops a previous error', () async {
       repo.signupResult = const Error(ServerFailure('boom'));
       final n = container.read(signupControllerProvider.notifier);
-      await n.submit(name: 'n', email: 'a@b.c', password: 'p');
+      await n.submit(
+        name: 'n',
+        email: 'a@b.c',
+        password: 'p',
+        gender: Gender.female,
+      );
       n.clearError();
       expect(container.read(signupControllerProvider).errorMessage, isNull);
     });

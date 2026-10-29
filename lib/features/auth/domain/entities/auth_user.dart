@@ -1,4 +1,5 @@
 import 'auth_session.dart';
+import 'gender.dart';
 
 /// The account as the backend knows it. Distinct from [AuthSession] because a
 /// freshly registered user exists server-side (and has a token) before they
@@ -14,12 +15,16 @@ class AuthUser {
   /// app sets it; null when the response didn't include one.
   final String? timezone;
 
+  /// Null for accounts created before the field existed, until they set it.
+  final Gender? gender;
+
   const AuthUser({
     required this.id,
     required this.name,
     required this.email,
     required this.isEmailVerified,
     this.timezone,
+    this.gender,
   });
 
   AuthSession toSession() => AuthSession(userId: id, email: email, name: name);

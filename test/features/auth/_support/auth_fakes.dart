@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/auth/domain/entities/gender.dart';
 import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/core/storage/token_storage.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
@@ -65,6 +66,7 @@ class FakeAuthRepository implements AuthRepository {
   int meCalls = 0;
   OtpPurpose? lastPurpose;
   String? lastEmail;
+  Gender? lastGender;
   ({String email, String otp, String newPassword})? lastReset;
 
   @override
@@ -81,8 +83,10 @@ class FakeAuthRepository implements AuthRepository {
     required String name,
     required String email,
     required String password,
+    required Gender gender,
   }) async {
     lastEmail = email;
+    lastGender = gender;
     return signupResult;
   }
 

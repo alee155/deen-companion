@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/auth/domain/entities/gender.dart';
 import 'package:deen_companion/core/error/exceptions.dart';
 import 'package:deen_companion/core/network/api_endpoints.dart';
 import 'package:deen_companion/features/auth/data/datasources/auth_remote_datasource.dart';
@@ -49,14 +50,24 @@ void main() {
       'success': true,
       'data': {'accessToken': 'tok', 'user': _user},
     });
-    final r = await ds.register(name: 'Alee', email: 'a@b.c', password: 'pw');
+    final r = await ds.register(
+      name: 'Alee',
+      email: 'a@b.c',
+      password: 'pw',
+      gender: Gender.female,
+    );
     expect(r.accessToken, 'tok');
     expect(r.user.email, 'a@b.c');
     expect(r.user.isEmailVerified, isFalse);
     verify(
       () => dio.post(
         ApiEndpoints.authRegister,
-        data: {'name': 'Alee', 'email': 'a@b.c', 'password': 'pw'},
+        data: {
+          'name': 'Alee',
+          'email': 'a@b.c',
+          'password': 'pw',
+          'gender': 'female',
+        },
       ),
     ).called(1);
   });
@@ -70,6 +81,7 @@ void main() {
       name: 'Alee',
       email: 'a@b.c',
       password: 'pw',
+      gender: Gender.female,
       timezone: 'Asia/Karachi',
     );
     verify(
@@ -79,6 +91,7 @@ void main() {
           'name': 'Alee',
           'email': 'a@b.c',
           'password': 'pw',
+          'gender': 'female',
           'timezone': 'Asia/Karachi',
         },
       ),
@@ -93,7 +106,12 @@ void main() {
         'user': {..._user, 'timezone': 'Asia/Karachi'},
       },
     });
-    final r = await ds.register(name: 'n', email: 'a@b.c', password: 'pw');
+    final r = await ds.register(
+      name: 'n',
+      email: 'a@b.c',
+      password: 'pw',
+      gender: Gender.female,
+    );
     expect(r.user.timezone, 'Asia/Karachi');
   });
 
@@ -135,7 +153,12 @@ void main() {
       }),
     );
     expect(
-      () => ds.register(name: 'n', email: 'x', password: 'p'),
+      () => ds.register(
+        name: 'n',
+        email: 'x',
+        password: 'p',
+        gender: Gender.female,
+      ),
       throwsA(
         isA<ServerException>().having(
           (e) => e.message,
@@ -149,7 +172,12 @@ void main() {
   test('connection errors map to NetworkException', () async {
     stubPost(dioError());
     expect(
-      () => ds.register(name: 'n', email: 'x', password: 'p'),
+      () => ds.register(
+        name: 'n',
+        email: 'x',
+        password: 'p',
+        gender: Gender.female,
+      ),
       throwsA(isA<NetworkException>()),
     );
   });
@@ -157,7 +185,12 @@ void main() {
   test('success:false or malformed bodies map to ServerException', () async {
     stubPost({'success': false, 'data': {}});
     expect(
-      () => ds.register(name: 'n', email: 'x', password: 'p'),
+      () => ds.register(
+        name: 'n',
+        email: 'x',
+        password: 'p',
+        gender: Gender.female,
+      ),
       throwsA(isA<ServerException>()),
     );
     stubPost({
@@ -165,7 +198,12 @@ void main() {
       'data': {'oops': 1},
     });
     expect(
-      () => ds.register(name: 'n', email: 'x', password: 'p'),
+      () => ds.register(
+        name: 'n',
+        email: 'x',
+        password: 'p',
+        gender: Gender.female,
+      ),
       throwsA(isA<ServerException>()),
     );
   });

@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/entities/gender.dart';
 import '../providers/signup_controller.dart';
 import '../widgets/auth_icon_badge.dart';
 import '../widgets/auth_top_header.dart';
 import '../widgets/custom_text_field.dart';
+import '../widgets/gender_selector.dart';
 import '../widgets/google_button.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -34,6 +36,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   String? _nameError;
   String? _emailError;
   String? _passwordError;
+  String? _genderError;
+  Gender? _gender;
 
   @override
   void dispose() {
@@ -60,15 +64,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           : password.length < _minPasswordLength
           ? 'Use at least $_minPasswordLength characters'
           : null;
+      _genderError = _gender == null ? 'Choose your gender' : null;
     });
-    if (_nameError != null || _emailError != null || _passwordError != null) {
+    final gender = _gender;
+    if (_nameError != null ||
+        _emailError != null ||
+        _passwordError != null ||
+        gender == null) {
       return;
     }
 
     FocusScope.of(context).unfocus();
     final created = await ref
         .read(signupControllerProvider.notifier)
-        .submit(name: name, email: email, password: password);
+        .submit(name: name, email: email, password: password, gender: gender);
 
     // On failure the controller's errorMessage is shown under the button.
     if (!mounted || !created) return;
@@ -174,6 +183,25 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       isPassword: true,
                       errorText: _passwordError,
                     ).slideIn(RevealDirection.bottom, delay: seq.next()),
+                    SizedBox(height: 10.h),
+
+                    GenderSelector(
+                      value: _gender,
+                      errorText: _genderError,
+                      enabled: !state.isSubmitting,
+                      onChanged: (g) => setState(() {
+                        _gender = g;
+                        _genderError = null;
+                      }),
+                    ).slideIn(RevealDirection.bottom, delay: seq.next()),
+                    SizedBox(height: 6.h),
+                    Text(
+                      'This can’t be changed after you sign up.',
+                      style: TextStyle(
+                        fontSize: 11.5.sp,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                     SizedBox(height: 10.h),
 
                     if (state.errorMessage != null) ...[

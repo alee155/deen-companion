@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/api_error_mapper.dart';
+import '../../domain/entities/gender.dart';
 import '../../domain/entities/otp_purpose.dart';
 import '../models/auth_user_model.dart';
 
@@ -15,6 +16,7 @@ abstract class AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    required Gender gender,
     String? timezone,
   });
 
@@ -51,6 +53,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
+    required Gender gender,
     String? timezone,
   }) => _data(
     () => dio.post(
@@ -59,6 +62,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'name': name,
         'email': email,
         'password': password,
+        'gender': gender.wire,
         'timezone': ?timezone,
       },
     ),

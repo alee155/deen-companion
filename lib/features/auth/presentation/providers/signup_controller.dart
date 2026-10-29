@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/usecase/usecase.dart';
+import '../../domain/entities/gender.dart';
 import 'auth_providers.dart';
 
 class SignupState {
@@ -25,12 +26,13 @@ class SignupController extends Notifier<SignupState> {
     required String name,
     required String email,
     required String password,
+    required Gender gender,
   }) async {
     if (state.isSubmitting) return false;
     state = const SignupState(isSubmitting: true);
     final result = await ref
         .read(authRepositoryProvider)
-        .signup(name: name, email: email, password: password);
+        .signup(name: name, email: email, password: password, gender: gender);
     switch (result) {
       case Success():
         state = const SignupState();
