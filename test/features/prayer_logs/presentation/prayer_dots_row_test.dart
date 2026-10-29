@@ -3,9 +3,14 @@ import 'package:deen_companion/features/prayer_logs/domain/group_member_prayers.
 import 'package:deen_companion/features/prayer_logs/domain/prayer_log.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/widgets/prayer_dots_row.dart';
 import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times.dart';
+import 'package:deen_companion/core/usecase/usecase.dart';
+import 'package:deen_companion/features/prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '_prayer_log_test_support.dart';
 
 PrayerLog _log(PrayerName p, {String? url}) => PrayerLog(
   id: p.name,
@@ -13,9 +18,10 @@ PrayerLog _log(PrayerName p, {String? url}) => PrayerLog(
   date: '2026-10-13',
   status: PrayerLogStatus.onTime,
   points: 5,
-  snapUrl: url,
-  windowStartsAt: DateTime(2026, 10, 13, 4),
-  windowEndsAt: DateTime(2026, 10, 13, 6),
+  snapUrl: null,
+  hasSnap: url != null,
+  windowStartsAt: DateTime.now().subtract(const Duration(hours: 1)),
+  windowEndsAt: DateTime.now().add(const Duration(hours: 1)),
   loggedAt: DateTime(2026, 10, 13, 5),
 );
 
@@ -34,11 +40,19 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
-    ScreenUtilInit(
-      designSize: const Size(390, 844),
-      builder: (_, _) => MaterialApp(
-        home: Scaffold(
-          body: Padding(padding: const EdgeInsets.all(16), child: child),
+    ProviderScope(
+      overrides: [
+        prayerLogsRepositoryProvider.overrideWithValue(
+          ScriptedLogsRepo()
+            ..viewResult = const Success(OpenedSnap(url: 'https://img.test/a')),
+        ),
+      ],
+      child: ScreenUtilInit(
+        designSize: const Size(390, 844),
+        builder: (_, _) => MaterialApp(
+          home: Scaffold(
+            body: Padding(padding: const EdgeInsets.all(16), child: child),
+          ),
         ),
       ),
     ),

@@ -41,7 +41,7 @@ void main() {
     test('uploads the photo and reports the new log', () async {
       String? uploaded;
       final repo = PrayerLogSnapRepository(
-        log: (path, {viewSeconds}) async {
+        log: (path, {viewSeconds, groupIds}) async {
           uploaded = path;
           return Success(logOf(PrayerName.dhuhr, id: 'log-77'));
         },
@@ -51,10 +51,28 @@ void main() {
       expect((r as Success<SentSnap>).data.id, 'log-77');
     });
 
+    test('sends the chosen groups along with the photo', () async {
+      List<String>? sent;
+      final repo = PrayerLogSnapRepository(
+        log: (path, {viewSeconds, groupIds}) async {
+          sent = groupIds;
+          return Success(logOf(PrayerName.dhuhr));
+        },
+      );
+      await repo.sendSnap(
+        const SnapDraft(
+          groupIds: ['g-1', 'g-3'],
+          imagePath: '/tmp/prepared.jpg',
+          viewSeconds: 5,
+        ),
+      );
+      expect(sent, ['g-1', 'g-3']);
+    });
+
     test('sends the draft\'s view timer along with the photo', () async {
       int? sent;
       final repo = PrayerLogSnapRepository(
-        log: (path, {viewSeconds}) async {
+        log: (path, {viewSeconds, groupIds}) async {
           sent = viewSeconds;
           return Success(logOf(PrayerName.fajr));
         },
@@ -66,7 +84,7 @@ void main() {
     test('sends only the photo: the API takes nothing else', () async {
       var calls = 0;
       final repo = PrayerLogSnapRepository(
-        log: (path, {viewSeconds}) async {
+        log: (path, {viewSeconds, groupIds}) async {
           calls++;
           return Success(logOf(PrayerName.asr));
         },
@@ -79,7 +97,7 @@ void main() {
       'no open prayer becomes a plain sentence naming the next one',
       () async {
         final repo = PrayerLogSnapRepository(
-          log: (_, {viewSeconds}) async => Error(_noWindow()),
+          log: (_, {viewSeconds, groupIds}) async => Error(_noWindow()),
         );
         final f = (await repo.sendSnap(_draft) as Error).failure;
         expect(f, isA<ServerFailure>());
@@ -90,7 +108,7 @@ void main() {
 
     test('already logged is explained', () async {
       final repo = PrayerLogSnapRepository(
-        log: (_, {viewSeconds}) async => const Error(
+        log: (_, {viewSeconds, groupIds}) async => const Error(
           PrayerLogFailure(
             'dup',
             code: PrayerLogErrorCode.alreadyLogged,
@@ -104,7 +122,7 @@ void main() {
 
     test('a photo that is too large says so', () async {
       final repo = PrayerLogSnapRepository(
-        log: (_, {viewSeconds}) async => const Error(
+        log: (_, {viewSeconds, groupIds}) async => const Error(
           PrayerLogFailure(
             'That photo is too large. The limit is 5 MB.',
             code: PrayerLogErrorCode.fileTooLarge,
@@ -118,7 +136,8 @@ void main() {
 
     test('being offline passes through unchanged', () async {
       final repo = PrayerLogSnapRepository(
-        log: (_, {viewSeconds}) async => const Error(NetworkFailure()),
+        log: (_, {viewSeconds, groupIds}) async =>
+            const Error(NetworkFailure()),
       );
       final f = (await repo.sendSnap(_draft) as Error).failure;
       expect(f, isA<NetworkFailure>());

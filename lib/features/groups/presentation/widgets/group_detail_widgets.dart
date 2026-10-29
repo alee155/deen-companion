@@ -1,3 +1,4 @@
+import '../../../prayer_logs/domain/prayer_log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/motion/motion.dart';
@@ -380,12 +381,12 @@ class MemberSnapTile extends StatelessWidget {
   final bool canOpenDetails;
   final VoidCallback onOpenDetails;
 
-  /// Opens the member's latest photo. Only offered when [hasPhoto].
+  /// Opens the member's latest snap. Only offered while it is unopened.
   final VoidCallback onOpenSnap;
 
-  /// Whether there is a real photo from this member for the viewer to open
-  /// (never on the viewer's own card).
-  final bool hasPhoto;
+  /// Their latest snap as this viewer sees it (never active on the viewer's
+  /// own card).
+  final SnapState snapState;
 
   /// Their streak line (current streak, today's goal), from the board.
   final MemberStreak? streak;
@@ -409,7 +410,7 @@ class MemberSnapTile extends StatelessWidget {
     required this.canOpenDetails,
     required this.onOpenDetails,
     required this.onOpenSnap,
-    this.hasPhoto = false,
+    this.snapState = SnapState.none,
     this.streak,
     this.prayersToday,
     this.pointsToday,
@@ -508,7 +509,7 @@ class MemberSnapTile extends StatelessWidget {
               ),
             ),
             SizedBox(width: 8.w),
-            SnapBox(hasPhoto: hasPhoto, onTap: hasPhoto ? onOpenSnap : null),
+            SnapBox(state: snapState, onTap: onOpenSnap),
             if (onMore != null)
               IconButton(
                 tooltip: 'More about ${member.displayName}',

@@ -309,11 +309,14 @@ final liveGroupFeedProvider = Provider.autoDispose
           .valueOrNull;
       if (feed == null) return null;
       final live = ref.watch(groupLiveProvider(groupId));
-      return overlayFeed(
-        feed,
-        added: live.addedLogs,
-        removed: live.removedLogIds,
-        today: _localToday(),
+      return applySnapOutcomes(
+        overlayFeed(
+          feed,
+          added: live.addedLogs,
+          removed: live.removedLogIds,
+          today: _localToday(),
+        ),
+        ref.watch(snapOutcomesProvider),
       );
     });
 

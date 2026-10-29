@@ -40,7 +40,10 @@ class LiveLog {
   final String date;
   final int points;
   final DateTime loggedAt;
-  final String? snapUrl;
+
+  /// A snap was sent to this group. The link itself is never broadcast: the
+  /// viewer asks for it when they open the snap.
+  final bool hasSnap;
 
   const LiveLog({
     required this.id,
@@ -49,7 +52,7 @@ class LiveLog {
     required this.date,
     required this.points,
     required this.loggedAt,
-    this.snapUrl,
+    this.hasSnap = false,
   });
 
   /// An event does not carry the window or status, so those take neutral
@@ -60,7 +63,9 @@ class LiveLog {
     date: date,
     status: PrayerLogStatus.unknown,
     points: points,
-    snapUrl: snapUrl,
+    snapUrl: null,
+    hasSnap: hasSnap,
+    windowKnown: false,
     windowStartsAt: loggedAt,
     windowEndsAt: loggedAt,
     loggedAt: loggedAt,
@@ -155,7 +160,7 @@ RealtimeEvent? parseRealtimeEvent(String name, Object? payload) {
             date: l['date'] as String,
             points: (l['points'] as num).toInt(),
             loggedAt: DateTime.parse(l['loggedAt'] as String).toUtc(),
-            snapUrl: l['snapUrl'] as String?,
+            hasSnap: l['hasSnap'] == true,
           ),
           member: MemberSnapshot.fromJson(
             Map<String, dynamic>.from(j['member'] as Map),

@@ -14,7 +14,19 @@ abstract class PrayerLogsRepository {
   /// Logs the prayer that is open right now with [imagePath] as proof. The
   /// server decides which prayer; see `PrayerLogFailure` for the outcomes
   /// (no open window, already logged, not synced, too large).
-  Future<Result<PrayerLog>> logPrayer(String imagePath, {int? viewSeconds});
+  ///
+  /// [groupIds] limits who sees the snap to those groups; without it the
+  /// server shows it in every group the caller belongs to.
+  Future<Result<PrayerLog>> logPrayer(
+    String imagePath, {
+    int? viewSeconds,
+    List<String>? groupIds,
+  });
+
+  /// Opens another member's snap (`POST /prayers/logs/{id}/view`). The link
+  /// works once: a second call fails with `snapAlreadyViewed`, and after the
+  /// window `snapExpired`. Never retried.
+  Future<Result<OpenedSnap>> viewSnap(String logId);
 
   /// Everyone in a group and what they logged on [date] (null → today).
   /// A non-member gets a failure with `PrayerLogErrorCode.notGroupMember`.

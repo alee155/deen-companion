@@ -55,6 +55,10 @@ String prayerLogErrorMessage(Failure failure) {
       return 'This prayer’s time has ended, so it can’t be removed.';
     case PrayerLogErrorCode.notGroupMember:
       return 'Only members of this group can see this.';
+    case PrayerLogErrorCode.snapAlreadyViewed:
+      return 'You’ve already opened this snap.';
+    case PrayerLogErrorCode.snapExpired:
+      return 'This snap has expired.';
     case PrayerLogErrorCode.dayLocked:
     case PrayerLogErrorCode.fileTooLarge:
     case PrayerLogErrorCode.other:

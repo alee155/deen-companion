@@ -80,6 +80,23 @@ void main() {
       expect(part.value.contentType.toString(), 'image/jpeg');
     });
 
+    test('repeats the groupIds field once per group', () async {
+      stubPost().thenAnswer(
+        (_) async => okResponse({'success': true, 'data': _logJson}),
+      );
+      await repo.logPrayer(photo, groupIds: ['g-1', 'g-2']);
+      final form =
+          verify(
+                () => dio.post(any(), data: captureAny(named: 'data')),
+              ).captured.single
+              as FormData;
+      expect(
+        [for (final f in form.fields) '${f.key}=${f.value}'],
+        ['groupIds=g-1', 'groupIds=g-2'],
+      );
+      expect(form.files.single.key, 'file');
+    });
+
     test(
       'sends viewDurationSeconds, clamped to the 1-10 the server takes',
       () async {

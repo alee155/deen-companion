@@ -348,13 +348,23 @@ class SnapComposerController
   /// Ticks or unticks a group.
   void toggleGroup(String groupId) {
     final next = {...state.selectedGroupIds};
-    if (!next.add(groupId)) next.remove(groupId);
+    final ticked = next.add(groupId);
+    if (!ticked) next.remove(groupId);
     state = state.copyWith(selectedGroupIds: next);
+    debugPrint(
+      '^^^^^^^^^^^^^^^^^^^^ [GROUP PICK] ${ticked ? 'TICKED' : 'UNTICKED'} '
+      '$groupId -> selected now: ${next.toList()}',
+    );
   }
 
   /// Ticks exactly [groupIds] ("Select all", or clear with none).
-  void setGroups(Iterable<String> groupIds) =>
-      state = state.copyWith(selectedGroupIds: {...groupIds});
+  void setGroups(Iterable<String> groupIds) {
+    state = state.copyWith(selectedGroupIds: {...groupIds});
+    debugPrint(
+      '^^^^^^^^^^^^^^^^^^^^ [GROUP PICK] SELECT ALL / CLEAR -> selected now: '
+      '${state.selectedGroupIds.toList()}',
+    );
+  }
 
   /// Compress the final image and show the groups to choose from.
   Future<void> continueToGroups() async {
@@ -393,6 +403,10 @@ class SnapComposerController
   Future<bool> send(List<String> groupIds) async {
     final prepared = state.prepared;
     if (prepared == null || state.isSending || groupIds.isEmpty) return false;
+    debugPrint(
+      '^^^^^^^^^^^^^^^^^^^^ [GROUP PICK] SEND TAPPED for ${groupIds.length} '
+      'group(s): $groupIds',
+    );
     FlowLog.log(
       'SEND SNAP',
       'USER TAPPED SEND: photo ${prepared.compressedBytes} bytes, '

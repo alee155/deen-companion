@@ -1,3 +1,4 @@
+import '../../../prayer_logs/domain/prayer_log.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -109,42 +110,51 @@ class MemberAvatar extends StatelessWidget {
 const snapPendingAsset = 'assets/images/snap_pending.png';
 const snapViewedAsset = 'assets/images/snap_viewed.png';
 
-/// A member's snap on their card: a filled arrow when there is a snap to open
-/// (tapping opens it full screen), an outlined one when there is none — never
-/// on the viewer's own card, which has nothing to open.
+/// A member's snap on their card. Unopened: a filled arrow, tap to view it
+/// full screen (once). Opened: the outlined arrow, nothing to tap. Expired: the
+/// same, dimmed. No snap: the outlined arrow. Never active on the viewer's own
+/// card, which has nothing to open.
 class SnapBox extends StatelessWidget {
-  /// Whether there is a snap for the viewer to open.
-  final bool hasPhoto;
+  final SnapState state;
   final VoidCallback? onTap;
   final double size;
 
   const SnapBox({
     super.key,
-    required this.hasPhoto,
+    this.state = SnapState.none,
     required this.onTap,
     this.size = 36,
   });
 
   @override
   Widget build(BuildContext context) {
-    final enabled = hasPhoto && onTap != null;
+    final enabled = state == SnapState.unopened && onTap != null;
     final box = size.w;
+    final label = switch (state) {
+      SnapState.unopened => 'View snap',
+      SnapState.opened => 'Snap already opened',
+      SnapState.expired => 'Snap expired',
+      SnapState.none => 'No snap',
+    };
     return Semantics(
-      button: true,
+      button: enabled,
       enabled: enabled,
-      label: enabled ? 'View photo' : 'No photo',
+      label: label,
       excludeSemantics: true,
       child: InkResponse(
         onTap: enabled ? onTap : null,
         radius: box * 0.8,
-        child: SizedBox(
-          width: box,
-          height: box,
-          child: Padding(
-            padding: EdgeInsets.all(box * 0.12),
-            child: Image.asset(
-              enabled ? snapPendingAsset : snapViewedAsset,
-              fit: BoxFit.contain,
+        child: Opacity(
+          opacity: state == SnapState.expired ? 0.4 : 1,
+          child: SizedBox(
+            width: box,
+            height: box,
+            child: Padding(
+              padding: EdgeInsets.all(box * 0.12),
+              child: Image.asset(
+                enabled ? snapPendingAsset : snapViewedAsset,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ),

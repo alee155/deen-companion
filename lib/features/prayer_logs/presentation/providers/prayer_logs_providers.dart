@@ -106,6 +106,35 @@ final prayerLogsProvider = FutureProvider.autoDispose
 /// The group feed for one prayer-day; a null date means the user's today.
 typedef GroupFeedKey = ({String groupId, String? date});
 
+/// Snaps this device has just opened (or found expired), by log id. The feed
+/// and live events say a snap is unopened until the next fetch; this keeps the
+/// tile right in between, including for logs that came in live.
+final snapOutcomesProvider = StateProvider<Map<String, SnapState>>(
+  (ref) => const {},
+);
+
+/// [feed] with [outcomes] applied to the logs they name.
+List<GroupMemberPrayers> applySnapOutcomes(
+  List<GroupMemberPrayers> feed,
+  Map<String, SnapState> outcomes,
+) {
+  if (outcomes.isEmpty) return feed;
+  PrayerLog apply(PrayerLog l) => switch (outcomes[l.id]) {
+    SnapState.opened => l.asViewed(),
+    SnapState.expired => l.asExpired(),
+    _ => l,
+  };
+  return [
+    for (final m in feed)
+      GroupMemberPrayers(
+        userId: m.userId,
+        name: m.name,
+        role: m.role,
+        logs: [for (final l in m.logs) apply(l)],
+      ),
+  ];
+}
+
 final groupPrayersProvider = FutureProvider.autoDispose
     .family<List<GroupMemberPrayers>, GroupFeedKey>((ref, key) async {
       // Kept briefly after the group screen closes (so it reopens with the
@@ -159,14 +188,22 @@ class PrayerLogActions {
   ///
   /// If the server has no times for today yet, the location is sent once (it
   /// then calculates them) and the log is retried once.
-  Future<Result<PrayerLog>> log(String imagePath, {int? viewSeconds}) async {
+  Future<Result<PrayerLog>> log(
+    String imagePath, {
+    int? viewSeconds,
+    List<String>? groupIds,
+  }) async {
     const tag = 'LOG PRAYER';
     final repo = ref.read(prayerLogsRepositoryProvider);
     FlowLog.log(
       tag,
       'UPLOADING THE PHOTO (the server decides which prayer this is)',
     );
-    var result = await repo.logPrayer(imagePath, viewSeconds: viewSeconds);
+    var result = await repo.logPrayer(
+      imagePath,
+      viewSeconds: viewSeconds,
+      groupIds: groupIds,
+    );
     if (result case Error(:final failure)
         when failure is PrayerLogFailure &&
             failure.code == PrayerLogErrorCode.timesNotSynced) {
@@ -178,7 +215,11 @@ class PrayerLogActions {
           .read(prayerTimesLoaderProvider)
           .refresh(force: true);
       if (loaded is Success) {
-        result = await repo.logPrayer(imagePath, viewSeconds: viewSeconds);
+        result = await repo.logPrayer(
+          imagePath,
+          viewSeconds: viewSeconds,
+          groupIds: groupIds,
+        );
       }
     }
     result.when(

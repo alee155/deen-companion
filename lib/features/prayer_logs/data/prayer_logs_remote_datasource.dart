@@ -12,11 +12,18 @@ abstract class PrayerLogsRemoteDataSource {
   /// `POST /prayers/logs` — multipart with a single `file` field (JPEG, PNG
   /// or WebP, ≤ 5 MB). Nothing else is sent: the server picks the prayer from
   /// its own clock, so the client can't claim a different one.
-  Future<PrayerLog> logPrayer(String imagePath, {int? viewSeconds});
+  Future<PrayerLog> logPrayer(
+    String imagePath, {
+    int? viewSeconds,
+    List<String>? groupIds,
+  });
 
   /// `DELETE /prayers/logs/{id}` — owner only, and only while the window is
   /// still open (400 afterwards). Also removes the photo.
   Future<void> deleteLog(String id);
+
+  /// `POST /prayers/logs/{id}/view` — no body. 410 once opened or expired.
+  Future<OpenedSnap> viewSnap(String logId);
 
   /// `GET /groups/{id}/prayers?date=` — every member and their logs for one
   /// prayer-day (null [date] → the caller's today). Members only (403).
@@ -46,20 +53,35 @@ class PrayerLogsRemoteDataSourceImpl implements PrayerLogsRemoteDataSource {
   const PrayerLogsRemoteDataSourceImpl(this.dio);
 
   @override
-  Future<PrayerLog> logPrayer(String imagePath, {int? viewSeconds}) => _data(
-    () async => dio.post(
-      ApiEndpoints.prayerLogs,
-      data: FormData.fromMap({
-        'viewDurationSeconds': ?viewSeconds,
-        'file': await MultipartFile.fromFile(
-          imagePath,
-          filename: 'snap${_extension(imagePath)}',
-          contentType: _mediaType(imagePath),
-        ),
-      }),
-    ),
-    (data) => prayerLogFromJson(data as Map<String, dynamic>),
-  );
+  Future<PrayerLog> logPrayer(
+    String imagePath, {
+    int? viewSeconds,
+    List<String>? groupIds,
+  }) => _data(() async {
+    final form = FormData.fromMap({
+      'viewDurationSeconds': ?viewSeconds,
+      'file': await MultipartFile.fromFile(
+        imagePath,
+        filename: 'snap${_extension(imagePath)}',
+        contentType: _mediaType(imagePath),
+      ),
+    });
+    // The field is repeated once per group (`groupIds=a&groupIds=b`).
+    for (final id in groupIds ?? const <String>[]) {
+      form.fields.add(MapEntry('groupIds', id));
+    }
+    return dio.post(ApiEndpoints.prayerLogs, data: form);
+  }, (data) => prayerLogFromJson(data as Map<String, dynamic>));
+
+  @override
+  Future<OpenedSnap> viewSnap(String logId) =>
+      _data(() => dio.post(ApiEndpoints.prayerLogView(logId)), (data) {
+        final json = data as Map<String, dynamic>;
+        return OpenedSnap(
+          url: json['snapUrl'] as String,
+          viewDurationSeconds: (json['viewDurationSeconds'] as num?)?.toInt(),
+        );
+      });
 
   @override
   Future<void> deleteLog(String id) =>

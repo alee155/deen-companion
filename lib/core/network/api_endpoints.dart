@@ -230,6 +230,10 @@ class ApiEndpoints {
   static const String prayerLogs = '$_deenBase/prayers/logs';
   static String prayerLog(String id) =>
       '$_deenBase/prayers/logs/${Uri.encodeComponent(id)}';
+
+  /// `POST` — opens a snap once per viewer, only while the window is open.
+  static String prayerLogView(String id) =>
+      '$_deenBase/prayers/logs/${Uri.encodeComponent(id)}/view';
   static const String prayerLogsRange = '$_deenBase/prayers/logs/range';
   static const String pointsRules = '$_deenBase/points/rules';
   static const String groups = '$_deenBase/groups';

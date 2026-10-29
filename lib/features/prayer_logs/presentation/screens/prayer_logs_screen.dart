@@ -291,7 +291,16 @@ class _Row extends StatelessWidget {
               ),
             ),
             SizedBox(width: 10.w),
-            if (l.snapUrl != null)
+            if (l.snapExpired)
+              Padding(
+                padding: EdgeInsets.only(right: 8.w),
+                child: Text(
+                  'Snap expired',
+                  style: TextStyle(fontSize: 11.sp, color: AppColors.textMuted),
+                ),
+              ),
+            // Your own snap's link is set only while the window is open.
+            if (l.snapUrl != null && !l.snapExpired)
               GestureDetector(
                 onTap: () => showSnapPhoto(
                   context,

@@ -44,6 +44,7 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
   Future<Result<PrayerLog>> logPrayer(
     String imagePath, {
     int? viewSeconds,
+    List<String>? groupIds,
   }) async {
     // A bad request is cheaper to refuse here than to upload and bounce.
     final file = File(imagePath);
@@ -66,9 +67,14 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
     );
     return _guard(
       'logPrayer',
-      () => remote.logPrayer(imagePath, viewSeconds: seconds),
+      () =>
+          remote.logPrayer(imagePath, viewSeconds: seconds, groupIds: groupIds),
     );
   }
+
+  @override
+  Future<Result<OpenedSnap>> viewSnap(String logId) =>
+      _guard('viewSnap', () => remote.viewSnap(logId));
 
   @override
   Future<Result<void>> deleteLog(String id) =>

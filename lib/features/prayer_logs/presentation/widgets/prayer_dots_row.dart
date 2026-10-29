@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -6,6 +7,7 @@ import '../../../prayer_times/domain/entities/prayer_times.dart';
 import '../../domain/group_member_prayers.dart';
 import '../../domain/prayer_log.dart';
 import '../prayer_labels.dart';
+import '../snap_viewing.dart';
 import 'snap_photo_viewer.dart';
 
 /// Five circles, Fajr to Isha: filled with a check for each prayer the member
@@ -84,7 +86,7 @@ class PrayerDotsRow extends StatelessWidget {
   }
 }
 
-class _Dot extends StatelessWidget {
+class _Dot extends ConsumerWidget {
   final GroupMemberPrayers member;
   final PrayerName prayer;
   final double size;
@@ -99,21 +101,22 @@ class _Dot extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final log = member.logFor(prayer);
     final done = log != null;
-    final url = log?.snapUrl;
+    final hasSnap =
+        log != null && log.snapState(DateTime.now()) != SnapState.none;
     return Semantics(
       label: '${prayer.label} ${done ? 'logged' : 'not logged'}',
       child: GestureDetector(
-        onTap: url == null || !viewable
+        onTap: !hasSnap || !viewable
             ? null
             : () async {
-                final action = await showSnapPhoto(
+                final action = await openMemberSnap(
                   context,
-                  url: url,
+                  ref,
+                  log: log,
                   title: '${member.displayName} · ${prayer.label}',
-                  duration: log!.viewDuration(),
                   canModerate: onSnapAction != null,
                 );
                 if (action != null) onSnapAction?.call(log, action);

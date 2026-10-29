@@ -23,6 +23,7 @@ class _Scripted extends ScriptedLogsRepo {
   Future<Result<PrayerLog>> logPrayer(
     String imagePath, {
     int? viewSeconds,
+    List<String>? groupIds,
   }) async {
     logged.add(imagePath);
     return script[logged.length <= script.length

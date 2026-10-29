@@ -1,3 +1,6 @@
+import 'package:deen_companion/features/prayer_logs/domain/current_prayer.dart';
+import 'package:deen_companion/core/usecase/usecase.dart';
+import '../../prayer_logs/presentation/_prayer_log_test_support.dart';
 import 'package:deen_companion/features/group_live/presentation/providers/group_live_store.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/widgets/snap_photo_viewer.dart';
 import 'package:deen_companion/core/error/failures.dart';
@@ -20,7 +23,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/streaks/domain/entities/group_streaks.dart';
 import '../../streaks/_streaks_support.dart';
 import '../../group_live/_live_support.dart';
@@ -63,9 +65,11 @@ PrayerLog _log(
   date: '2026-10-13',
   status: PrayerLogStatus.onTime,
   points: 5,
-  snapUrl: url,
-  windowStartsAt: at.subtract(const Duration(hours: 1)),
-  windowEndsAt: at.add(const Duration(hours: 1)),
+  snapUrl: null,
+  // Other members' snaps carry no link: the flag says one is there to open.
+  hasSnap: url != null,
+  windowStartsAt: DateTime.now().subtract(const Duration(hours: 1)),
+  windowEndsAt: DateTime.now().add(const Duration(hours: 1)),
   loggedAt: at,
 );
 
@@ -117,6 +121,18 @@ List<GroupMemberPrayers> _feed({bool photos = true}) {
 /// How many times the feed was read (the first read, plus each refresh).
 var feedCalls = 0;
 
+/// Opens snaps like the server would; everything else fails as the network
+/// did before these tests had a repository of their own.
+class _ViewRepo extends ScriptedLogsRepo {
+  _ViewRepo() {
+    viewResult = const Success(OpenedSnap(url: 'https://img.test/x.jpg'));
+  }
+
+  @override
+  Future<Result<CurrentPrayerState>> getCurrent() async =>
+      const Error(NetworkFailure());
+}
+
 Future<void> _pump(
   WidgetTester tester, {
   Future<List<GroupMemberPrayers>> Function()? feed,
@@ -138,6 +154,7 @@ Future<void> _pump(
         streaksRepositoryProvider.overrideWithValue(
           streaks ?? FakeStreaksRepo(),
         ),
+        prayerLogsRepositoryProvider.overrideWithValue(_ViewRepo()),
         groupPrayersProvider.overrideWith((ref, key) {
           feedCalls++;
           return (feed ?? () async => _feed())();
@@ -201,8 +218,32 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('members are ordered by the streak board', (tester) async {
+  testWidgets('the member who snapped most recently is on top', (tester) async {
+    // The board puts Alee first; Sara's snap is the newer one, so she leads.
     await _pump(tester);
+    final sara = tester.getTopLeft(find.text('Sara Ahmed')).dy;
+    final alee = tester.getTopLeft(find.textContaining('Alee Khan')).dy;
+    expect(sara, lessThan(alee));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('a newer snap beats a longer streak', (tester) async {
+    final repo = FakeStreaksRepo()
+      ..board = Success(
+        GroupStreakBoard([
+          entry('admin1', name: 'Alee Khan', current: 30, best: 30),
+          entry('member1', name: 'Sara Ahmed', current: 1, best: 1),
+        ]),
+      );
+    await _pump(tester, streaks: repo);
+    final sara = tester.getTopLeft(find.text('Sara Ahmed')).dy;
+    final alee = tester.getTopLeft(find.textContaining('Alee Khan')).dy;
+    expect(sara, lessThan(alee));
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('with no snaps, members follow the streak board', (tester) async {
+    await _pump(tester, feed: () async => _feed(photos: false));
     // Board order is Alee (4) then Sara (2), the detail order is the same, so
     // flip the board to prove the board wins.
     await tester.pumpWidget(const SizedBox());
@@ -213,7 +254,7 @@ void main() {
           entry('admin1', name: 'Alee Khan', current: 1, best: 1),
         ]),
       );
-    await _pump(tester, streaks: repo);
+    await _pump(tester, streaks: repo, feed: () async => _feed(photos: false));
     final sara = tester.getTopLeft(find.text('Sara Ahmed')).dy;
     final alee = tester.getTopLeft(find.textContaining('Alee Khan')).dy;
     expect(sara, lessThan(alee));
@@ -371,8 +412,8 @@ void main() {
   });
   group('real photos', () {
     /// The white box on [name]'s card.
-    Finder viewPhoto() => _labelled('View photo');
-    Finder noPhoto() => _labelled('No photo');
+    Finder viewPhoto() => _labelled('View snap');
+    Finder noPhoto() => _labelled('No snap');
 
     testWidgets('others\' boxes are enabled, the viewer\'s own is not', (
       tester,

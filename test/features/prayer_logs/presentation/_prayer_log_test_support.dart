@@ -72,6 +72,8 @@ CurrentPrayerState openState({bool logged = false, String? logId}) =>
 class ScriptedLogsRepo implements PrayerLogsRepository {
   Result<PrayerLog> logResult = const Error(NetworkFailure());
   Result<void> deleteResult = const Success(null);
+  Result<OpenedSnap> viewResult = const Error(NetworkFailure());
+  final List<String> viewed = [];
   Result<List<GroupMemberPrayers>> feedResult = const Success([]);
   final List<String> logged = [];
   final List<String> deleted = [];
@@ -82,9 +84,16 @@ class ScriptedLogsRepo implements PrayerLogsRepository {
   Future<Result<PrayerLog>> logPrayer(
     String imagePath, {
     int? viewSeconds,
+    List<String>? groupIds,
   }) async {
     logged.add(imagePath);
     return logResult;
+  }
+
+  @override
+  Future<Result<OpenedSnap>> viewSnap(String logId) async {
+    viewed.add(logId);
+    return viewResult;
   }
 
   @override

@@ -1,3 +1,6 @@
+import 'package:deen_companion/core/error/failures.dart';
+import 'package:deen_companion/features/prayer_logs/domain/current_prayer.dart';
+import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
 import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:deen_companion/features/group_live/presentation/providers/group_live_store.dart';
@@ -17,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../../prayer_logs/presentation/_prayer_log_test_support.dart';
 
 import '../../group_live/_live_support.dart';
 import '../../moderation/_moderation_support.dart';
@@ -56,9 +60,10 @@ PrayerLog _log(PrayerName p, String id, String url) => PrayerLog(
   date: '2026-10-13',
   status: PrayerLogStatus.onTime,
   points: 5,
-  snapUrl: url,
-  windowStartsAt: _noon.subtract(const Duration(hours: 1)),
-  windowEndsAt: _noon.add(const Duration(hours: 1)),
+  snapUrl: null,
+  hasSnap: true,
+  windowStartsAt: DateTime.now().subtract(const Duration(hours: 1)),
+  windowEndsAt: DateTime.now().add(const Duration(hours: 1)),
   loggedAt: _noon,
 );
 
@@ -76,6 +81,18 @@ final _feed = [
     logs: [_log(PrayerName.asr, 's1', 'https://img.test/s.jpg')],
   ),
 ];
+
+/// Opens snaps like the server would; everything else fails as the network
+/// did before these tests had a repository of their own.
+class _ViewRepo extends ScriptedLogsRepo {
+  _ViewRepo() {
+    viewResult = const Success(OpenedSnap(url: 'https://img.test/x.jpg'));
+  }
+
+  @override
+  Future<Result<CurrentPrayerState>> getCurrent() async =>
+      const Error(NetworkFailure());
+}
 
 Future<FakeModeration> _pump(
   WidgetTester tester, {
@@ -95,6 +112,7 @@ Future<FakeModeration> _pump(
         authSessionProvider.overrideWith(() => _Session(me)),
         groupDetailProvider('g1').overrideWith((ref) async => _detail),
         groupPrayersProvider.overrideWith((ref, key) async => _feed),
+        prayerLogsRepositoryProvider.overrideWithValue(_ViewRepo()),
         streaksRepositoryProvider.overrideWithValue(FakeStreaksRepo()),
         moderationRepositoryProvider.overrideWithValue(repo),
       ],
@@ -136,7 +154,9 @@ void _test(String name, Future<void> Function(WidgetTester tester) body) {
 
 /// Whether Sara's snap can be opened (her row's photo button).
 bool _canOpenSnap(WidgetTester tester) => find
-    .byWidgetPredicate((w) => w is SnapBox && w.hasPhoto && w.onTap != null)
+    .byWidgetPredicate(
+      (w) => w is SnapBox && w.state == SnapState.unopened && w.onTap != null,
+    )
     .evaluate()
     .isNotEmpty;
 
@@ -253,7 +273,9 @@ void main() {
   group('the photo viewer', () {
     Future<void> openSnap(WidgetTester tester) async {
       await tester.tap(
-        find.byWidgetPredicate((w) => w is SnapBox && w.hasPhoto),
+        find.byWidgetPredicate(
+          (w) => w is SnapBox && w.state == SnapState.unopened,
+        ),
       );
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));

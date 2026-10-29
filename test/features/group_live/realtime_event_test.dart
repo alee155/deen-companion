@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/prayer_logs/domain/prayer_log.dart';
 import 'package:deen_companion/features/group_live/domain/group_summary.dart';
 import 'package:deen_companion/features/group_live/domain/realtime_event.dart';
 import 'package:deen_companion/features/groups/domain/entities/group.dart';
@@ -16,6 +17,7 @@ Map<String, dynamic> logged() => {
     'points': 10,
     'loggedAt': '2026-10-22T04:31:06.980Z',
     'snapUrl': null,
+    'hasSnap': true,
   },
   'member': {
     'userId': 'u1',
@@ -40,7 +42,9 @@ void main() {
       final p = e! as PrayerLoggedEvent;
       expect(p.log.date, '2026-10-22');
       expect(p.log.prayer, PrayerName.fajr);
-      expect(p.log.snapUrl, isNull);
+      expect(p.log.hasSnap, isTrue);
+      expect(p.log.toPrayerLog().snapUrl, isNull);
+      expect(p.log.toPrayerLog().snapState(DateTime.now()), SnapState.unopened);
       expect(p.emittedAt, DateTime.utc(2026, 10, 22, 4, 31, 7, 412));
       expect(p.emittedAt.isUtc, isTrue);
       expect(p.group.goalMetCount, 5);

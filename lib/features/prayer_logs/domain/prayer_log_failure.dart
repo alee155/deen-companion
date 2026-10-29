@@ -18,6 +18,13 @@ enum PrayerLogErrorCode {
 
   /// HTTP 403 on the group feed: only members can see it.
   notGroupMember('NOT_GROUP_MEMBER'),
+
+  /// HTTP 410 on `POST /prayers/logs/{id}/view`: this viewer already opened
+  /// the snap (it opens once per person).
+  snapAlreadyViewed('SNAP_ALREADY_VIEWED'),
+
+  /// HTTP 410 on the same call: the prayer window ended.
+  snapExpired('SNAP_EXPIRED'),
   other('');
 
   final String wire;

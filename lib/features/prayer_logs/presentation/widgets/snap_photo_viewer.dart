@@ -150,6 +150,11 @@ class _SnapPhotoViewerState extends State<_SnapPhotoViewer>
 
   @override
   void dispose() {
+    // A viewed snap can't be reopened, so no copy is kept in memory either.
+    PaintingBinding.instance.imageCache.evict(
+      NetworkImage(widget.url),
+      includeLive: true,
+    );
     _progress.dispose();
     super.dispose();
   }

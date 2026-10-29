@@ -13,6 +13,8 @@ import '../../../../shared/widgets/pinned_hero_bar.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import '../../../prayer_logs/domain/group_member_prayers.dart';
+import '../../../prayer_logs/domain/prayer_log.dart';
+import '../../../prayer_logs/presentation/snap_viewing.dart';
 import '../../../prayer_logs/presentation/widgets/snap_photo_viewer.dart';
 import '../../../prayer_logs/presentation/prayer_labels.dart';
 import '../../../prayer_logs/presentation/widgets/prayer_dots_row.dart';
@@ -326,14 +328,34 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       for (final m in feed ?? const <GroupMemberPrayers>[]) m.userId: m,
     };
 
-    // Leaderboard order: the streak board's own order (longest current
-    // streak first) once it has loaded; anyone it does not list goes last.
+    // Most recent snap first. Members with no snap follow, in the streak
+    // board's order (longest current streak first; anyone it does not list
+    // goes last).
+    final place = board == null
+        ? const <String, int>{}
+        : {for (final (i, e) in board.entries.indexed) e.userId: i};
+    final fallback = board?.entries.length ?? 0;
+    final now = DateTime.now();
+    DateTime? lastSnap(GroupMember m) =>
+        prayersByMember[m.userId]?.latestSnapLog(now)?.loggedAt;
     final members = [...g.members];
-    if (board != null) {
-      final place = {for (final (i, e) in board.entries.indexed) e.userId: i};
-      int at(GroupMember m) => place[m.userId] ?? board.entries.length;
-      members.sort((a, b) => at(a).compareTo(at(b)));
-    }
+    final original = {for (final (i, m) in members.indexed) m.userId: i};
+    members.sort((a, b) {
+      final sa = lastSnap(a);
+      final sb = lastSnap(b);
+      if (sa != null || sb != null) {
+        if (sa == null) return 1;
+        if (sb == null) return -1;
+        final byTime = sb.compareTo(sa);
+        if (byTime != 0) return byTime;
+      }
+      final byStreak = (place[a.userId] ?? fallback).compareTo(
+        place[b.userId] ?? fallback,
+      );
+      return byStreak != 0
+          ? byStreak
+          : original[a.userId]!.compareTo(original[b.userId]!);
+    });
 
     return RefreshIndicator(
       edgeOffset: 90.h,
@@ -486,9 +508,11 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     final canOpen = isAdmin || isMe;
     // A blocked member's snaps are hidden from the viewer.
     final isBlocked = ref.watch(blockedUserIdsProvider).contains(m.userId);
-    // Photos are for the other members: the sender does not open their own.
-    final photoAvailable =
-        !isMe && !isBlocked && prayers?.latestPhotoLog != null;
+    // Snaps are for the other members: the sender does not open their own.
+    final snapState = isMe || isBlocked
+        ? SnapState.none
+        : prayers?.latestSnapLog(DateTime.now())?.snapState(DateTime.now()) ??
+              SnapState.none;
     final safetyUser = SafetyUser(
       id: m.userId,
       name: m.displayName,
@@ -496,7 +520,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     );
     return MemberSnapTile(
       member: m,
-      hasPhoto: photoAvailable,
+      snapState: snapState,
       isBlocked: isBlocked,
       // Everyone can report or block another member, whatever their role.
       onMore: isMe
@@ -559,7 +583,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     for (final f in feed) {
       if (f.userId == m.userId) theirs = f;
     }
-    final log = theirs?.latestPhotoLog;
+    final log = theirs?.latestSnapLog(DateTime.now());
     if (ref.read(blockedUserIdsProvider).contains(m.userId)) {
       _toast(
         'You’ve blocked ${m.displayName}. Unblock them to see their snaps.',
@@ -568,21 +592,20 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     }
     if (log == null) {
       FlowLog.log('GROUP FEED', 'NO PHOTO AVAILABLE for ${m.displayName}');
-      _toast('No photo to show right now');
+      _toast('No snap to show right now');
       return;
     }
     FlowLog.log(
       'GROUP FEED',
-      'OPENING ${m.displayName}\'S ${log.prayer.name.toUpperCase()} PHOTO',
+      'OPENING ${m.displayName}\'S ${log.prayer.name.toUpperCase()} SNAP',
     );
-    final action = await showSnapPhoto(
+    final action = await openMemberSnap(
       context,
-      url: log.snapUrl!,
+      ref,
+      log: log,
       title: m.displayName,
       subtitle: '${log.prayer.label} · ${timeAgo(log.loggedAt)}',
       avatar: MemberAvatar(member: m, size: 38.w),
-      duration: log.viewDuration(),
-      canModerate: true,
     );
     if (action != null && mounted) _onSnapAction(m, log.id, action);
   }
