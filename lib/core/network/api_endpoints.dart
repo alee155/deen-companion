@@ -227,6 +227,9 @@ class ApiEndpoints {
       '$_deenBase/prayers/times/month';
   static const String prayerLocation = '$_deenBase/prayers/location';
   static const String prayerCurrent = '$_deenBase/prayers/current';
+
+  /// `GET ?count=` (1 to 10) — the day's bayan videos. Public.
+  static const String videosRandom = '$_deenBase/videos/random';
   static const String prayerLogs = '$_deenBase/prayers/logs';
   static String prayerLog(String id) =>
       '$_deenBase/prayers/logs/${Uri.encodeComponent(id)}';
@@ -277,5 +280,6 @@ class ApiEndpoints {
   static const String myProfile = '$_deenBase/users/me';
   static const String myAvatar = '$_deenBase/users/me/avatar';
   static const String myTimezone = '$_deenBase/users/me/timezone';
+  static const String myGender = '$_deenBase/users/me/gender';
   static const String myPoints = '$_deenBase/users/me/points';
 }
