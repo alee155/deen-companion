@@ -20,6 +20,10 @@ class FeatureHero extends StatelessWidget {
   /// for feature landing screens.
   final bool compact;
 
+  /// Whether the title, subtitle and chips slide in. Off for a hero that must
+  /// stay still while the screen below it changes.
+  final bool animate;
+
   const FeatureHero({
     super.key,
     required this.title,
@@ -27,6 +31,7 @@ class FeatureHero extends StatelessWidget {
     required this.ghostIcon,
     this.chips = const [],
     this.compact = false,
+    this.animate = true,
   });
 
   @override
@@ -79,7 +84,7 @@ class FeatureHero extends StatelessWidget {
                     color: Colors.white,
                     height: 1.1,
                   ),
-                ).slideIn(RevealDirection.topStart),
+                ).slideInIf(animate, RevealDirection.topStart),
                 SizedBox(height: (compact ? 3 : 6).h),
                 Text(
                   subtitle,
@@ -90,7 +95,8 @@ class FeatureHero extends StatelessWidget {
                     height: 1.45,
                     color: AppColors.onHeroSurface.withValues(alpha: 0.78),
                   ),
-                ).slideIn(
+                ).slideInIf(
+                  animate,
                   RevealDirection.start,
                   delay: const Duration(milliseconds: 70),
                 ),
@@ -101,7 +107,8 @@ class FeatureHero extends StatelessWidget {
                     runSpacing: (compact ? 6 : 8).h,
                     children: [
                       for (var i = 0; i < chips.length; i++)
-                        chips[i].build().slideIn(
+                        chips[i].build().slideInIf(
+                          animate,
                           i.isEven
                               ? RevealDirection.bottomStart
                               : RevealDirection.bottomEnd,
@@ -151,4 +158,23 @@ class FeatureHeroChip {
       ],
     ),
   );
+}
+
+extension _HeroReveal on Widget {
+  /// [slideIn], or the widget as it is when [animate] is false.
+  Widget slideInIf(
+    bool animate,
+    RevealDirection direction, {
+    Duration delay = Duration.zero,
+    Duration? duration,
+    double? distance,
+  }) {
+    if (!animate) return this;
+    return slideIn(
+      direction,
+      delay: delay,
+      duration: duration ?? AppMotion.slow,
+      distance: distance ?? 24,
+    );
+  }
 }
