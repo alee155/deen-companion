@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/grouped_settings_tile.dart';
+import '../../../audio_player/presentation/providers/audio_player_provider.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../../auth/presentation/providers/delete_account_controller.dart';
 import '../../../favorites/presentation/providers/favorites_providers.dart';
@@ -155,12 +156,19 @@ class ProfileScreen extends ConsumerWidget {
     if (signedIn) ref.watch(profileProvider);
     final points = signedIn ? ref.watch(myPointsProvider).valueOrNull : null;
 
+    // Plays as the screen opens. It deliberately doesn't wait for each block
+    // to scroll into view: blocks below the fold (Log out, Delete account)
+    // stayed invisible until scrolled to, which looked like missing content.
     Widget reveal(Widget child, int i) => child.slideIn(
       i.isEven ? RevealDirection.bottomStart : RevealDirection.bottomEnd,
       delay: Duration(milliseconds: 40 * i),
       distance: 18,
-      onVisible: true,
     );
+
+    // Room under the last row for the floating tab bar, and for the mini
+    // player when a surah is loaded, so nothing sits behind them.
+    final miniPlayer = ref.watch(audioPlayerNotifierProvider).hasTrack;
+    final bottomRoom = (miniPlayer ? 210 : 130).h;
 
     // The strip straddles the header edge: half of it hangs below.
     final overlap = signedIn ? ProfileStatsStrip.height.h / 2 : 0.0;
@@ -253,7 +261,12 @@ class ProfileScreen extends ConsumerWidget {
               ],
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(20.w, overlap + 22.h, 20.w, 130.h),
+              padding: EdgeInsets.fromLTRB(
+                20.w,
+                overlap + 22.h,
+                20.w,
+                bottomRoom,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -350,7 +363,7 @@ class ProfileScreen extends ConsumerWidget {
                         color: AppColors.textMuted,
                       ),
                     ),
-                  ).slideIn(RevealDirection.top, onVisible: true, distance: 14),
+                  ).slideIn(RevealDirection.top, distance: 14),
                 ],
               ),
             ),
