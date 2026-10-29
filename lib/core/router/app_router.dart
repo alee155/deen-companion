@@ -58,6 +58,7 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/screens/otp_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
+import '../../features/special_days/presentation/screens/special_days_screen.dart';
 import '../../features/videos/presentation/screens/video_player_screen.dart';
 import '../../features/videos/presentation/screens/videos_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
@@ -160,6 +161,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/video/:id',
         builder: (context, state) =>
             VideoPlayerScreen(videoId: state.pathParameters['id']!),
+      ),
+      // Profile > Special days (female accounts only; the screen says so).
+      GoRoute(
+        path: '/special-days',
+        builder: (context, state) => const SpecialDaysScreen(),
       ),
       // Settings > Blocked users.
       GoRoute(

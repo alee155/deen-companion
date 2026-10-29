@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../special_days/presentation/providers/special_days_providers.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -306,6 +307,17 @@ class ProfileScreen extends ConsumerWidget {
                               'Appearance, prayer alerts, storage and about',
                           onTap: () => context.go('/settings'),
                         ),
+                        // Only when the server says this account can use it.
+                        if (signedIn && ref.watch(specialDaysEligibleProvider))
+                          GroupedTile(
+                            icon: Icons.favorite_rounded,
+                            iconColor: AppColors.worshipAccent,
+                            iconBg: AppColors.worshipAccentBg,
+                            title: 'Special days',
+                            subtitle:
+                                'Keep your streak going during exempt days',
+                            onTap: () => context.push('/special-days'),
+                          ),
                         if (signedIn)
                           GroupedTile(
                             icon: Icons.lock_reset_rounded,
