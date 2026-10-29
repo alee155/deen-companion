@@ -3,6 +3,7 @@ import '../../../../core/error/failures.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../../../core/utils/flow_log.dart';
 import '../../../../core/utils/logger.dart';
+import '../../../auth/domain/entities/gender.dart';
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../datasources/profile_remote_datasource.dart';
@@ -63,6 +64,10 @@ class ProfileRepositoryImpl implements ProfileRepository {
   );
 
   @override
+  Future<Result<void>> setGender(Gender gender) =>
+      _guard('setGender', () => remote.setGender(gender), (_) => 'GENDER SET');
+
+  @override
   Future<Result<void>> setTimezone(String timezone) => _guard(
     'setTimezone',
     () => remote.setTimezone(timezone),
@@ -85,6 +90,9 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return const Error(NotFoundFailure());
     } on ServerException catch (e) {
       FlowLog.error(_tag, '$op: SERVER ERROR', '${e.statusCode} ${e.message}');
+      if (e.code == 'GENDER_ALREADY_SET') {
+        return const Error(GenderAlreadySet());
+      }
       if (e.statusCode == 413) {
         return const Error(
           ServerFailure('That photo is too large. Choose a smaller one.'),

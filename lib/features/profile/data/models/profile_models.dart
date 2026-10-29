@@ -1,3 +1,4 @@
+import '../../../auth/domain/entities/gender.dart';
 import '../../domain/entities/user_profile.dart';
 
 /// The profile body is not documented in the API spec, so the keys below are
@@ -18,6 +19,7 @@ UserProfile userProfileFromJson(Map<String, dynamic> json) {
     email: text(j['email']) ?? '',
     avatarUrl: text(j['avatarUrl']) ?? text(j['photoUrl']) ?? text(j['avatar']),
     timezone: text(j['timezone']),
+    gender: Gender.parse(j['gender']),
   );
 }
 

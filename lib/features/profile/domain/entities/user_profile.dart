@@ -1,3 +1,5 @@
+import '../../../auth/domain/entities/gender.dart';
+
 /// The signed-in account as `GET /users/me` returns it.
 class UserProfile {
   final String id;
@@ -11,12 +13,17 @@ class UserProfile {
   /// IANA name the server has stored for the account.
   final String? timezone;
 
+  /// Null until set: accounts made before the field existed are asked once.
+  /// Once set it never changes.
+  final Gender? gender;
+
   const UserProfile({
     required this.id,
     required this.name,
     required this.email,
     this.avatarUrl,
     this.timezone,
+    this.gender,
   });
 }
 

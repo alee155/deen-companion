@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../../../../core/network/api_error_mapper.dart';
+import '../../../auth/domain/entities/gender.dart';
 import '../../domain/entities/user_profile.dart';
 import '../models/profile_models.dart';
 
@@ -12,6 +13,7 @@ abstract class ProfileRemoteDataSource {
   Future<UserProfile> updateProfile({String? name, String? imagePath});
   Future<UserProfile> removeAvatar();
   Future<UserPoints> getPoints();
+  Future<void> setGender(Gender gender);
   Future<void> setTimezone(String timezone);
 }
 
@@ -52,6 +54,12 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   Future<UserPoints> getPoints() => _data(
     () => dio.get(ApiEndpoints.myPoints),
     (data) => userPointsFromJson(data as Map<String, dynamic>),
+  );
+
+  @override
+  Future<void> setGender(Gender gender) => _data(
+    () => dio.patch(ApiEndpoints.myGender, data: {'gender': gender.wire}),
+    (_) {},
   );
 
   @override
