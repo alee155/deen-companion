@@ -90,6 +90,18 @@ class ScriptedLogsRepo implements PrayerLogsRepository {
     return logResult;
   }
 
+  Result<PrayerLog> addResult = const Error(NetworkFailure());
+  final List<(String, List<String>)> added = [];
+
+  @override
+  Future<Result<PrayerLog>> addSnapGroups(
+    String logId,
+    List<String> groupIds,
+  ) async {
+    added.add((logId, groupIds));
+    return addResult;
+  }
+
   @override
   Future<Result<OpenedSnap>> viewSnap(String logId) async {
     viewed.add(logId);

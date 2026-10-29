@@ -73,6 +73,18 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
   }
 
   @override
+  Future<Result<PrayerLog>> addSnapGroups(
+    String logId,
+    List<String> groupIds,
+  ) async {
+    // The server refuses an empty list; there is no point asking.
+    if (groupIds.isEmpty) {
+      return const Error(UnexpectedFailure('Choose at least one group.'));
+    }
+    return _guard('addSnapGroups', () => remote.addSnapGroups(logId, groupIds));
+  }
+
+  @override
   Future<Result<OpenedSnap>> viewSnap(String logId) =>
       _guard('viewSnap', () => remote.viewSnap(logId));
 
@@ -102,6 +114,7 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
     if (code == PrayerLogErrorCode.other) {
       if (e.statusCode == 413) code = PrayerLogErrorCode.fileTooLarge;
       if (e.statusCode == 403) code = PrayerLogErrorCode.notGroupMember;
+      if (e.statusCode == 429) code = PrayerLogErrorCode.rateLimited;
       // The window closed: the log can no longer be removed.
       if (isDelete && e.statusCode == 400) code = PrayerLogErrorCode.undoLocked;
     }

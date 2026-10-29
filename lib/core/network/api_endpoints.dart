@@ -246,6 +246,10 @@ class ApiEndpoints {
   /// `POST` — opens a snap once per viewer, only while the window is open.
   static String prayerLogView(String id) =>
       '$_deenBase/prayers/logs/${Uri.encodeComponent(id)}/view';
+
+  /// `POST` with `{groupIds}` — sends an already-logged snap to more groups.
+  static String prayerLogGroups(String id) =>
+      '$_deenBase/prayers/logs/${Uri.encodeComponent(id)}/groups';
   static const String prayerLogsRange = '$_deenBase/prayers/logs/range';
   static const String pointsRules = '$_deenBase/points/rules';
   static const String groups = '$_deenBase/groups';

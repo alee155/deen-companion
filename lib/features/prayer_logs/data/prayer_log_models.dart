@@ -21,6 +21,9 @@ PrayerLog prayerLogFromJson(Map<String, dynamic> json) => PrayerLog(
   hasSnap: json['hasSnap'] == true,
   snapViewed: json['snapViewed'] == true,
   snapExpired: json['snapExpired'] == true,
+  groupIds: [
+    for (final id in (json['groupIds'] as List? ?? const [])) id.toString(),
+  ],
   windowStartsAt: _time(json['windowStartsAt']),
   windowEndsAt: _time(json['windowEndsAt']),
   loggedAt: _time(json['loggedAt']),

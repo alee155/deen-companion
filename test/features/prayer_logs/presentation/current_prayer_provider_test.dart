@@ -58,6 +58,12 @@ class _FakeLogs implements PrayerLogsRepository {
   }) async => const Error(NetworkFailure());
 
   @override
+  Future<Result<PrayerLog>> addSnapGroups(
+    String logId,
+    List<String> groupIds,
+  ) async => const Error(NetworkFailure());
+
+  @override
   Future<Result<OpenedSnap>> viewSnap(String logId) async =>
       const Error(NetworkFailure());
 

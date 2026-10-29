@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_client.dart';
@@ -256,6 +258,44 @@ class PrayerLogActions {
       ),
     );
     await _refresh();
+    return result;
+  }
+
+  /// Sends the snap on [logId] to more groups. No new log: points and streaks
+  /// stay as they are, so only the feeds are read again. Safe to repeat.
+  Future<Result<PrayerLog>> addGroups(
+    String logId,
+    List<String> groupIds,
+  ) async {
+    const tag = 'ADD GROUPS';
+    debugPrint(
+      '^^^^^^^^^^^^^^^^^^^^ [GROUP PICK] ADDING SNAP $logId TO MORE GROUPS '
+      '$groupIds',
+    );
+    final result = await ref
+        .read(prayerLogsRepositoryProvider)
+        .addSnapGroups(logId, groupIds);
+    result.when(
+      success: (log) {
+        debugPrint(
+          '^^^^^^^^^^^^^^^^^^^^ [GROUP PICK] SNAP NOW IN ${log.groupIds}',
+        );
+        ref.invalidate(prayerLogsProvider);
+        ref.invalidate(groupPrayersProvider);
+      },
+      failure: (f) {
+        FlowLog.error(
+          tag,
+          f is PrayerLogFailure ? 'REJECTED (${f.code.name})' : 'FAILED',
+          f.message,
+        );
+        // The window closed: the screens' idea of "what is open" is stale.
+        if (f is PrayerLogFailure && f.code == PrayerLogErrorCode.snapExpired) {
+          ref.invalidate(prayerLogsProvider);
+          unawaited(ref.read(currentPrayerProvider.notifier).refresh());
+        }
+      },
+    );
     return result;
   }
 

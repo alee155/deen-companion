@@ -25,6 +25,9 @@ enum PrayerLogErrorCode {
 
   /// HTTP 410 on the same call: the prayer window ended.
   snapExpired('SNAP_EXPIRED'),
+
+  /// HTTP 429: more than 20 calls a minute.
+  rateLimited('RATE_LIMITED'),
   other('');
 
   final String wire;

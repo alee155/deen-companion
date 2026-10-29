@@ -22,6 +22,9 @@ abstract class PrayerLogsRemoteDataSource {
   /// still open (400 afterwards). Also removes the photo.
   Future<void> deleteLog(String id);
 
+  /// `POST /prayers/logs/{id}/groups` with `{groupIds}`.
+  Future<PrayerLog> addSnapGroups(String logId, List<String> groupIds);
+
   /// `POST /prayers/logs/{id}/view` — no body. 410 once opened or expired.
   Future<OpenedSnap> viewSnap(String logId);
 
@@ -72,6 +75,15 @@ class PrayerLogsRemoteDataSourceImpl implements PrayerLogsRemoteDataSource {
     }
     return dio.post(ApiEndpoints.prayerLogs, data: form);
   }, (data) => prayerLogFromJson(data as Map<String, dynamic>));
+
+  @override
+  Future<PrayerLog> addSnapGroups(String logId, List<String> groupIds) => _data(
+    () => dio.post(
+      ApiEndpoints.prayerLogGroups(logId),
+      data: {'groupIds': groupIds},
+    ),
+    (data) => prayerLogFromJson(data as Map<String, dynamic>),
+  );
 
   @override
   Future<OpenedSnap> viewSnap(String logId) =>

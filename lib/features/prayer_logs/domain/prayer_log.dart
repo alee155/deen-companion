@@ -70,6 +70,10 @@ class PrayerLog extends Equatable {
   /// The window ended: the snap is gone for everyone, the sender included.
   final bool snapExpired;
 
+  /// The groups that have this snap (your own log). Empty when the server
+  /// did not say.
+  final List<String> groupIds;
+
   /// Whether [windowEndsAt] is the server's. A live event carries no window,
   /// so its logs are not judged expired by the clock.
   final bool windowKnown;
@@ -102,6 +106,7 @@ class PrayerLog extends Equatable {
     this.snapViewed = false,
     this.snapExpired = false,
     this.windowKnown = true,
+    this.groupIds = const [],
   });
 
   /// How the snap shows to the viewer at [now]. The clock is checked as well
@@ -117,10 +122,18 @@ class PrayerLog extends Equatable {
   /// This log with the snap marked opened (the viewer just closed it).
   PrayerLog asViewed() => _withSnap(viewed: true);
 
+  /// This log with a snap now sent to its group (a live update: the owner
+  /// added this group to a snap they had already sent elsewhere).
+  PrayerLog withSnapSent() => _withSnap(sent: true);
+
   /// This log with the snap marked expired (the server said the window ended).
   PrayerLog asExpired() => _withSnap(expired: true);
 
-  PrayerLog _withSnap({bool viewed = false, bool expired = false}) => PrayerLog(
+  PrayerLog _withSnap({
+    bool viewed = false,
+    bool expired = false,
+    bool sent = false,
+  }) => PrayerLog(
     id: id,
     prayer: prayer,
     date: date,
@@ -131,10 +144,11 @@ class PrayerLog extends Equatable {
     windowEndsAt: windowEndsAt,
     loggedAt: loggedAt,
     viewDurationSeconds: viewDurationSeconds,
-    hasSnap: false,
+    hasSnap: sent || (hasSnap && !viewed && !expired),
     snapViewed: viewed || snapViewed,
     snapExpired: expired || snapExpired,
     windowKnown: windowKnown,
+    groupIds: groupIds,
   );
 
   /// Undo is allowed only while the window is still open.
@@ -152,6 +166,7 @@ class PrayerLog extends Equatable {
     snapViewed,
     snapExpired,
     windowKnown,
+    groupIds,
     windowStartsAt,
     windowEndsAt,
     loggedAt,

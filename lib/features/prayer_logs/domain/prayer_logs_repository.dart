@@ -23,6 +23,13 @@ abstract class PrayerLogsRepository {
     List<String>? groupIds,
   });
 
+  /// Sends the snap on [logId] (yours, already logged) to more groups
+  /// (`POST /prayers/logs/{id}/groups`). Repeating it is harmless: groups that
+  /// already have the snap are ignored. No new log, no change to points or
+  /// streaks. Fails with `snapExpired` once the window has closed. Returns the
+  /// log, whose `groupIds` now lists every group that has the snap.
+  Future<Result<PrayerLog>> addSnapGroups(String logId, List<String> groupIds);
+
   /// Opens another member's snap (`POST /prayers/logs/{id}/view`). The link
   /// works once: a second call fails with `snapAlreadyViewed`, and after the
   /// window `snapExpired`. Never retried.
