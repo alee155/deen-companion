@@ -1,42 +1,14 @@
 // ignore_for_file: depend_on_referenced_packages
 import 'package:deen_companion/core/constants/app_constants.dart';
-import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/core/location/location_service.dart';
 import 'package:deen_companion/core/location/location_status.dart';
 import 'package:deen_companion/core/storage/local_storage_service.dart';
-import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/home/presentation/providers/home_provider.dart';
-import 'package:deen_companion/features/home/presentation/providers/home_recitations_provider.dart';
-import 'package:deen_companion/features/quran/domain/entities/surah_summary.dart';
-import 'package:deen_companion/features/quran/presentation/providers/quran_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geocoding_platform_interface/geocoding_platform_interface.dart';
 
 import '../../../helpers/in_memory_storage_service.dart';
-
-SurahSummary surah(int n) => SurahSummary(
-  number: n,
-  nameArabic: 'ar$n',
-  nameEnglish: 'S$n',
-  nameTranslation: 't$n',
-  revelationPlace: 'Mecca',
-  versesCount: n,
-  bismillahPre: true,
-  exampleAudioUrl: 'u$n',
-);
-
-class FakeSurahList extends SurahListNotifier {
-  final List<SurahSummary>? cached;
-  final Result<List<SurahSummary>> fresh;
-  FakeSurahList(this.cached, this.fresh);
-
-  @override
-  List<SurahSummary>? readCache() => cached;
-
-  @override
-  Future<Result<List<SurahSummary>>> fetchFresh() async => fresh;
-}
 
 class FakeLocationService implements LocationService {
   Coordinates? coordinates;
@@ -91,65 +63,6 @@ class FakeGeocoding extends GeocodingPlatform {
 }
 
 void main() {
-  group('featuredRecitationsProvider', () {
-    ProviderContainer make(
-      List<SurahSummary>? cached,
-      Result<List<SurahSummary>> fresh,
-    ) {
-      final c = ProviderContainer(
-        overrides: [
-          surahListNotifierProvider.overrideWith(
-            () => FakeSurahList(cached, fresh),
-          ),
-        ],
-      );
-      addTearDown(c.dispose);
-      return c;
-    }
-
-    test('featured numbers are the curated set', () {
-      expect(featuredSurahNumbers, [1, 2, 36, 55, 67]);
-    });
-
-    test('selects featured surahs in curated order, not list order', () async {
-      final all = [for (var i = 114; i >= 1; i--) surah(i)];
-      final c = make(all, Success(all));
-      await c.read(surahListNotifierProvider.future);
-      final featured = c.read(featuredRecitationsProvider).requireValue;
-      expect(featured.map((s) => s.number), [1, 2, 36, 55, 67]);
-    });
-
-    test('silently skips featured surahs missing from the list', () async {
-      final partial = [surah(2), surah(67), surah(3)];
-      final c = make(partial, Success(partial));
-      await c.read(surahListNotifierProvider.future);
-      expect(
-        c.read(featuredRecitationsProvider).requireValue.map((s) => s.number),
-        [2, 67],
-      );
-    });
-
-    test('empty list yields empty featured list', () async {
-      final c = make(const [], const Success(<SurahSummary>[]));
-      await c.read(surahListNotifierProvider.future);
-      expect(c.read(featuredRecitationsProvider).requireValue, isEmpty);
-    });
-
-    test('loading state is propagated', () {
-      final c = make(null, const Success(<SurahSummary>[]));
-      expect(c.read(featuredRecitationsProvider).isLoading, isTrue);
-    });
-
-    test('error state is propagated when nothing cached', () async {
-      final c = make(null, const Error(NetworkFailure()));
-      await expectLater(
-        c.read(surahListNotifierProvider.future),
-        throwsA(isA<NetworkFailure>()),
-      );
-      expect(c.read(featuredRecitationsProvider).hasError, isTrue);
-    });
-  });
-
   group('currentLocationNameProvider', () {
     const box = AppConstants.settingsBoxName;
     const cacheKey = 'last_known_location_name';

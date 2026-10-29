@@ -8,20 +8,14 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../../core/permissions/camera_permission_service.dart';
 import '../../../../core/storage/local_storage_service.dart';
-import '../../../audio_player/domain/audio_track.dart';
 import '../../../reliability_setup/domain/reliability_requirement.dart';
 import '../../../reliability_setup/presentation/providers/reliability_providers.dart';
 import '../../../reliability_setup/presentation/widgets/reliability_banner.dart';
 import '../../../reliability_setup/presentation/widgets/reliability_setup_sheet.dart';
 import '../../../daily_content/presentation/providers/daily_notification_service.dart';
-import '../../../audio_player/presentation/providers/audio_player_provider.dart';
-import '../../../quran/domain/entities/surah_summary.dart';
-import '../../../recent_activity/domain/entities/recent_activity_item.dart';
-import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
-import '../providers/home_recitations_provider.dart';
 import '../../../prayer_reminders/presentation/providers/prayer_alarm_launch_service.dart';
 import '../widgets/home_category_grid.dart';
-import '../widgets/home_recitation_list.dart';
+import '../../../videos/presentation/widgets/home_video_section.dart';
 import '../widgets/home_slider_header.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -71,39 +65,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (mounted) await showReliabilitySetupSheet(context);
   }
 
-  void _playRecitation(SurahSummary surah) {
-    ref
-        .read(audioPlayerNotifierProvider.notifier)
-        .playTrack(
-          AudioTrack(
-            id: 'surah-${surah.number}',
-            titleEnglish: surah.nameEnglish,
-            titleArabic: surah.nameArabic,
-            reciterName: 'Mishary Rashid Alafasy',
-            url: surah.exampleAudioUrl,
-          ),
-        );
-    ref
-        .read(recentActivityNotifierProvider.notifier)
-        .logActivity(
-          RecentActivityItem(
-            id: RecentActivityItem.buildId(
-              RecentActivityType.surah,
-              '${surah.number}',
-            ),
-            type: RecentActivityType.surah,
-            referenceId: '${surah.number}',
-            title: surah.nameEnglish,
-            subtitle: surah.nameArabic,
-            route: '/quran',
-            viewedAt: DateTime.now(),
-          ),
-        );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final recitationsAsync = ref.watch(featuredRecitationsProvider);
     final seq = RevealSequence(start: const Duration(milliseconds: 140));
 
     return Scaffold(
@@ -170,41 +133,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     ),
                     SizedBox(height: 28.h),
-                    _SectionHeader(
-                      title: 'Recitations',
-                      onSeeAll: () => context.push('/quran'),
-                      seq: seq,
-                      titleDirection: RevealDirection.end,
-                      actionDirection: RevealDirection.bottomEnd,
-                    ),
-                    SizedBox(height: 14.h),
-                    ContentSwitcher(
-                      child: KeyedSubtree(
-                        key: ValueKey(recitationsAsync.hasValue),
-                        child: recitationsAsync.when(
-                          data: (surahs) => HomeRecitationList(
-                            surahs: surahs,
-                            onTap: _playRecitation,
-                          ),
-                          loading: () => SizedBox(
-                            height: 130.h,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: AppColors.emeraldInk,
-                              ),
-                            ),
-                          ),
-                          error: (_, _) => SizedBox(
-                            height: 60.h,
-                            child: Center(
-                              child: Text(
-                                'Recitations unavailable',
-                                style: AppTypography.bodyMedium.copyWith(
-                                  color: AppColors.textMuted,
-                                ),
-                              ).slideIn(RevealDirection.top),
-                            ),
-                          ),
+                    // The day's bayan videos.
+                    HomeVideoSection(
+                      headerBuilder: () => Padding(
+                        padding: EdgeInsets.only(bottom: 14.h),
+                        child: _SectionHeader(
+                          title: 'Bayan of the day',
+                          onSeeAll: () => context.push('/videos'),
+                          seq: seq,
+                          titleDirection: RevealDirection.end,
+                          actionDirection: RevealDirection.bottomEnd,
                         ),
                       ),
                     ),
