@@ -230,6 +230,15 @@ class ApiEndpoints {
 
   /// `GET ?count=` (1 to 10) — the day's bayan videos. Public.
   static const String videosRandom = '$_deenBase/videos/random';
+
+  // Special days (female accounts only).
+  static const String exemption = '$_deenBase/exemption';
+
+  /// `GET` — the five stored photos, with signed links (female accounts).
+  static const String exemptionImages = '$_deenBase/exemption/images';
+  static const String exemptionStatus = '$_deenBase/exemption/status';
+  static String exemptionImage(String prayer) =>
+      '$_deenBase/exemption/images/${Uri.encodeComponent(prayer)}';
   static const String prayerLogs = '$_deenBase/prayers/logs';
   static String prayerLog(String id) =>
       '$_deenBase/prayers/logs/${Uri.encodeComponent(id)}';
