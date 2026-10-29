@@ -20,7 +20,8 @@ extension SnapAvailabilityMessage on SnapAvailability {
       ].join(' '),
       SnapUnavailableReason.alreadyLogged => [
         'You’ve already sent your ${loggedPrayer?.label ?? 'prayer'} snap. '
-            'There’s one snap for each prayer.',
+            'There’s one snap for each prayer. To reach more groups, tap the '
+            'group icon on your own row in a group’s member list.',
         ?nextLine,
       ].join(' '),
       SnapUnavailableReason.timesNotSynced =>

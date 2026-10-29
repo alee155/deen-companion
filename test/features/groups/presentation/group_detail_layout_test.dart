@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/snaps/presentation/providers/snap_providers.dart';
 import 'package:deen_companion/features/prayer_logs/domain/current_prayer.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
 import '../../prayer_logs/presentation/_prayer_log_test_support.dart';
@@ -138,6 +139,7 @@ Future<void> _pump(
   Future<List<GroupMemberPrayers>> Function()? feed,
   FakeStreaksRepo? streaks,
   double width = 390,
+  List<Override> overrides = const [],
 }) async {
   feedCalls = 0;
   tester.view.physicalSize = Size(width * 3, 1600 * 3);
@@ -146,6 +148,7 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        ...overrides,
         groupSummaryRemoteDataSourceProvider.overrideWithValue(
           FakeSummaryRemote(),
         ),
@@ -215,6 +218,26 @@ void main() {
     expect(find.text('SAMPLE DATA'), findsNothing);
     expect(find.text('Snapped today'), findsNothing);
     expect(find.byIcon(Icons.photo_camera_rounded), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('your own row offers "send to more groups" only when possible', (
+    tester,
+  ) async {
+    await _pump(tester);
+    expect(find.byTooltip('Send your snap to more groups'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+
+    await _pump(
+      tester,
+      overrides: [
+        addableSnapLogProvider.overrideWithValue(
+          _log(PrayerName.asr, id: 'mine', at: _noon, url: 'x'),
+        ),
+      ],
+    );
+    // Only your own row has it (the other member's row has the ⋯ menu).
+    expect(find.byTooltip('Send your snap to more groups'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

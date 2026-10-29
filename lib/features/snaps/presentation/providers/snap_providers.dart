@@ -10,6 +10,8 @@ import '../../data/camera/camera_plugin_service.dart';
 import '../../data/camera/camera_session.dart';
 import '../../data/flutter_snap_image_processor.dart';
 import '../../data/prayer_log_snap_repository.dart';
+import '../../../groups/presentation/providers/groups_providers.dart';
+import '../../../prayer_logs/domain/prayer_log.dart';
 import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import '../../domain/entities/snap_draft.dart';
 import '../../domain/repositories/snap_image_processor.dart';
@@ -39,6 +41,23 @@ final snapAvailabilityProvider = Provider<SnapAvailability>((ref) {
     error: (_, _) => const SnapAvailability.available(),
     loading: () => const SnapAvailability.checking(),
   );
+});
+
+/// Your own snap for the open prayer, when more groups can still be added to
+/// it: it is logged, its window is open, it is not expired, and you are in a
+/// group that does not have it yet. Null otherwise (the action is hidden).
+final addableSnapLogProvider = Provider<PrayerLog?>((ref) {
+  final open = ref.watch(currentPrayerProvider).valueOrNull?.current;
+  final logId = open?.logId;
+  if (open == null || !open.logged || logId == null) return null;
+  final logs = ref.watch(prayerLogsProvider(null)).valueOrNull;
+  final groups = ref.watch(myGroupsProvider).valueOrNull;
+  if (logs == null || groups == null) return null;
+  final log = logs.where((l) => l.id == logId).firstOrNull;
+  if (log == null || log.snapExpired) return null;
+  if (!DateTime.now().isBefore(log.windowEndsAt)) return null;
+  final remaining = groups.where((g) => !log.groupIds.contains(g.id));
+  return remaining.isEmpty ? null : log;
 });
 
 // ---------------------------------------------------------------------------

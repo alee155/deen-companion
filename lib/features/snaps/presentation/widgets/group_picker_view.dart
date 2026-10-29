@@ -158,7 +158,7 @@ class GroupPickerView extends ConsumerWidget {
                       SizedBox(width: 5.w),
                       Expanded(
                         child: Text(
-                          'Everyone in the groups you choose receives this snap.',
+                          'Everyone in the groups you choose receives this snap. You can add more groups until this prayer’s time ends.',
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: AppColors.textSecondary,
@@ -194,7 +194,7 @@ class GroupPickerView extends ConsumerWidget {
                       child: Column(
                         children: [
                           for (var i = 0; i < groups.length; i++) ...[
-                            _GroupRow(
+                            GroupPickRow(
                               group: groups[i],
                               selected: composer.selectedGroupIds.contains(
                                 groups[i].id,
@@ -351,13 +351,14 @@ class _Chip extends StatelessWidget {
 }
 
 /// One group with its checkbox. The whole row is the tap target.
-class _GroupRow extends StatelessWidget {
+class GroupPickRow extends StatelessWidget {
   final Group group;
   final bool selected;
   final bool enabled;
   final VoidCallback onChanged;
 
-  const _GroupRow({
+  const GroupPickRow({
+    super.key,
     required this.group,
     required this.selected,
     required this.enabled,

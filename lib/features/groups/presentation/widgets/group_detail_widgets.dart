@@ -399,6 +399,10 @@ class MemberSnapTile extends StatelessWidget {
   /// Opens the safety menu (report / block). Null on the viewer's own row.
   final VoidCallback? onMore;
 
+  /// Sends the viewer's own snap to more groups. Only on the viewer's own row,
+  /// and only while that is possible.
+  final VoidCallback? onAddGroups;
+
   /// The viewer has blocked this member: their snaps are hidden.
   final bool isBlocked;
 
@@ -415,6 +419,7 @@ class MemberSnapTile extends StatelessWidget {
     this.prayersToday,
     this.pointsToday,
     this.onMore,
+    this.onAddGroups,
     this.isBlocked = false,
   });
 
@@ -521,6 +526,19 @@ class MemberSnapTile extends StatelessWidget {
                   Icons.more_vert_rounded,
                   size: 20.sp,
                   color: AppColors.textMuted,
+                ),
+              )
+            else if (onAddGroups != null)
+              IconButton(
+                tooltip: 'Send your snap to more groups',
+                onPressed: onAddGroups,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints.tightFor(width: 34.w, height: 40.h),
+                icon: Icon(
+                  Icons.group_add_rounded,
+                  size: 20.sp,
+                  color: AppColors.emeraldInk,
                 ),
               )
             else

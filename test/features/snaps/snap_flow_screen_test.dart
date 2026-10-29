@@ -251,7 +251,9 @@ void main() {
       expect(find.text('Sara Ahmed'), findsNothing);
       expect(find.text('Omar Khan'), findsNothing);
       expect(
-        find.text('Everyone in the groups you choose receives this snap.'),
+        find.textContaining(
+          'Everyone in the groups you choose receives this snap.',
+        ),
         findsOneWidget,
       );
       await tester.pumpWidget(const SizedBox());

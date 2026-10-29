@@ -31,6 +31,7 @@ import '../widgets/invite_group_sheet.dart';
 import '../widgets/leave_group_sheet.dart';
 import '../widgets/manage_group_sheet.dart';
 import '../widgets/remove_member_sheet.dart';
+import '../../../snaps/presentation/add_groups_entry.dart';
 import '../../../snaps/presentation/providers/snap_providers.dart';
 import '../../../snaps/presentation/snap_entry.dart';
 import '../widgets/send_snap_button.dart';
@@ -523,6 +524,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       snapState: snapState,
       isBlocked: isBlocked,
       // Everyone can report or block another member, whatever their role.
+      // Your own row: add the snap you already sent to more groups.
+      onAddGroups: isMe && ref.watch(addableSnapLogProvider) != null
+          ? () => openAddGroups(context, log: ref.read(addableSnapLogProvider)!)
+          : null,
       onMore: isMe
           ? null
           : () => showUserSafetyActions(context, ref, user: safetyUser),
