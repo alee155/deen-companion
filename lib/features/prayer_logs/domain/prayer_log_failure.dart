@@ -26,6 +26,14 @@ enum PrayerLogErrorCode {
   /// HTTP 410 on the same call: the prayer window ended.
   snapExpired('SNAP_EXPIRED'),
 
+  /// HTTP 409 on `POST /prayers/logs`: a named group already has a photo for
+  /// this prayer. `data.groupIds` lists them.
+  groupAlreadySent('GROUP_ALREADY_SENT'),
+
+  /// HTTP 409 on the same call: a named group has no one but you in it, so
+  /// nothing was stored. `data.groupIds` lists them.
+  groupHasNoOtherMembers('GROUP_HAS_NO_OTHER_MEMBERS'),
+
   /// HTTP 429: more than 20 calls a minute.
   rateLimited('RATE_LIMITED'),
   other('');
@@ -46,6 +54,12 @@ class PrayerLogFailure extends ServerFailure {
   final PrayerLogErrorCode code;
   final int? statusCode;
   final Map<String, dynamic>? data;
+
+  /// For [PrayerLogErrorCode.groupAlreadySent] and
+  /// [PrayerLogErrorCode.groupHasNoOtherMembers]: the groups the server named.
+  List<String> get groupIds => [
+    for (final id in (data?['groupIds'] as List? ?? const [])) id.toString(),
+  ];
 
   /// For [PrayerLogErrorCode.alreadyLogged]: the log that already exists.
   final PrayerLog? existingLog;

@@ -48,7 +48,13 @@ String prayerLogErrorMessage(Failure failure) {
                 '${clockTime(at)}.'
           : 'No prayer is open right now.';
     case PrayerLogErrorCode.alreadyLogged:
-      return 'You’ve already logged this prayer.';
+      return 'This prayer is already logged, so there’s nothing more to send.';
+    case PrayerLogErrorCode.groupAlreadySent:
+      return 'One of these groups already has your snap for this prayer. '
+          'We’ve updated the list.';
+    case PrayerLogErrorCode.groupHasNoOtherMembers:
+      return 'A snap needs someone else in the group to receive it. '
+          'We’ve updated the list.';
     case PrayerLogErrorCode.timesNotSynced:
       return 'Your prayer times aren’t set up yet. Try again in a moment.';
     case PrayerLogErrorCode.undoLocked:

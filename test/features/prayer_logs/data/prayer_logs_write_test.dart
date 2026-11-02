@@ -219,6 +219,42 @@ void main() {
       expect(f.code, PrayerLogErrorCode.fileTooLarge);
     });
 
+    test('409 group already sent names the groups', () async {
+      stubPost().thenThrow(
+        _http(409, {
+          'success': false,
+          'message': 'Already sent',
+          'code': 'GROUP_ALREADY_SENT',
+          'data': {
+            'groupIds': ['g1', 'g2'],
+          },
+        }),
+      );
+      final f =
+          (await repo.logPrayer(photo, groupIds: ['g1']) as Error).failure
+              as PrayerLogFailure;
+      expect(f.code, PrayerLogErrorCode.groupAlreadySent);
+      expect(f.groupIds, ['g1', 'g2']);
+    });
+
+    test('409 group with no other members names the groups', () async {
+      stubPost().thenThrow(
+        _http(409, {
+          'success': false,
+          'message': 'Only you',
+          'code': 'GROUP_HAS_NO_OTHER_MEMBERS',
+          'data': {
+            'groupIds': ['solo'],
+          },
+        }),
+      );
+      final f =
+          (await repo.logPrayer(photo, groupIds: ['solo']) as Error).failure
+              as PrayerLogFailure;
+      expect(f.code, PrayerLogErrorCode.groupHasNoOtherMembers);
+      expect(f.groupIds, ['solo']);
+    });
+
     test('not-synced code is recognised', () async {
       stubPost().thenThrow(
         _http(409, {
