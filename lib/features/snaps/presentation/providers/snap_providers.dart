@@ -11,6 +11,7 @@ import '../../data/camera/camera_session.dart';
 import '../../data/flutter_snap_image_processor.dart';
 import '../../data/prayer_log_snap_repository.dart';
 import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
+import '../../../special_days/presentation/providers/special_days_providers.dart';
 import '../../domain/entities/snap_draft.dart';
 import '../../domain/repositories/snap_image_processor.dart';
 import '../../domain/repositories/snap_repository.dart';
@@ -33,13 +34,41 @@ final snapRepositoryProvider = Provider<SnapRepository>(
 /// open prayer. Shared by every camera button, so they agree.
 final snapAvailabilityProvider = Provider<SnapAvailability>((ref) {
   final prayer = ref.watch(currentPrayerProvider);
+  final specialDays =
+      ref.watch(specialDaysProvider).valueOrNull?.active ?? false;
   return prayer.when(
-    data: SnapAvailability.fromPrayer,
+    data: (state) =>
+        SnapAvailability.fromPrayer(state, specialDays: specialDays),
     // The lookup failed (offline, say): the server decides on send.
     error: (_, _) => const SnapAvailability.available(),
     loading: () => const SnapAvailability.checking(),
   );
 });
+
+/// The groups the open prayer can still be sent to: the server's
+/// `unsentGroupIds`, which leaves out groups that have your photo already and
+/// groups with no one else in them. Null when that is not known (no prayer is
+/// open, or the answer didn't say), and then every group is offered and the
+/// server decides on send.
+final snapSendableGroupIdsProvider = Provider<Set<String>?>((ref) {
+  final open = ref.watch(currentPrayerProvider).valueOrNull?.current;
+  if (open == null || (open.canSend && open.unsentGroupIds.isEmpty)) {
+    return null;
+  }
+  return open.unsentGroupIds.toSet();
+});
+
+/// The groups that already have your photo for the open prayer.
+final snapSentGroupIdsProvider = Provider<Set<String>>(
+  (ref) =>
+      ref
+          .watch(currentPrayerProvider)
+          .valueOrNull
+          ?.current
+          ?.sentGroupIds
+          .toSet() ??
+      const {},
+);
 
 // ---------------------------------------------------------------------------
 // Camera

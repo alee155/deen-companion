@@ -18,10 +18,17 @@ extension SnapAvailabilityMessage on SnapAvailability {
         'Snaps can only be sent while a prayer time is open.',
         ?nextLine,
       ].join(' '),
-      SnapUnavailableReason.alreadyLogged => [
-        'You’ve already sent your ${loggedPrayer?.label ?? 'prayer'} snap. '
-            'There’s one snap for each prayer. To reach more groups, tap the '
-            'group icon on your own row in a group’s member list.',
+      SnapUnavailableReason.allGroupsSent => [
+        'You’ve sent your ${loggedPrayer?.label ?? 'prayer'} snap to all '
+            'your groups.',
+        ?nextLine,
+      ].join(' '),
+      SnapUnavailableReason.noOtherMembers =>
+        'None of your groups has anyone else in it yet, so there’s nobody to '
+            'send a snap to. Invite someone to a group first.',
+      SnapUnavailableReason.specialDays => [
+        'Special days are on, so your ${loggedPrayer?.label ?? 'prayer'} is '
+            'logged for you and there’s nothing to send.',
         ?nextLine,
       ].join(' '),
       SnapUnavailableReason.timesNotSynced =>
