@@ -113,10 +113,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AuthIconBadge().slideIn(
-                      RevealDirection.topStart,
-                      distance: 18,
-                    ),
+                    SizedBox(height: AuthBadgeSlot.formGap),
 
                     Transform.translate(
                       offset: Offset(0, -15.h),
@@ -275,6 +272,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
+
+          // Above the card, outside the scrolling form (see [AuthBadgeSlot]).
+          const AuthBadgeSlot(),
         ],
       ),
     );

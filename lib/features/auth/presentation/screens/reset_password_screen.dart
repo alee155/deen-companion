@@ -118,10 +118,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AuthIconBadge().slideIn(
-                      RevealDirection.topStart,
-                      distance: 18,
-                    ),
+                    SizedBox(height: AuthBadgeSlot.formGap),
                     Transform.translate(
                       offset: Offset(0, -15.h),
                       child: Column(
@@ -266,6 +263,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               ),
             ),
           ),
+
+          // Above the card, outside the scrolling form (see [AuthBadgeSlot]).
+          const AuthBadgeSlot(),
         ],
       ),
     );
