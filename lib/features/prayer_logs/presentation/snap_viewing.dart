@@ -11,7 +11,8 @@ import 'widgets/snap_photo_viewer.dart';
 
 /// Opens another member's snap, following the server's view-once rules:
 ///
-/// * the link comes from `POST /prayers/logs/{id}/view`, once, never stored;
+/// * the link comes from `POST /prayers/logs/{id}/view`, once, never stored,
+///   for the photo that [groupId] (the feed it was tapped in) received;
 /// * a snap already opened, or past its window, only says so;
 /// * after the viewer closes (timer end or dismissal) the snap counts as
 ///   opened here, and the feed is fetched again for the server's view.
@@ -23,6 +24,7 @@ Future<SnapViewerAction?> openMemberSnap(
   BuildContext context,
   WidgetRef ref, {
   required PrayerLog log,
+  required String groupId,
   required String title,
   String? subtitle,
   Widget? avatar,
@@ -42,14 +44,19 @@ Future<SnapViewerAction?> openMemberSnap(
       break;
   }
 
-  FlowLog.log(tag, 'ASKING THE SERVER TO OPEN SNAP ${log.id} (once)');
-  final result = await ref.read(prayerLogsRepositoryProvider).viewSnap(log.id);
+  FlowLog.log(
+    tag,
+    'ASKING THE SERVER TO OPEN SNAP ${log.id} FOR GROUP $groupId (once)',
+  );
+  final result = await ref
+      .read(prayerLogsRepositoryProvider)
+      .viewSnap(log.id, groupId: groupId);
   if (!context.mounted) return null;
 
   void record(SnapState outcome) {
     ref
         .read(snapOutcomesProvider.notifier)
-        .update((m) => {...m, log.id: outcome});
+        .update((m) => {...m, snapOutcomeKey(log.id, groupId): outcome});
     ref.invalidate(groupPrayersProvider);
   }
 

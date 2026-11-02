@@ -89,6 +89,9 @@ class ScriptedLogsRepo implements PrayerLogsRepository {
   Result<void> deleteResult = const Success(null);
   Result<OpenedSnap> viewResult = const Error(NetworkFailure());
   final List<String> viewed = [];
+
+  /// The group each `viewSnap` named, in the same order as [viewed].
+  final List<String?> viewedInGroup = [];
   Result<List<GroupMemberPrayers>> feedResult = const Success([]);
   final List<String> logged = [];
   final List<String> deleted = [];
@@ -106,8 +109,9 @@ class ScriptedLogsRepo implements PrayerLogsRepository {
   }
 
   @override
-  Future<Result<OpenedSnap>> viewSnap(String logId) async {
+  Future<Result<OpenedSnap>> viewSnap(String logId, {String? groupId}) async {
     viewed.add(logId);
+    viewedInGroup.add(groupId);
     return viewResult;
   }
 

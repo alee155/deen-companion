@@ -323,6 +323,7 @@ final liveGroupFeedProvider = Provider.autoDispose
           today: _localToday(),
         ),
         ref.watch(snapOutcomesProvider),
+        groupId: groupId,
       );
     });
 

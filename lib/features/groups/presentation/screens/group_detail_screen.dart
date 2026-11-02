@@ -549,6 +549,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               ? null
               : PrayerDotsRow(
                   member: prayers,
+                  groupId: group.id,
                   viewable: !isMe && !isBlocked,
                   showLabels: true,
                   size: 36,
@@ -607,6 +608,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       context,
       ref,
       log: log,
+      groupId: group.id,
       title: m.displayName,
       subtitle: '${log.prayer.label} · ${timeAgo(log.loggedAt)}',
       avatar: MemberAvatar(member: m, size: 38.w),

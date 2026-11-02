@@ -26,7 +26,11 @@ abstract class PrayerLogsRepository {
   /// Opens another member's snap (`POST /prayers/logs/{id}/view`). The link
   /// works once: a second call fails with `snapAlreadyViewed`, and after the
   /// window `snapExpired`. Never retried.
-  Future<Result<OpenedSnap>> viewSnap(String logId);
+  ///
+  /// One log can carry a different photo for each group, so [groupId] names
+  /// the group whose feed the snap was tapped in; only that group's photo is
+  /// opened and marked seen.
+  Future<Result<OpenedSnap>> viewSnap(String logId, {String? groupId});
 
   /// Everyone in a group and what they logged on [date] (null → today).
   /// A non-member gets a failure with `PrayerLogErrorCode.notGroupMember`.

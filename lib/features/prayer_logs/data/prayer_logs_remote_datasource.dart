@@ -22,8 +22,12 @@ abstract class PrayerLogsRemoteDataSource {
   /// still open (400 afterwards). Also removes the photo.
   Future<void> deleteLog(String id);
 
-  /// `POST /prayers/logs/{id}/view` — no body. 410 once opened or expired.
-  Future<OpenedSnap> viewSnap(String logId);
+  /// `POST /prayers/logs/{id}/view`. A log can carry a different photo for
+  /// each group you share with its owner, all under the one log id, so
+  /// [groupId] (the group whose feed was tapped) says which one to open. Each
+  /// photo opens once: 410 once opened or expired. Without a group the oldest
+  /// photo not yet opened is returned (what old clients get).
+  Future<OpenedSnap> viewSnap(String logId, {String? groupId});
 
   /// `GET /groups/{id}/prayers?date=` — every member and their logs for one
   /// prayer-day (null [date] → the caller's today). Members only (403).
@@ -74,14 +78,19 @@ class PrayerLogsRemoteDataSourceImpl implements PrayerLogsRemoteDataSource {
   }, (data) => prayerLogFromJson(data as Map<String, dynamic>));
 
   @override
-  Future<OpenedSnap> viewSnap(String logId) =>
-      _data(() => dio.post(ApiEndpoints.prayerLogView(logId)), (data) {
-        final json = data as Map<String, dynamic>;
-        return OpenedSnap(
-          url: json['snapUrl'] as String,
-          viewDurationSeconds: (json['viewDurationSeconds'] as num?)?.toInt(),
-        );
-      });
+  Future<OpenedSnap> viewSnap(String logId, {String? groupId}) => _data(
+    () => dio.post(
+      ApiEndpoints.prayerLogView(logId),
+      data: groupId == null ? null : {'groupId': groupId},
+    ),
+    (data) {
+      final json = data as Map<String, dynamic>;
+      return OpenedSnap(
+        url: json['snapUrl'] as String,
+        viewDurationSeconds: (json['viewDurationSeconds'] as num?)?.toInt(),
+      );
+    },
+  );
 
   @override
   Future<void> deleteLog(String id) =>

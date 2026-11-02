@@ -16,6 +16,9 @@ import 'snap_photo_viewer.dart';
 class PrayerDotsRow extends StatelessWidget {
   final GroupMemberPrayers member;
 
+  /// The group whose feed this row is in: a photo opens for that group.
+  final String groupId;
+
   /// Diameter of each circle.
   final double size;
 
@@ -35,6 +38,7 @@ class PrayerDotsRow extends StatelessWidget {
   const PrayerDotsRow({
     super.key,
     required this.member,
+    required this.groupId,
     this.size = 22,
     this.viewable = true,
     this.showLabels = false,
@@ -45,6 +49,7 @@ class PrayerDotsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget dot(PrayerName p) => _Dot(
       member: member,
+      groupId: groupId,
       prayer: p,
       size: size,
       viewable: viewable,
@@ -88,12 +93,14 @@ class PrayerDotsRow extends StatelessWidget {
 
 class _Dot extends ConsumerWidget {
   final GroupMemberPrayers member;
+  final String groupId;
   final PrayerName prayer;
   final double size;
   final bool viewable;
   final void Function(PrayerLog log, SnapViewerAction action)? onSnapAction;
   const _Dot({
     required this.member,
+    required this.groupId,
     required this.prayer,
     required this.size,
     required this.viewable,
@@ -116,6 +123,7 @@ class _Dot extends ConsumerWidget {
                   context,
                   ref,
                   log: log,
+                  groupId: groupId,
                   title: '${member.displayName} · ${prayer.label}',
                   canModerate: onSnapAction != null,
                 );

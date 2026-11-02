@@ -143,8 +143,8 @@ void main() {
       repo = PrayerLogsRepositoryImpl(PrayerLogsRemoteDataSourceImpl(dio));
     });
 
-    test('posts with no body and returns the link', () async {
-      when(() => dio.post(any())).thenAnswer(
+    test('without a group it posts no body and returns the link', () async {
+      when(() => dio.post(any(), data: any(named: 'data'))).thenAnswer(
         (_) async => okResponse({
           'success': true,
           'data': {'snapUrl': 'https://img.test/once.jpg'},
@@ -155,12 +155,31 @@ void main() {
       verify(() => dio.post(ApiEndpoints.prayerLogView('l1'))).called(1);
     });
 
+    test('with a group it names the group whose photo to open', () async {
+      when(() => dio.post(any(), data: any(named: 'data'))).thenAnswer(
+        (_) async => okResponse({
+          'success': true,
+          'data': {'snapUrl': 'https://img.test/for-y.jpg'},
+        }),
+      );
+      final r = await repo.viewSnap('l1', groupId: 'gY');
+      expect((r as Success<OpenedSnap>).data.url, 'https://img.test/for-y.jpg');
+      verify(
+        () =>
+            dio.post(ApiEndpoints.prayerLogView('l1'), data: {'groupId': 'gY'}),
+      ).called(1);
+    });
+
     test('410 SNAP_ALREADY_VIEWED and SNAP_EXPIRED keep their codes', () async {
-      when(() => dio.post(any())).thenThrow(_gone('SNAP_ALREADY_VIEWED'));
+      when(
+        () => dio.post(any(), data: any(named: 'data')),
+      ).thenThrow(_gone('SNAP_ALREADY_VIEWED'));
       var f = (await repo.viewSnap('l1') as Error).failure as PrayerLogFailure;
       expect(f.code, PrayerLogErrorCode.snapAlreadyViewed);
 
-      when(() => dio.post(any())).thenThrow(_gone('SNAP_EXPIRED'));
+      when(
+        () => dio.post(any(), data: any(named: 'data')),
+      ).thenThrow(_gone('SNAP_EXPIRED'));
       f = (await repo.viewSnap('l1') as Error).failure as PrayerLogFailure;
       expect(f.code, PrayerLogErrorCode.snapExpired);
     });
@@ -190,6 +209,7 @@ void main() {
                       context,
                       ref,
                       log: log,
+                      groupId: 'g1',
                       title: 'Sara',
                     ),
                     child: const Text('open'),
@@ -215,12 +235,17 @@ void main() {
       repo.viewResult = const Success(OpenedSnap(url: 'https://img.test/a'));
       await tap(tester);
       expect(repo.viewed, ['l1']);
+      // The group whose feed it was tapped in, so only that photo is opened.
+      expect(repo.viewedInGroup, ['g1']);
       expect(find.byTooltip('Close'), findsOneWidget);
 
       await tester.tap(find.byTooltip('Close'));
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
-      expect(container.read(snapOutcomesProvider)['l1'], SnapState.opened);
+      expect(
+        container.read(snapOutcomesProvider)[snapOutcomeKey('l1', 'g1')],
+        SnapState.opened,
+      );
       await opening;
     });
 
@@ -252,7 +277,10 @@ void main() {
       await tap(tester);
       expect(find.byTooltip('Close'), findsNothing);
       expect(find.textContaining('already opened'), findsOneWidget);
-      expect(container.read(snapOutcomesProvider)['l1'], SnapState.opened);
+      expect(
+        container.read(snapOutcomesProvider)[snapOutcomeKey('l1', 'g1')],
+        SnapState.opened,
+      );
       await opening;
     });
 
@@ -269,7 +297,10 @@ void main() {
       );
       await tap(tester);
       expect(find.text('This snap has expired.'), findsOneWidget);
-      expect(container.read(snapOutcomesProvider)['l1'], SnapState.expired);
+      expect(
+        container.read(snapOutcomesProvider)[snapOutcomeKey('l1', 'g1')],
+        SnapState.expired,
+      );
       await opening;
     });
 
@@ -322,8 +353,43 @@ void main() {
         logs: [live],
       ),
     ];
-    final out = applySnapOutcomes(feed, {'l1': SnapState.opened});
+    final out = applySnapOutcomes(feed, {
+      snapOutcomeKey('l1', 'g1'): SnapState.opened,
+    }, groupId: 'g1');
     expect(out.single.logs.single.snapState(_now), SnapState.opened);
-    expect(applySnapOutcomes(feed, const {}), same(feed));
+    expect(applySnapOutcomes(feed, const {}, groupId: 'g1'), same(feed));
   });
+
+  test(
+    'opening a photo in one group leaves the same log unopened in another',
+    () {
+      // One log, a different photo for each group: opening Y's does not mark X's.
+      final shared = _log(hasSnap: true, windowKnown: false);
+      List<GroupMemberPrayers> feed() => [
+        GroupMemberPrayers(
+          userId: 'u',
+          name: 'Ali',
+          role: GroupRole.member,
+          logs: [shared],
+        ),
+      ];
+      final outcomes = {snapOutcomeKey('l1', 'gY'): SnapState.opened};
+      expect(
+        applySnapOutcomes(
+          feed(),
+          outcomes,
+          groupId: 'gY',
+        ).single.logs.single.snapState(_now),
+        SnapState.opened,
+      );
+      expect(
+        applySnapOutcomes(
+          feed(),
+          outcomes,
+          groupId: 'gX',
+        ).single.logs.single.snapState(_now),
+        SnapState.unopened,
+      );
+    },
+  );
 }

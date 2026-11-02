@@ -73,8 +73,8 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
   }
 
   @override
-  Future<Result<OpenedSnap>> viewSnap(String logId) =>
-      _guard('viewSnap', () => remote.viewSnap(logId));
+  Future<Result<OpenedSnap>> viewSnap(String logId, {String? groupId}) =>
+      _guard('viewSnap', () => remote.viewSnap(logId, groupId: groupId));
 
   @override
   Future<Result<void>> deleteLog(String id) =>

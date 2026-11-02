@@ -107,24 +107,31 @@ final prayerLogsProvider = FutureProvider.autoDispose
 /// The group feed for one prayer-day; a null date means the user's today.
 typedef GroupFeedKey = ({String groupId, String? date});
 
-/// Snaps this device has just opened (or found expired), by log id. The feed
-/// and live events say a snap is unopened until the next fetch; this keeps the
-/// tile right in between, including for logs that came in live.
+/// The key a snap's outcome is kept under. One log can carry a different photo
+/// for each group, opened separately, so the log id alone is not enough.
+String snapOutcomeKey(String logId, String groupId) => '$logId@$groupId';
+
+/// Snaps this device has just opened (or found expired), by [snapOutcomeKey].
+/// The feed and live events say a snap is unopened until the next fetch; this
+/// keeps the tile right in between, including for logs that came in live.
 final snapOutcomesProvider = StateProvider<Map<String, SnapState>>(
   (ref) => const {},
 );
 
-/// [feed] with [outcomes] applied to the logs they name.
+/// [feed], the feed of [groupId], with [outcomes] applied to the logs they
+/// name for that group.
 List<GroupMemberPrayers> applySnapOutcomes(
   List<GroupMemberPrayers> feed,
-  Map<String, SnapState> outcomes,
-) {
+  Map<String, SnapState> outcomes, {
+  required String groupId,
+}) {
   if (outcomes.isEmpty) return feed;
-  PrayerLog apply(PrayerLog l) => switch (outcomes[l.id]) {
-    SnapState.opened => l.asViewed(),
-    SnapState.expired => l.asExpired(),
-    _ => l,
-  };
+  PrayerLog apply(PrayerLog l) =>
+      switch (outcomes[snapOutcomeKey(l.id, groupId)]) {
+        SnapState.opened => l.asViewed(),
+        SnapState.expired => l.asExpired(),
+        _ => l,
+      };
   return [
     for (final m in feed)
       GroupMemberPrayers(
