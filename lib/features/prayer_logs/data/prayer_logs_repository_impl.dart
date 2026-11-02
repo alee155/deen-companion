@@ -73,18 +73,6 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
   }
 
   @override
-  Future<Result<PrayerLog>> addSnapGroups(
-    String logId,
-    List<String> groupIds,
-  ) async {
-    // The server refuses an empty list; there is no point asking.
-    if (groupIds.isEmpty) {
-      return const Error(UnexpectedFailure('Choose at least one group.'));
-    }
-    return _guard('addSnapGroups', () => remote.addSnapGroups(logId, groupIds));
-  }
-
-  @override
   Future<Result<OpenedSnap>> viewSnap(String logId) =>
       _guard('viewSnap', () => remote.viewSnap(logId));
 
