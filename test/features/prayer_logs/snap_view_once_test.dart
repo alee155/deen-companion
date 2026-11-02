@@ -170,6 +170,27 @@ void main() {
       ).called(1);
     });
 
+    test('404 means the snap is no longer available to this viewer', () async {
+      when(() => dio.post(any(), data: any(named: 'data'))).thenThrow(
+        DioException(
+          requestOptions: RequestOptions(path: '/'),
+          type: DioExceptionType.badResponse,
+          response: Response(
+            statusCode: 404,
+            data: {
+              'success': false,
+              'statusCode': 404,
+              'message': 'Snap not found',
+            },
+            requestOptions: RequestOptions(path: '/'),
+          ),
+        ),
+      );
+      final f =
+          (await repo.viewSnap('l1') as Error).failure as PrayerLogFailure;
+      expect(f.code, PrayerLogErrorCode.snapNotFound);
+    });
+
     test('410 SNAP_ALREADY_VIEWED and SNAP_EXPIRED keep their codes', () async {
       when(
         () => dio.post(any(), data: any(named: 'data')),
@@ -301,6 +322,22 @@ void main() {
         container.read(snapOutcomesProvider)[snapOutcomeKey('l1', 'g1')],
         SnapState.expired,
       );
+      await opening;
+    });
+
+    testWidgets('404 says the snap is gone and marks nothing', (tester) async {
+      await pump(tester, _log(hasSnap: true));
+      repo.viewResult = const Error(
+        PrayerLogFailure(
+          'Snap not found',
+          code: PrayerLogErrorCode.snapNotFound,
+          statusCode: 404,
+        ),
+      );
+      await tap(tester);
+      expect(find.byTooltip('Close'), findsNothing);
+      expect(find.text('This snap is no longer available.'), findsOneWidget);
+      expect(container.read(snapOutcomesProvider), isEmpty);
       await opening;
     });
 

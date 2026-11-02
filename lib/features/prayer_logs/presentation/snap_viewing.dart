@@ -69,6 +69,11 @@ Future<SnapViewerAction?> openMemberSnap(
       } else if (code == PrayerLogErrorCode.snapExpired) {
         record(SnapState.expired);
         showAppToast(context, 'This snap has expired.');
+      } else if (code == PrayerLogErrorCode.snapNotFound) {
+        // Gone, or its owner is blocked: read the feed again, which no longer
+        // lists it.
+        ref.invalidate(groupPrayersProvider);
+        showAppToast(context, 'This snap is no longer available.');
       } else {
         // Nothing was consumed: a failed call can be tried again.
         showAppToast(

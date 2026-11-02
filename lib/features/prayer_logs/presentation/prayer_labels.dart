@@ -65,6 +65,8 @@ String prayerLogErrorMessage(Failure failure) {
       return 'You’ve already opened this snap.';
     case PrayerLogErrorCode.snapExpired:
       return 'This snap has expired.';
+    case PrayerLogErrorCode.snapNotFound:
+      return 'This snap is no longer available.';
     case PrayerLogErrorCode.rateLimited:
       return 'Too many tries. Please wait a minute and try again.';
     case PrayerLogErrorCode.dayLocked:

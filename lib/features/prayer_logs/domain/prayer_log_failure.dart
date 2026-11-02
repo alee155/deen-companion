@@ -34,6 +34,11 @@ enum PrayerLogErrorCode {
   /// nothing was stored. `data.groupIds` lists them.
   groupHasNoOtherMembers('GROUP_HAS_NO_OTHER_MEMBERS'),
 
+  /// HTTP 404 on `POST /prayers/logs/{id}/view`: there is no such snap for
+  /// this viewer. It was deleted, was never shared with them, or its owner is
+  /// blocked (either way round).
+  snapNotFound('SNAP_NOT_FOUND'),
+
   /// HTTP 429: more than 20 calls a minute.
   rateLimited('RATE_LIMITED'),
   other('');

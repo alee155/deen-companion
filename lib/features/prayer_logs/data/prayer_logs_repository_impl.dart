@@ -74,7 +74,11 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
 
   @override
   Future<Result<OpenedSnap>> viewSnap(String logId, {String? groupId}) =>
-      _guard('viewSnap', () => remote.viewSnap(logId, groupId: groupId));
+      _guard(
+        'viewSnap',
+        () => remote.viewSnap(logId, groupId: groupId),
+        isView: true,
+      );
 
   @override
   Future<Result<void>> deleteLog(String id) =>
@@ -84,20 +88,25 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
     String op,
     Future<T> Function() body, {
     bool isDelete = false,
+    bool isView = false,
   }) async {
     try {
       return Success(await body());
     } on NetworkException {
       return const Error(NetworkFailure());
     } on ServerException catch (e) {
-      return Error(_failure(e, isDelete: isDelete));
+      return Error(_failure(e, isDelete: isDelete, isView: isView));
     } catch (e, st) {
       AppLogger.e('PrayerLogsRepository: $op failed', e, st);
       return const Error(UnexpectedFailure());
     }
   }
 
-  PrayerLogFailure _failure(ServerException e, {required bool isDelete}) {
+  PrayerLogFailure _failure(
+    ServerException e, {
+    required bool isDelete,
+    required bool isView,
+  }) {
     var code = PrayerLogErrorCode.parse(e.code);
     if (code == PrayerLogErrorCode.other) {
       if (e.statusCode == 413) code = PrayerLogErrorCode.fileTooLarge;
@@ -105,6 +114,7 @@ class PrayerLogsRepositoryImpl implements PrayerLogsRepository {
       if (e.statusCode == 429) code = PrayerLogErrorCode.rateLimited;
       // The window closed: the log can no longer be removed.
       if (isDelete && e.statusCode == 400) code = PrayerLogErrorCode.undoLocked;
+      if (isView && e.statusCode == 404) code = PrayerLogErrorCode.snapNotFound;
     }
     return PrayerLogFailure(
       e.message ?? const ServerFailure().message,
