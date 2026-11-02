@@ -6,6 +6,9 @@ import 'package:deen_companion/features/auth/presentation/providers/auth_session
 import 'package:deen_companion/features/groups/domain/entities/group.dart';
 import 'package:deen_companion/features/groups/domain/entities/group_detail.dart';
 import 'package:deen_companion/features/groups/presentation/providers/groups_providers.dart';
+import 'package:deen_companion/features/prayer_logs/domain/current_prayer.dart';
+import 'package:deen_companion/features/prayer_logs/presentation/providers/prayer_logs_providers.dart';
+import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times.dart';
 import 'package:deen_companion/features/snaps/data/camera/camera_session.dart';
 import 'package:deen_companion/features/snaps/presentation/providers/snap_providers.dart';
 import 'package:deen_companion/features/snaps/presentation/screens/snap_flow_screen.dart';
@@ -18,6 +21,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../prayer_logs/presentation/_prayer_log_test_support.dart';
 import 'snap_fakes.dart';
 
 class _Session extends AuthSessionNotifier {
@@ -60,6 +64,7 @@ Future<ProviderContainer> _pump(
   GroupDetail group = _group,
   List<Group> groups = sampleGroups,
   String? from = 'g1',
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
@@ -77,6 +82,7 @@ Future<ProviderContainer> _pump(
       snapImageProcessorProvider.overrideWithValue(processor),
       snapRepositoryProvider.overrideWithValue(repo),
       cameraPermissionServiceProvider.overrideWithValue(FakeCameraPermission()),
+      ...overrides,
     ],
   );
   addTearDown(container.dispose);
@@ -257,6 +263,109 @@ void main() {
         findsOneWidget,
       );
       await tester.pumpWidget(const SizedBox());
+    });
+
+    group('with the server naming the groups still open', () {
+      Override open({
+        required List<String> sent,
+        required List<String> unsent,
+      }) => currentPrayerProvider.overrideWith(
+        () => FixedCurrent(
+          CurrentPrayerState(
+            now: DateTime(2026, 11, 2, 10),
+            current: CurrentPrayer(
+              prayer: PrayerName.dhuhr,
+              date: '2026-11-02',
+              startsAt: DateTime(2026, 11, 2, 9),
+              endsAt: DateTime(2026, 11, 2, 11),
+              logged: sent.isNotEmpty,
+              logId: sent.isEmpty ? null : 'l1',
+              sentGroupIds: sent,
+              unsentGroupIds: unsent,
+              canSend: unsent.isNotEmpty,
+            ),
+          ),
+        ),
+      );
+
+      testWidgets('only those get a checkbox, the sent one is listed apart', (
+        tester,
+      ) async {
+        final c = await _pump(
+          tester,
+          from: null,
+          overrides: [
+            open(sent: ['g1'], unsent: ['g2']),
+          ],
+        );
+        await c.read(currentPrayerProvider.future);
+        await _toGroups(tester, c, from: null);
+
+        expect(_boxFor('Quran Circle'), findsOneWidget);
+        // Already has the snap: shown, but there is nothing to tick.
+        expect(find.text('Already sent'), findsOneWidget);
+        expect(find.text('Namaz Family'), findsOneWidget);
+        expect(_boxFor('Namaz Family'), findsNothing);
+        // One with nobody else in it is not offered at all.
+        expect(find.text('Friday Friends'), findsNothing);
+        expect(
+          find.textContaining('already have your snap for this prayer'),
+          findsOneWidget,
+        );
+        await tester.pumpWidget(const SizedBox());
+      });
+
+      testWidgets('Select all covers only the groups still open', (
+        tester,
+      ) async {
+        final c = await _pump(
+          tester,
+          from: null,
+          overrides: [
+            open(sent: ['g3'], unsent: ['g1', 'g2']),
+          ],
+        );
+        await c.read(currentPrayerProvider.future);
+        await _toGroups(tester, c, from: null);
+
+        await tester.tap(find.text('Select all'));
+        await _settle(tester);
+        expect(find.text('Send to 2 groups'), findsOneWidget);
+        expect(_ticked(tester, 'Namaz Family'), isTrue);
+        expect(_ticked(tester, 'Quran Circle'), isTrue);
+        await tester.pumpWidget(const SizedBox());
+      });
+
+      testWidgets('a group that already has it is not sent to again', (
+        tester,
+      ) async {
+        // Opened from g1's own camera, but g1 already has this prayer's snap.
+        final c = await _pump(
+          tester,
+          overrides: [
+            open(sent: ['g1'], unsent: ['g2']),
+          ],
+        );
+        await c.read(currentPrayerProvider.future);
+        await _toGroups(tester, c);
+
+        expect(find.text('Choose a group'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+      });
+
+      testWidgets('nothing left to send to says so', (tester) async {
+        final c = await _pump(
+          tester,
+          from: null,
+          groups: const [Group(id: 'g1', name: 'Namaz Family', memberCount: 8)],
+          overrides: [open(sent: const [], unsent: const [])],
+        );
+        await c.read(currentPrayerProvider.future);
+        await _toGroups(tester, c, from: null);
+
+        expect(find.text('No group left to send to'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+      });
     });
 
     testWidgets('opened from a group: that one is ticked, the rest are not', (

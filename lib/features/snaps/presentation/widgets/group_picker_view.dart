@@ -11,10 +11,14 @@ import '../../../groups/presentation/widgets/group_image.dart';
 import '../../../groups/presentation/widgets/group_sheet_widgets.dart';
 import '../providers/snap_providers.dart';
 
-/// Last step: which groups get the snap. Each of the user's groups has a
-/// checkbox; the group the flow was opened from is already ticked. Everyone in
-/// a ticked group receives the snap, and individual members are deliberately
-/// not shown or chosen.
+/// Last step: which groups get the snap. Each group that can still be sent one
+/// has a checkbox; the group the flow was opened from is already ticked.
+/// Everyone in a ticked group receives the snap, and individual members are
+/// deliberately not shown or chosen.
+///
+/// A prayer can take several snaps, each for groups that have none yet, so
+/// groups that already have your snap are listed apart and can't be ticked, and
+/// groups with no one else in them are left out (the server says which).
 class GroupPickerView extends ConsumerWidget {
   /// The group the flow was opened from, or null when it was opened from the
   /// groups list. Selects the composer's state.
@@ -42,9 +46,21 @@ class GroupPickerView extends ConsumerWidget {
     final groupsAsync = ref.watch(myGroupsProvider);
     final prepared = composer.prepared;
 
-    final groups = groupsAsync.valueOrNull ?? const <Group>[];
-    // Only groups that still exist count: the user may have left one while
-    // taking the photo.
+    final mine = groupsAsync.valueOrNull ?? const <Group>[];
+    // The server names the groups that can still get a snap; until it has,
+    // every group is offered and it decides on send.
+    final sendable = ref.watch(snapSendableGroupIdsProvider);
+    final sentIds = ref.watch(snapSentGroupIdsProvider);
+    final groups = [
+      for (final g in mine)
+        if (sendable == null || sendable.contains(g.id)) g,
+    ];
+    final alreadySent = [
+      for (final g in mine)
+        if (sentIds.contains(g.id)) g,
+    ];
+    // Only groups that still exist and can still be sent to count: the user
+    // may have left one while taking the photo.
     final chosen = [
       for (final g in groups)
         if (composer.selectedGroupIds.contains(g.id)) g.id,
@@ -158,7 +174,9 @@ class GroupPickerView extends ConsumerWidget {
                       SizedBox(width: 5.w),
                       Expanded(
                         child: Text(
-                          'Everyone in the groups you choose receives this snap. You can add more groups until this prayer’s time ends.',
+                          alreadySent.isEmpty
+                              ? 'Everyone in the groups you choose receives this snap. You can send another snap to your other groups until this prayer’s time ends.'
+                              : 'Everyone in the groups you choose receives this snap. Groups that already have your snap for this prayer are listed below.',
                           style: TextStyle(
                             fontSize: 12.sp,
                             color: AppColors.textSecondary,
@@ -181,8 +199,10 @@ class GroupPickerView extends ConsumerWidget {
                           'Couldn’t load your groups.',
                       onRetry: () => ref.invalidate(myGroupsProvider),
                     )
-                  else if (groups.isEmpty)
+                  else if (mine.isEmpty)
                     const _NoGroups()
+                  else if (groups.isEmpty)
+                    const _NothingLeft()
                   else
                     Container(
                       clipBehavior: Clip.antiAlias,
@@ -213,6 +233,10 @@ class GroupPickerView extends ConsumerWidget {
                         ],
                       ),
                     ),
+                  if (alreadySent.isNotEmpty) ...[
+                    SizedBox(height: 18.h),
+                    _SentGroups(groups: alreadySent),
+                  ],
                 ],
               ),
             ),
@@ -428,6 +452,97 @@ class GroupPickRow extends StatelessWidget {
   }
 }
 
+/// Groups that already have your snap for this prayer: shown, not tickable.
+class _SentGroups extends StatelessWidget {
+  final List<Group> groups;
+  const _SentGroups({required this.groups});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.check_circle_rounded,
+              size: 16.sp,
+              color: AppColors.success,
+            ),
+            SizedBox(width: 8.w),
+            Text(
+              'Already sent',
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w700,
+                color: AppColors.inkText,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 10.h),
+        Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(22.r),
+            border: Border.all(color: AppColors.borderWarm),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < groups.length; i++) ...[
+                Semantics(
+                  label: '${groups[i].name}, already sent',
+                  child: ExcludeSemantics(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 14.w,
+                        vertical: 10.h,
+                      ),
+                      child: Row(
+                        children: [
+                          Opacity(
+                            opacity: 0.6,
+                            child: GroupImage(
+                              path: groups[i].imagePath,
+                              size: 40.w,
+                              radius: 12.r,
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Text(
+                              groups[i].name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.check_rounded,
+                            size: 20.sp,
+                            color: AppColors.success,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (i != groups.length - 1)
+                  Divider(height: 1, indent: 66.w, color: AppColors.borderWarm),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _LoadError extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
@@ -479,6 +594,47 @@ class _NoGroups extends StatelessWidget {
           SizedBox(height: 4.h),
           Text(
             'Create or join a group first, then send your snap.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Every group the user is in has the snap already, or has no one else in it.
+class _NothingLeft extends StatelessWidget {
+  const _NothingLeft();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(20.w),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(22.r),
+        border: Border.all(color: AppColors.borderWarm),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.check_circle_rounded,
+            size: 34.sp,
+            color: AppColors.success,
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'No group left to send to',
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w700,
+              color: AppColors.inkText,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Text(
+            'Your other groups have no one else in them yet.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
           ),
