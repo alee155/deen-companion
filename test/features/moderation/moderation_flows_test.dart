@@ -1,4 +1,5 @@
 import 'package:deen_companion/core/error/failures.dart';
+import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_reason.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_target.dart';
 import 'package:deen_companion/features/moderation/presentation/moderation_flows.dart';
@@ -25,7 +26,10 @@ Future<ProviderContainer> _pump(
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
   final container = ProviderContainer(
-    overrides: [moderationRepositoryProvider.overrideWithValue(repo)],
+    overrides: [
+      authSessionProvider.overrideWith(SignedInAccount.new),
+      moderationRepositoryProvider.overrideWithValue(repo),
+    ],
   );
   addTearDown(container.dispose);
   await tester.pumpWidget(
@@ -213,6 +217,7 @@ void main() {
   group('starting a report on a snap', () {
     const snap = ReportSnapTarget(
       snapId: 's9',
+      groupId: 'g1',
       userId: 'u1',
       userName: 'Sara Ahmed',
     );

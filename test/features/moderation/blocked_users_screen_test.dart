@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
+import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:deen_companion/features/moderation/domain/entities/blocked_user.dart';
 import 'package:deen_companion/features/moderation/domain/repositories/moderation_repository.dart';
 import 'package:deen_companion/features/moderation/presentation/providers/moderation_providers.dart';
@@ -23,7 +24,10 @@ Future<void> _pump(WidgetTester tester, ModerationRepository repo) async {
   );
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [moderationRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        authSessionProvider.overrideWith(SignedInAccount.new),
+        moderationRepositoryProvider.overrideWithValue(repo),
+      ],
       child: ScreenUtilInit(
         designSize: const Size(390, 844),
         builder: (_, _) => MaterialApp.router(routerConfig: router),

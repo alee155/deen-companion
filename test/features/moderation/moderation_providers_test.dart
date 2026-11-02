@@ -1,25 +1,30 @@
-import 'package:deen_companion/core/di/providers.dart';
+import 'package:deen_companion/core/config/flavor_config.dart';
 import 'package:deen_companion/core/error/failures.dart';
 import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
+import 'package:deen_companion/features/moderation/data/api_moderation_repository.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_reason.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_target.dart';
 import 'package:deen_companion/features/moderation/presentation/providers/moderation_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../helpers/in_memory_storage_service.dart';
 import '../prayer_logs/presentation/_prayer_log_test_support.dart';
 import '_moderation_support.dart';
 
 const _target = ReportUserTarget(userId: 'u1', userName: 'Sara');
 
 void main() {
+  setUpAll(() => FlavorConfig(flavor: Flavor.dev, enableLogging: false));
+
   late FakeModeration repo;
 
   ProviderContainer make() {
     repo = FakeModeration([blocked('old', name: 'Old')]);
     final c = ProviderContainer(
-      overrides: [moderationRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        authSessionProvider.overrideWith(SignedInAccount.new),
+        moderationRepositoryProvider.overrideWithValue(repo),
+      ],
     );
     addTearDown(c.dispose);
     return c;
@@ -196,29 +201,31 @@ void main() {
     });
   });
 
+  group('a guest', () {
+    test('has nobody blocked and the server is not asked', () async {
+      final fake = FakeModeration([blocked('a')]);
+      final c = ProviderContainer(
+        overrides: [
+          authSessionProvider.overrideWith(SignedOut.new),
+          moderationRepositoryProvider.overrideWithValue(fake),
+        ],
+      );
+      addTearDown(c.dispose);
+      expect(await c.read(blockedUsersProvider.future), isEmpty);
+      expect(c.read(blockedUserIdsProvider), isEmpty);
+    });
+  });
+
   group('moderationRepositoryProvider', () {
-    test(
-      'uses the signed-in account, so blocks are kept per account',
-      () async {
-        final storage = InMemoryStorageService();
-        final c = ProviderContainer(
-          overrides: [
-            localStorageServiceProvider.overrideWithValue(storage),
-            authSessionProvider.overrideWith(SignedIn.new),
-          ],
-        );
-        addTearDown(c.dispose);
-
-        await c.read(blockedUsersProvider.future);
-        await c.read(blockedUsersProvider.notifier).block(blocked('a'));
-
-        // Saved under this account's own key.
-        expect(
-          storage.boxes.values.expand((b) => b.keys),
-          contains('blocked_users:me'),
-        );
-        expect(c.read(blockedUserIdsProvider), {'a'});
-      },
-    );
+    test('is the API one, and follows the signed-in account', () {
+      final c = ProviderContainer(
+        overrides: [authSessionProvider.overrideWith(SignedIn.new)],
+      );
+      addTearDown(c.dispose);
+      expect(
+        c.read(moderationRepositoryProvider),
+        isA<ApiModerationRepository>(),
+      );
+    });
   });
 }

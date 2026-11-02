@@ -1,30 +1,33 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/di/providers.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
-import '../../data/local_moderation_repository.dart';
+import '../../data/api_moderation_repository.dart';
+import '../../data/moderation_remote_datasource.dart';
 import '../../domain/entities/blocked_user.dart';
 import '../../domain/entities/report_reason.dart';
 import '../../domain/entities/report_target.dart';
 import '../../domain/repositories/moderation_repository.dart';
 
-/// Today a local stand-in; swap this one line for the API implementation when
-/// the endpoints exist. Rebuilt when the account changes so each account sees
-/// its own blocked list.
+final moderationRemoteDataSourceProvider = Provider<ModerationRemoteDataSource>(
+  (ref) => ModerationRemoteDataSourceImpl(ref.watch(dioProvider)),
+);
+
+/// Rebuilt when the account changes, so each account reads its own blocked
+/// list.
 final moderationRepositoryProvider = Provider<ModerationRepository>((ref) {
-  final userId = ref.watch(authSessionProvider.select((s) => s.userId));
-  return LocalModerationRepository(
-    storage: ref.watch(localStorageServiceProvider),
-    ownerId: userId,
-  );
+  ref.watch(authSessionProvider.select((s) => s.userId));
+  return ApiModerationRepository(ref.watch(moderationRemoteDataSourceProvider));
 });
 
 /// The people the user has blocked, newest first.
 class BlockedUsersNotifier extends AsyncNotifier<List<BlockedUser>> {
   @override
   Future<List<BlockedUser>> build() async {
+    // A guest has no account to block from: nothing to ask the server.
+    if (!ref.watch(authSessionProvider).isAuthenticated) return const [];
     final result = await ref
         .watch(moderationRepositoryProvider)
         .getBlockedUsers();

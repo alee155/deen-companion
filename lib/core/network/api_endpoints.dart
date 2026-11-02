@@ -232,6 +232,16 @@ class ApiEndpoints {
   static const String videosRandom = '$_deenBase/videos/random';
 
   // Special days (female accounts only).
+  /// `POST` — report a person or a snap.
+  static const String reports = '$_deenBase/reports';
+
+  /// `GET` the people you blocked, `POST {userId}` to block.
+  static const String blocks = '$_deenBase/blocks';
+
+  /// `DELETE` — unblock.
+  static String block(String userId) =>
+      '$_deenBase/blocks/${Uri.encodeComponent(userId)}';
+
   static const String exemption = '$_deenBase/exemption';
 
   /// `GET` — the five stored photos, with signed links (female accounts).

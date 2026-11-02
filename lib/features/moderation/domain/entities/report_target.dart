@@ -23,12 +23,17 @@ class ReportSnapTarget extends ReportTarget {
   /// The prayer log the snap belongs to.
   final String snapId;
 
+  /// The group whose feed the snap was opened in. One log can carry a
+  /// different photo for each group, so the report needs it to say which.
+  final String groupId;
+
   const ReportSnapTarget({
     required this.snapId,
+    required this.groupId,
     required super.userId,
     required super.userName,
   });
 
   @override
-  List<Object?> get props => [snapId, userId, userName];
+  List<Object?> get props => [snapId, groupId, userId, userName];
 }

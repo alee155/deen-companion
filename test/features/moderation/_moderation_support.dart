@@ -1,9 +1,19 @@
 import 'package:deen_companion/core/error/failures.dart';
+import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
+import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/moderation/domain/entities/blocked_user.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_reason.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_target.dart';
 import 'package:deen_companion/features/moderation/domain/repositories/moderation_repository.dart';
+
+/// A signed-in account. Blocking belongs to an account, so a guest has an
+/// empty list and the screens don't ask the server.
+class SignedInAccount extends AuthSessionNotifier {
+  @override
+  AuthSession build() =>
+      const AuthSession(userId: 'me', email: 'me@b.c', name: 'Me');
+}
 
 BlockedUser blocked(String id, {String name = 'Someone', DateTime? at}) =>
     BlockedUser(

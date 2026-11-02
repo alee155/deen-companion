@@ -630,6 +630,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           ref,
           ReportSnapTarget(
             snapId: logId,
+            groupId: widget.groupId,
             userId: m.userId,
             userName: m.displayName,
           ),

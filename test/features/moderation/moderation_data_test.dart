@@ -1,30 +1,31 @@
-import 'dart:convert';
-
-import 'package:deen_companion/core/constants/app_constants.dart';
 import 'package:deen_companion/core/error/failures.dart';
-import 'package:deen_companion/core/storage/local_storage_service.dart';
+import 'package:deen_companion/core/network/api_endpoints.dart';
 import 'package:deen_companion/core/usecase/usecase.dart';
-import 'package:deen_companion/features/moderation/data/local_moderation_repository.dart';
+import 'package:deen_companion/features/moderation/data/api_moderation_repository.dart';
+import 'package:deen_companion/features/moderation/data/moderation_remote_datasource.dart';
 import 'package:deen_companion/features/moderation/domain/entities/blocked_user.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_reason.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_target.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
-import '../../helpers/in_memory_storage_service.dart';
+import '../_support/dio_test_support.dart';
 import '_moderation_support.dart';
 
-/// Storage that cannot be written, for the failure paths.
-class _BrokenStorage extends InMemoryStorageService {
-  @override
-  Future<void> put(String boxName, String key, dynamic value) =>
-      throw Exception('disk full');
-}
+DioException _http(int status, Map<String, dynamic> body) => DioException(
+  requestOptions: RequestOptions(path: '/'),
+  type: DioExceptionType.badResponse,
+  response: Response(
+    statusCode: status,
+    data: body,
+    requestOptions: RequestOptions(path: '/'),
+  ),
+);
 
-Future<List<BlockedUser>> _list(LocalModerationRepository r) async =>
-    (await r.getBlockedUsers()).when(
-      success: (d) => d,
-      failure: (f) => throw f,
-    );
+Map<String, dynamic> _ok(Object? data) => {'success': true, 'data': data};
+
+Failure _failureOf<T>(Result<T> r) => (r as Error<T>).failure;
 
 void main() {
   group('BlockedUser', () {
@@ -69,113 +70,251 @@ void main() {
     ]);
   });
 
-  group('LocalModerationRepository', () {
-    late InMemoryStorageService storage;
-    LocalModerationRepository repo({String? owner = 'me'}) =>
-        LocalModerationRepository(storage: storage, ownerId: owner);
+  group('ApiModerationRepository', () {
+    late MockDio dio;
+    late ApiModerationRepository repo;
 
-    setUp(() => storage = InMemoryStorageService());
-
-    test('starts with nobody blocked', () async {
-      expect(await _list(repo()), isEmpty);
+    setUp(() {
+      dio = MockDio();
+      repo = ApiModerationRepository(ModerationRemoteDataSourceImpl(dio));
     });
 
-    test('a block is kept, newest first, and survives a restart', () async {
-      await repo().blockUser(blocked('a', name: 'Ali'));
-      await repo().blockUser(blocked('b', name: 'Bilal'));
+    When<Future<Response<dynamic>>> post() =>
+        when(() => dio.post(any(), data: any(named: 'data')));
 
-      // A fresh repository over the same storage, as after relaunching.
-      final again = await _list(repo());
-      expect(again.map((b) => b.userId), ['b', 'a']);
-      expect(again.map((b) => b.name), ['Bilal', 'Ali']);
-    });
-
-    test('blocking the same person twice keeps one entry', () async {
-      await repo().blockUser(blocked('a', name: 'Ali'));
-      await repo().blockUser(blocked('a', name: 'Ali Updated'));
-      final list = await _list(repo());
-      expect(list, hasLength(1));
-      expect(list.single.name, 'Ali Updated');
-    });
-
-    test('unblocking removes only that person', () async {
-      await repo().blockUser(blocked('a'));
-      await repo().blockUser(blocked('b'));
-      await repo().unblockUser('a');
-      expect((await _list(repo())).map((b) => b.userId), ['b']);
-    });
-
-    test('unblocking someone who is not blocked is harmless', () async {
-      await repo().blockUser(blocked('a'));
-      expect(await repo().unblockUser('zzz'), isA<Success<void>>());
-      expect(await _list(repo()), hasLength(1));
-    });
-
-    test('each account has its own list', () async {
-      await repo(owner: 'me').blockUser(blocked('a'));
-      expect(await _list(repo(owner: 'someone-else')), isEmpty);
-      expect(await _list(repo(owner: null)), isEmpty);
-      expect(await _list(repo(owner: 'me')), hasLength(1));
-    });
-
-    test('damaged saved data reads as empty instead of crashing', () async {
-      final key = '${AppConstants.blockedUsersKey}:me';
-      await storage.put(AppConstants.settingsBoxName, key, 'not json {{');
-      expect((await repo().getBlockedUsers()), isA<Error<List<BlockedUser>>>());
-
-      await storage.put(AppConstants.settingsBoxName, key, '{"a":1}');
-      expect(await _list(repo()), isEmpty);
-
-      await storage.put(
-        AppConstants.settingsBoxName,
-        key,
-        jsonEncode([
-          {'userId': 'ok', 'name': 'Fine'},
-          {'no': 'id'},
-          42,
-        ]),
-      );
-      expect((await _list(repo())).map((b) => b.userId), ['ok']);
-    });
-
-    test('a storage failure is reported, not thrown', () async {
-      final broken = LocalModerationRepository(
-        storage: _BrokenStorage(),
-        ownerId: 'me',
-      );
-      final r = await broken.blockUser(blocked('a'));
-      expect(r, isA<Error<void>>());
-      expect((r as Error<void>).failure, isA<CacheFailure>());
-      expect(await broken.unblockUser('a'), isA<Error<void>>());
-    });
-
-    test(
-      'a report is accepted but stores nothing (it is not sent yet)',
-      () async {
-        final r = await repo().report(
-          target: const ReportUserTarget(userId: 'u', userName: 'U'),
-          reason: ReportReason.spam,
-          details: 'private note',
+    group('report', () {
+      test('a person is reported by user id', () async {
+        post().thenAnswer(
+          (_) async => okResponse(
+            _ok({'id': 'r1', 'status': 'open', 'duplicate': false}),
+          ),
+        );
+        final r = await repo.report(
+          target: const ReportUserTarget(userId: 'u9', userName: 'Sara'),
+          reason: ReportReason.harassment,
+          details: 'rude',
         );
         expect(r, isA<Success<void>>());
-        expect(storage.boxes, isEmpty, reason: 'nothing was persisted');
-      },
-    );
+        verify(
+          () => dio.post(
+            ApiEndpoints.reports,
+            data: {
+              'targetType': 'user',
+              'targetId': 'u9',
+              'reason': 'harassment',
+              'details': 'rude',
+            },
+          ),
+        ).called(1);
+      });
+
+      test('a snap is reported by log id, with the group it was in', () async {
+        post().thenAnswer(
+          (_) async => okResponse(
+            _ok({'id': 'r1', 'status': 'open', 'duplicate': false}),
+          ),
+        );
+        await repo.report(
+          target: const ReportSnapTarget(
+            snapId: 'log-1',
+            groupId: 'g1',
+            userId: 'u9',
+            userName: 'Sara',
+          ),
+          reason: ReportReason.inappropriate,
+        );
+        verify(
+          () => dio.post(
+            ApiEndpoints.reports,
+            data: {
+              'targetType': 'snap',
+              'targetId': 'log-1',
+              'reason': 'inappropriate',
+              'groupId': 'g1',
+            },
+          ),
+        ).called(1);
+      });
+
+      test('reporting the same thing again is a success', () async {
+        post().thenAnswer(
+          (_) async => okResponse(
+            _ok({'id': 'r1', 'status': 'open', 'duplicate': true}),
+          ),
+        );
+        final r = await repo.report(
+          target: const ReportUserTarget(userId: 'u9', userName: 'Sara'),
+          reason: ReportReason.spam,
+        );
+        expect(r, isA<Success<void>>());
+      });
+
+      test('the errors have plain wording', () async {
+        Future<String> reportWith(DioException e) async {
+          post().thenThrow(e);
+          return _failureOf(
+            await repo.report(
+              target: const ReportUserTarget(userId: 'u9', userName: 'Sara'),
+              reason: ReportReason.spam,
+            ),
+          ).message;
+        }
+
+        expect(
+          await reportWith(
+            _http(400, {
+              'success': false,
+              'message': 'x',
+              'code': 'CANNOT_REPORT_SELF',
+            }),
+          ),
+          'You can’t report yourself.',
+        );
+        expect(
+          await reportWith(
+            _http(404, {
+              'success': false,
+              'message': 'x',
+              'code': 'SNAP_NOT_FOUND',
+            }),
+          ),
+          'This snap is no longer available.',
+        );
+        expect(
+          await reportWith(
+            _http(404, {
+              'success': false,
+              'message': 'x',
+              'code': 'USER_NOT_FOUND',
+            }),
+          ),
+          'This person is no longer available.',
+        );
+        expect(
+          await reportWith(
+            _http(429, {'success': false, 'message': 'Too many requests'}),
+          ),
+          contains('Too many requests'),
+        );
+        expect(
+          await reportWith(
+            _http(400, {'success': false, 'message': 'reason is invalid'}),
+          ),
+          'reason is invalid',
+        );
+      });
+
+      test('offline is a network failure', () async {
+        post().thenThrow(dioError());
+        final r = await repo.report(
+          target: const ReportUserTarget(userId: 'u9', userName: 'Sara'),
+          reason: ReportReason.spam,
+        );
+        expect(_failureOf(r), isA<NetworkFailure>());
+      });
+    });
+
+    group('blocking', () {
+      test('the list comes from the server, with names and dates', () async {
+        when(() => dio.get(any())).thenAnswer(
+          (_) async => okResponse(
+            _ok([
+              {
+                'userId': 'a',
+                'name': 'Ali',
+                'blockedAt': '2026-11-02T10:00:00.000Z',
+              },
+              {'userId': 'b', 'name': 'Bilal', 'blockedAt': 'bad date'},
+              {'name': 'no id'},
+            ]),
+          ),
+        );
+        final list =
+            ((await repo.getBlockedUsers()) as Success<List<BlockedUser>>).data;
+        // The record with no id is skipped; the bad date does not fail it.
+        expect(list.map((b) => b.userId), ['a', 'b']);
+        expect(list.first.name, 'Ali');
+        expect(list.first.blockedAt, DateTime.utc(2026, 11, 2, 10));
+        verify(() => dio.get(ApiEndpoints.blocks)).called(1);
+      });
+
+      test('block posts the user id', () async {
+        post().thenAnswer(
+          (_) async => okResponse(
+            _ok({
+              'userId': 'a',
+              'name': 'Ali',
+              'blockedAt': '2026-11-02T10:00:00.000Z',
+            }),
+          ),
+        );
+        expect(await repo.blockUser(blocked('a')), isA<Success<void>>());
+        verify(
+          () => dio.post(ApiEndpoints.blocks, data: {'userId': 'a'}),
+        ).called(1);
+      });
+
+      test('unblock deletes by user id', () async {
+        when(() => dio.delete(any())).thenAnswer(
+          (_) async => okResponse(_ok({'userId': 'a', 'blocked': false})),
+        );
+        expect(await repo.unblockUser('a'), isA<Success<void>>());
+        verify(() => dio.delete(ApiEndpoints.block('a'))).called(1);
+      });
+
+      test('blocking yourself has its own message', () async {
+        post().thenThrow(
+          _http(400, {
+            'success': false,
+            'message': 'x',
+            'code': 'CANNOT_BLOCK_SELF',
+          }),
+        );
+        expect(
+          _failureOf(await repo.blockUser(blocked('me'))).message,
+          'You can’t block yourself.',
+        );
+      });
+
+      test('a failure leaves a message, never throws', () async {
+        when(() => dio.get(any())).thenThrow(dioError());
+        expect(_failureOf(await repo.getBlockedUsers()), isA<NetworkFailure>());
+        when(
+          () => dio.delete(any()),
+        ).thenThrow(_http(500, {'success': false, 'message': 'Server broke'}));
+        expect(_failureOf(await repo.unblockUser('a')).message, 'Server broke');
+      });
+    });
   });
 
   group('ReportTarget', () {
     test('a snap target names its snap and its sender', () {
-      const t = ReportSnapTarget(snapId: 's1', userId: 'u1', userName: 'Sara');
+      const t = ReportSnapTarget(
+        snapId: 's1',
+        groupId: 'g1',
+        userId: 'u1',
+        userName: 'Sara',
+      );
       expect(t.snapId, 's1');
       expect(t.userId, 'u1');
       expect(
         t,
-        const ReportSnapTarget(snapId: 's1', userId: 'u1', userName: 'Sara'),
+        const ReportSnapTarget(
+          snapId: 's1',
+          groupId: 'g1',
+          userId: 'u1',
+          userName: 'Sara',
+        ),
       );
       expect(
         t,
         isNot(
-          const ReportSnapTarget(snapId: 's2', userId: 'u1', userName: 'Sara'),
+          const ReportSnapTarget(
+            snapId: 's2',
+            groupId: 'g1',
+            userId: 'u1',
+            userName: 'Sara',
+          ),
         ),
       );
     });
@@ -184,18 +323,33 @@ void main() {
       expect(
         const ReportUserTarget(userId: 'u1', userName: 'Sara'),
         isNot(
-          const ReportSnapTarget(snapId: 's', userId: 'u1', userName: 'Sara'),
+          const ReportSnapTarget(
+            snapId: 's',
+            groupId: 'g1',
+            userId: 'u1',
+            userName: 'Sara',
+          ),
         ),
       );
     });
   });
 
-  test('LocalStorageService is what the repository needs (compile check)', () {
-    // Guards the constructor's contract if the storage interface changes.
-    LocalStorageService s = InMemoryStorageService();
+  test('a snap target in another group is a different report', () {
     expect(
-      LocalModerationRepository(storage: s, ownerId: null).ownerId,
-      isNull,
+      const ReportSnapTarget(
+        snapId: 's1',
+        groupId: 'g1',
+        userId: 'u1',
+        userName: 'Sara',
+      ),
+      isNot(
+        const ReportSnapTarget(
+          snapId: 's1',
+          groupId: 'g2',
+          userId: 'u1',
+          userName: 'Sara',
+        ),
+      ),
     );
   });
 }

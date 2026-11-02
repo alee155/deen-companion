@@ -1,4 +1,5 @@
 import 'package:deen_companion/core/error/failures.dart';
+import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_reason.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_target.dart';
 import 'package:deen_companion/features/moderation/presentation/moderation_flows.dart';
@@ -16,6 +17,7 @@ import '_moderation_support.dart';
 const _user = ReportUserTarget(userId: 'u1', userName: 'Sara Ahmed');
 const _snap = ReportSnapTarget(
   snapId: 's1',
+  groupId: 'g1',
   userId: 'u1',
   userName: 'Sara Ahmed',
 );
@@ -40,7 +42,10 @@ Future<_Rig> _pump(
   final rig = _Rig(repo ?? FakeModeration());
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [moderationRepositoryProvider.overrideWithValue(rig.repo)],
+      overrides: [
+        authSessionProvider.overrideWith(SignedInAccount.new),
+        moderationRepositoryProvider.overrideWithValue(rig.repo),
+      ],
       child: ScreenUtilInit(
         designSize: const Size(390, 844),
         builder: (_, _) => MaterialApp(
