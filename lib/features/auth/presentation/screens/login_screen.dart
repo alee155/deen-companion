@@ -10,6 +10,7 @@ import '../providers/login_controller.dart';
 import '../widgets/auth_icon_badge.dart';
 import '../widgets/auth_top_header.dart';
 import '../widgets/custom_text_field.dart';
+import '../widgets/apple_button.dart';
 import '../widgets/google_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -128,7 +129,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               color: AppColors.inkText,
                             ),
                           ).slideIn(RevealDirection.start, delay: seq.next()),
-                          SizedBox(height: 8.h),
+
                           Text(
                             'Login to continue your journey',
                             style: TextStyle(
@@ -142,7 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 30.h),
+                    SizedBox(height: 10.h),
 
                     CustomTextField(
                       controller: _emailController,
@@ -152,7 +153,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       keyboardType: TextInputType.emailAddress,
                       errorText: _emailError,
                     ).slideIn(RevealDirection.start, delay: seq.next()),
-                    SizedBox(height: 18.h),
+                    SizedBox(height: 10.h),
 
                     CustomTextField(
                       controller: _passwordController,
@@ -162,7 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       isPassword: true,
                       errorText: _passwordError,
                     ).slideIn(RevealDirection.end, delay: seq.next()),
-                    SizedBox(height: 8.h),
+                    SizedBox(height: 5.h),
 
                     Align(
                       alignment: Alignment.centerRight,
@@ -186,7 +187,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     SizedBox(height: 20.h),
 
                     SizedBox(
-                      height: 52.h,
+                      height: 45.h,
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: state.isSubmitting ? null : _submit,
@@ -216,7 +217,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                       ),
                     ).slideIn(RevealDirection.bottom, delay: seq.next()),
-                    SizedBox(height: 22.h),
+                    SizedBox(height: 10.h),
 
                     Row(
                       children: [
@@ -234,11 +235,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Expanded(child: Divider(color: AppColors.borderWarm)),
                       ],
                     ).slideIn(RevealDirection.bottomEnd, delay: seq.next()),
-                    SizedBox(height: 22.h),
+                    SizedBox(height: 10.h),
 
                     GoogleButton(
                       onPressed: () {},
                     ).slideIn(RevealDirection.bottomStart, delay: seq.next()),
+                    SizedBox(height: 12.h),
+                    AppleButton(
+                      onPressed: () {},
+                    ).slideIn(RevealDirection.bottomEnd, delay: seq.next()),
                     SizedBox(height: 25.h),
 
                     Center(

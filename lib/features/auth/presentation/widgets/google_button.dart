@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_typography.dart';
 
-/// same "leave for now" treatment as email login/signup. The button is
-/// built so the real flow can be dropped into [onPressed] later.
+import '../../../../core/theme/app_colors.dart';
+import 'social_auth_button.dart';
+
+/// "Continue with Google". Not wired up yet: the real flow goes into
+/// [onPressed] later.
 class GoogleButton extends StatelessWidget {
   final VoidCallback onPressed;
 
@@ -12,42 +12,13 @@ class GoogleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 52.h,
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          backgroundColor: AppColors.surfaceLight,
-          side: BorderSide(color: AppColors.borderWarm, width: 1.w),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30.r),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/google_logo.png',
-              height: 20.h,
-              width: 20.w,
-              errorBuilder: (context, error, stackTrace) => Icon(
-                Icons.g_mobiledata,
-                size: 24.sp,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            SizedBox(width: 10.w),
-            Text(
-              'Continue with Google',
-              style: AppTypography.bodyLarge.copyWith(
-                color: AppColors.inkText,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return SocialAuthButton(
+      label: 'Continue with Google',
+      iconAsset: 'assets/images/icons/google.svg',
+      onPressed: onPressed,
+      backgroundColor: AppColors.surfaceLight,
+      foregroundColor: AppColors.inkText,
+      borderColor: AppColors.borderWarm,
     );
   }
 }

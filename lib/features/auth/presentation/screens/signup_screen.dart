@@ -12,6 +12,7 @@ import '../widgets/auth_icon_badge.dart';
 import '../widgets/auth_top_header.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/gender_selector.dart';
+import '../widgets/apple_button.dart';
 import '../widgets/google_button.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -265,6 +266,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     GoogleButton(
                       onPressed: () {},
                     ).slideIn(RevealDirection.end, delay: seq.next()),
+                    SizedBox(height: 12.h),
+                    AppleButton(
+                      onPressed: () {},
+                    ).slideIn(RevealDirection.bottomEnd, delay: seq.next()),
                     SizedBox(height: 15.h),
 
                     Center(
