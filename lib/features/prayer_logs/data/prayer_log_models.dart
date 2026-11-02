@@ -30,6 +30,10 @@ PrayerLog prayerLogFromJson(Map<String, dynamic> json) => PrayerLog(
   viewDurationSeconds: (json['viewDurationSeconds'] as num?)?.toInt(),
 );
 
+List<String> _ids(Object? raw) => [
+  for (final id in (raw as List? ?? const [])) id.toString(),
+];
+
 CurrentPrayerState currentPrayerStateFromJson(Map<String, dynamic> json) {
   final current = json['current'] as Map<String, dynamic>?;
   final next = json['next'] as Map<String, dynamic>?;
@@ -44,6 +48,13 @@ CurrentPrayerState currentPrayerStateFromJson(Map<String, dynamic> json) {
             endsAt: _time(current['endsAt']),
             logged: current['logged'] as bool? ?? false,
             logId: current['logId'] as String?,
+            sentGroupIds: _ids(current['sentGroupIds']),
+            unsentGroupIds: _ids(current['unsentGroupIds']),
+            // An answer without the field (an older server) falls back to
+            // the old rule: one photo per prayer.
+            canSend:
+                current['canSend'] as bool? ??
+                !(current['logged'] as bool? ?? false),
           ),
     next: next == null
         ? null

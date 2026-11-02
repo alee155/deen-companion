@@ -86,6 +86,89 @@ void main() {
       expect(s.isNotSynced, isFalse);
     });
 
+    group('which groups a photo can still go to', () {
+      Map<String, dynamic> open(Map<String, dynamic> extra) => {
+        'now': '2026-11-02T10:30:00.000Z',
+        'current': {
+          'prayer': 'dhuhr',
+          'date': '2026-11-02',
+          'startsAt': '2026-11-02T06:49:00.000Z',
+          'endsAt': '2026-11-02T10:54:00.000Z',
+          'logged': false,
+          'logId': null,
+          ...extra,
+        },
+        'next': {'prayer': 'asr', 'startsAt': '2026-11-02T10:54:00.000Z'},
+      };
+
+      test('nothing sent yet: every group is open and the camera is on', () {
+        final c = currentPrayerStateFromJson(
+          open({
+            'sentGroupIds': [],
+            'unsentGroupIds': ['gX', 'gY'],
+            'canSend': true,
+          }),
+        ).current!;
+        expect(c.sentGroupIds, isEmpty);
+        expect(c.unsentGroupIds, ['gX', 'gY']);
+        expect(c.canSend, isTrue);
+        expect(c.allSent, isFalse);
+      });
+
+      test('sent to some: logged, the rest still open', () {
+        final c = currentPrayerStateFromJson(
+          open({
+            'logged': true,
+            'logId': 'l1',
+            'sentGroupIds': ['gX'],
+            'unsentGroupIds': ['gY'],
+            'canSend': true,
+          }),
+        ).current!;
+        expect(c.logged, isTrue);
+        expect(c.sentGroupIds, ['gX']);
+        expect(c.unsentGroupIds, ['gY']);
+        expect(c.canSend, isTrue);
+      });
+
+      test('sent to all: the camera is off', () {
+        final c = currentPrayerStateFromJson(
+          open({
+            'logged': true,
+            'logId': 'l1',
+            'sentGroupIds': ['gX', 'gY'],
+            'unsentGroupIds': [],
+            'canSend': false,
+          }),
+        ).current!;
+        expect(c.canSend, isFalse);
+        expect(c.allSent, isTrue);
+      });
+
+      test('a log with no photo sent is the Special days one', () {
+        final c = currentPrayerStateFromJson(
+          open({
+            'logged': true,
+            'logId': 'auto',
+            'sentGroupIds': [],
+            'unsentGroupIds': [],
+            'canSend': false,
+          }),
+        ).current!;
+        expect(c.loggedWithoutPhoto, isTrue);
+        expect(c.allSent, isFalse);
+      });
+
+      test('an answer without the new fields keeps the old rule', () {
+        final fresh = currentPrayerStateFromJson(open({})).current!;
+        expect(fresh.canSend, isTrue);
+        final logged = currentPrayerStateFromJson(
+          open({'logged': true, 'logId': 'l1'}),
+        ).current!;
+        expect(logged.canSend, isFalse);
+      });
+    });
+
     test('both null means not synced; closed window keeps next', () {
       final none = currentPrayerStateFromJson({
         'now': '2026-10-13T10:00:00.000Z',

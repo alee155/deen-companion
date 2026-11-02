@@ -15,6 +15,18 @@ class CurrentPrayer extends Equatable {
   /// Set when [logged]; what Undo deletes.
   final String? logId;
 
+  /// Groups that already have a photo for this prayer.
+  final List<String> sentGroupIds;
+
+  /// Groups that can still be sent a photo now. Never lists a group where you
+  /// are the only member, so it is the list to offer in the group picker.
+  final List<String> unsentGroupIds;
+
+  /// The server's answer to "may a photo be sent now": the camera follows it.
+  /// False once every group has its photo, when there is no group with
+  /// someone else in it, and while Special days log the prayer for her.
+  final bool canSend;
+
   const CurrentPrayer({
     required this.prayer,
     required this.date,
@@ -22,10 +34,30 @@ class CurrentPrayer extends Equatable {
     required this.endsAt,
     required this.logged,
     required this.logId,
+    this.sentGroupIds = const [],
+    this.unsentGroupIds = const [],
+    this.canSend = true,
   });
 
+  /// Logged, and every group that can have a photo has one.
+  bool get allSent =>
+      logged && sentGroupIds.isNotEmpty && unsentGroupIds.isEmpty;
+
+  /// Logged with no photo sent: the log Special days make on her behalf.
+  bool get loggedWithoutPhoto => logged && sentGroupIds.isEmpty;
+
   @override
-  List<Object?> get props => [prayer, date, startsAt, endsAt, logged, logId];
+  List<Object?> get props => [
+    prayer,
+    date,
+    startsAt,
+    endsAt,
+    logged,
+    logId,
+    sentGroupIds,
+    unsentGroupIds,
+    canSend,
+  ];
 }
 
 class NextPrayer extends Equatable {
