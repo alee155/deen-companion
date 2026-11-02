@@ -103,7 +103,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             right: 0,
             height: 200.h,
             child: AuthTopHeader(
-              imagePath: 'assets/images/slider_2.jpg',
+              ghostIcon: Icons.groups_rounded,
               onBack: () => context.pop(),
             ),
           ),

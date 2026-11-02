@@ -99,7 +99,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             right: 0,
             height: 200.h,
             child: AuthTopHeader(
-              imagePath: 'assets/images/slider_4.jpg',
+              ghostIcon: Icons.password_rounded,
               onBack: () => context.pop(),
             ),
           ),

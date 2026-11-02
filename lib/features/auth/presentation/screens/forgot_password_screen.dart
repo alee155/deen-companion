@@ -72,7 +72,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             right: 0,
             height: 200.h,
             child: AuthTopHeader(
-              imagePath: 'assets/images/slider_4.jpg',
+              ghostIcon: Icons.lock_reset_rounded,
               onBack: () => context.pop(),
             ),
           ),

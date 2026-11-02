@@ -36,6 +36,89 @@ class FeatureHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return HeroSurface(
+      ghostIcon: ghostIcon,
+      compact: compact,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          24.w,
+          MediaQuery.of(context).padding.top + (compact ? 50 : 66).h,
+          24.w,
+          (compact ? 14 : 26).h,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: (compact ? 22 : 30).sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                height: 1.1,
+              ),
+            ).slideInIf(animate, RevealDirection.topStart),
+            SizedBox(height: (compact ? 3 : 6).h),
+            Text(
+              subtitle,
+              maxLines: compact ? 1 : null,
+              overflow: compact ? TextOverflow.ellipsis : null,
+              style: TextStyle(
+                fontSize: (compact ? 12 : 13).sp,
+                height: 1.45,
+                color: AppColors.onHeroSurface.withValues(alpha: 0.78),
+              ),
+            ).slideInIf(
+              animate,
+              RevealDirection.start,
+              delay: const Duration(milliseconds: 70),
+            ),
+            if (chips.isNotEmpty) ...[
+              SizedBox(height: (compact ? 10 : 16).h),
+              Wrap(
+                spacing: 8.w,
+                runSpacing: (compact ? 6 : 8).h,
+                children: [
+                  for (var i = 0; i < chips.length; i++)
+                    chips[i].build().slideInIf(
+                      animate,
+                      i.isEven
+                          ? RevealDirection.bottomStart
+                          : RevealDirection.bottomEnd,
+                      delay: Duration(milliseconds: 130 + 50 * i),
+                      duration: AppMotion.normal,
+                      distance: 18,
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The hero's backdrop on its own: the ink gradient, the faint geometric
+/// lattice and the large ghost icon, with [child] laid over them. It is what
+/// [FeatureHero] draws its text on, and what the sign-in screens use for
+/// their header, so every top banner in the app looks the same.
+class HeroSurface extends StatelessWidget {
+  final IconData ghostIcon;
+  final Widget? child;
+
+  /// The shorter variant's proportions (see [FeatureHero.compact]).
+  final bool compact;
+
+  const HeroSurface({
+    super.key,
+    required this.ghostIcon,
+    this.child,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
@@ -66,62 +149,7 @@ class FeatureHero extends StatelessWidget {
               color: AppColors.gold.withValues(alpha: 0.10),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              24.w,
-              MediaQuery.of(context).padding.top + (compact ? 50 : 66).h,
-              24.w,
-              (compact ? 14 : 26).h,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: (compact ? 22 : 30).sp,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    height: 1.1,
-                  ),
-                ).slideInIf(animate, RevealDirection.topStart),
-                SizedBox(height: (compact ? 3 : 6).h),
-                Text(
-                  subtitle,
-                  maxLines: compact ? 1 : null,
-                  overflow: compact ? TextOverflow.ellipsis : null,
-                  style: TextStyle(
-                    fontSize: (compact ? 12 : 13).sp,
-                    height: 1.45,
-                    color: AppColors.onHeroSurface.withValues(alpha: 0.78),
-                  ),
-                ).slideInIf(
-                  animate,
-                  RevealDirection.start,
-                  delay: const Duration(milliseconds: 70),
-                ),
-                if (chips.isNotEmpty) ...[
-                  SizedBox(height: (compact ? 10 : 16).h),
-                  Wrap(
-                    spacing: 8.w,
-                    runSpacing: (compact ? 6 : 8).h,
-                    children: [
-                      for (var i = 0; i < chips.length; i++)
-                        chips[i].build().slideInIf(
-                          animate,
-                          i.isEven
-                              ? RevealDirection.bottomStart
-                              : RevealDirection.bottomEnd,
-                          delay: Duration(milliseconds: 130 + 50 * i),
-                          duration: AppMotion.normal,
-                          distance: 18,
-                        ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
+          ?child,
         ],
       ),
     );

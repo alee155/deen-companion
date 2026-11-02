@@ -103,7 +103,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             right: 0,
             height: 200.h,
             child: AuthTopHeader(
-              imagePath: 'assets/images/slider_3.jpg',
+              ghostIcon: Icons.mark_email_read_rounded,
               onBack: () => context.pop(),
             ),
           ),

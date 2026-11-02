@@ -93,7 +93,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             right: 0,
             height: 200.h,
             child: AuthTopHeader(
-              imagePath: 'assets/images/slider_1.jpg',
+              ghostIcon: Icons.mosque_rounded,
               onBack: () => context.pop(),
             ),
           ),
