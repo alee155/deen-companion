@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../groups/presentation/providers/groups_providers.dart';
+import '../../../prayer_logs/presentation/prayer_labels.dart';
+import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import '../providers/snap_providers.dart';
 import '../widgets/capture_view.dart';
 import '../widgets/crop_view.dart';
@@ -65,10 +67,15 @@ class _SnapFlowScreenState extends ConsumerState<SnapFlowScreen> {
   Widget build(BuildContext context) {
     final s = ref.watch(snapComposerProvider(widget.initialGroupId));
     final initial = widget.initialGroupId;
-    // The camera is titled with the group it was opened from, or plainly when
-    // the user is yet to choose.
+    // The camera is titled with the group it was opened from, or with the
+    // prayer it logs when the user is yet to choose the groups.
+    final openPrayer = ref
+        .watch(currentPrayerProvider)
+        .valueOrNull
+        ?.current
+        ?.prayer;
     final title = initial == null
-        ? 'New snap'
+        ? (openPrayer == null ? 'New snap' : 'Log ${openPrayer.label}')
         : ref.watch(groupDetailProvider(initial)).valueOrNull?.name ?? 'Group';
 
     final Widget body = switch (s.step) {

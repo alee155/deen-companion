@@ -15,6 +15,8 @@ Future<List<String>> _pump(
   SnapAvailability? override,
   String? groupId,
   Object? result = 1,
+  Set<String> sent = const {},
+  Set<String>? sendable,
 }) async {
   final visited = <String>[];
   final router = GoRouter(
@@ -63,7 +65,11 @@ Future<List<String>> _pump(
   );
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [snapAvailabilityProvider.overrideWithValue(availability)],
+      overrides: [
+        snapAvailabilityProvider.overrideWithValue(availability),
+        snapSentGroupIdsProvider.overrideWithValue(sent),
+        snapSendableGroupIdsProvider.overrideWithValue(sendable),
+      ],
       child: ScreenUtilInit(
         designSize: const Size(390, 844),
         builder: (_, _) => MaterialApp.router(routerConfig: router),
@@ -93,6 +99,41 @@ void main() {
 
   testWidgets('from a group: that group is passed to the flow', (tester) async {
     final visited = await _pump(tester, groupId: 'g7');
+    await tester.tap(find.text('camera'));
+    await _settle(tester);
+    expect(visited, ['/groups/g7/snap']);
+  });
+
+  testWidgets('a group that already has your snap says so, and no flow', (
+    tester,
+  ) async {
+    final visited = await _pump(
+      tester,
+      groupId: 'g7',
+      sent: {'g7'},
+      sendable: {'g8'},
+    );
+    await tester.tap(find.text('camera'));
+    await _settle(tester);
+    expect(visited, isEmpty);
+    expect(
+      find.text('This group already has your snap for this prayer.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a group with no one else in it says so, and no flow', (
+    tester,
+  ) async {
+    final visited = await _pump(tester, groupId: 'g7', sendable: {'g8'});
+    await tester.tap(find.text('camera'));
+    await _settle(tester);
+    expect(visited, isEmpty);
+    expect(find.textContaining('no one else in this group'), findsOneWidget);
+  });
+
+  testWidgets('a group still open goes straight to the flow', (tester) async {
+    final visited = await _pump(tester, groupId: 'g7', sendable: {'g7', 'g8'});
     await tester.tap(find.text('camera'));
     await _settle(tester);
     expect(visited, ['/groups/g7/snap']);

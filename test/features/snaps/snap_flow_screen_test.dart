@@ -593,5 +593,35 @@ void main() {
       expect(camera.opened, [SnapLens.back]);
       await tester.pumpWidget(const SizedBox());
     });
+
+    testWidgets('from the list, while a prayer is open, it names the prayer', (
+      tester,
+    ) async {
+      final c = await _pump(
+        tester,
+        from: null,
+        overrides: [
+          currentPrayerProvider.overrideWith(
+            () => FixedCurrent(
+              CurrentPrayerState(
+                now: DateTime(2026, 11, 2, 10),
+                current: CurrentPrayer(
+                  prayer: PrayerName.dhuhr,
+                  date: '2026-11-02',
+                  startsAt: DateTime(2026, 11, 2, 9),
+                  endsAt: DateTime(2026, 11, 2, 11),
+                  logged: false,
+                  logId: null,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+      await c.read(currentPrayerProvider.future);
+      await _settle(tester);
+      expect(find.text('Log Dhuhr'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
   });
 }

@@ -15,7 +15,9 @@ import 'snap_availability_message.dart';
 /// snap flow and, on return, confirms what was sent.
 ///
 /// [groupId] preselects a group in the flow (the group's own camera button);
-/// without it the user chooses the groups. [availability] overrides the
+/// without it the user chooses the groups. A group that already has your snap
+/// for this prayer, or has no one else in it, is said so and not opened.
+/// [availability] overrides the
 /// prayer-based answer, for a screen that knows more (the groups list knows
 /// whether there are any groups at all).
 Future<void> openSnapFlow(
@@ -33,6 +35,15 @@ Future<void> openSnapFlow(
     return;
   }
 
+  if (groupId != null) {
+    final why = _groupBlocked(ref, groupId);
+    if (why != null) {
+      HapticFeedback.lightImpact();
+      showAppToast(context, why, icon: Icons.info_outline_rounded);
+      return;
+    }
+  }
+
   HapticFeedback.selectionClick();
   final sentTo = await context.push<int>(
     groupId == null ? '/snap' : '/groups/$groupId/snap',
@@ -43,4 +54,18 @@ Future<void> openSnapFlow(
     sentTo == 1 ? 'Snap sent' : 'Snap sent to $sentTo groups',
     icon: Icons.check_circle_rounded,
   );
+}
+
+/// Why [groupId] can't be sent a snap now, or null when it can (or when that
+/// isn't known yet, and the server decides on send).
+String? _groupBlocked(WidgetRef ref, String groupId) {
+  if (ref.read(snapSentGroupIdsProvider).contains(groupId)) {
+    return 'This group already has your snap for this prayer.';
+  }
+  final sendable = ref.read(snapSendableGroupIdsProvider);
+  if (sendable != null && !sendable.contains(groupId)) {
+    return 'There’s no one else in this group yet, so a snap would reach '
+        'nobody. Invite someone first.';
+  }
+  return null;
 }
