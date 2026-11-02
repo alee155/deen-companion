@@ -5,6 +5,8 @@ import 'package:deen_companion/features/prayer_logs/domain/prayer_log.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/widgets/prayer_log_card.dart';
 import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times.dart';
+import 'package:deen_companion/features/special_days/domain/special_days.dart';
+import 'package:deen_companion/features/special_days/presentation/providers/special_days_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,11 +15,21 @@ import 'package:go_router/go_router.dart';
 
 import '_prayer_log_test_support.dart';
 
+class _SpecialDays extends SpecialDaysNotifier {
+  final bool active;
+  _SpecialDays(this.active);
+
+  @override
+  Future<SpecialDays> build() async =>
+      SpecialDays(eligible: active, active: active);
+}
+
 Future<ScriptedLogsRepo> _pump(
   WidgetTester tester, {
   required CurrentPrayerState state,
   List<PrayerLog> today = const [],
   bool signedIn = true,
+  bool specialDays = false,
 }) async {
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
@@ -31,7 +43,7 @@ Future<ScriptedLogsRepo> _pump(
         builder: (_, _) => const Scaffold(body: PrayerLogCard()),
       ),
       GoRoute(
-        path: '/prayer-log/new',
+        path: '/snap',
         builder: (_, _) => const Scaffold(body: Text('CAMERA FLOW')),
       ),
       GoRoute(
@@ -47,6 +59,7 @@ Future<ScriptedLogsRepo> _pump(
           signedIn ? SignedIn.new : SignedOut.new,
         ),
         currentPrayerProvider.overrideWith(() => FixedCurrent(state)),
+        specialDaysProvider.overrideWith(() => _SpecialDays(specialDays)),
         prayerLogsProvider.overrideWith((ref, date) async => today),
         prayerLogsRepositoryProvider.overrideWithValue(repo),
       ],
@@ -84,7 +97,7 @@ void main() {
     await _unmount(tester);
   });
 
-  testWidgets('Log opens the camera flow', (tester) async {
+  testWidgets('Log opens the snap flow', (tester) async {
     await _pump(tester, state: openState());
     await tester.tap(find.text('Log Asr'));
     await tester.pumpAndSettle();
@@ -103,6 +116,11 @@ void main() {
     expect(find.text('Asr logged'), findsOneWidget);
     expect(find.text('Undo'), findsOneWidget);
     expect(find.text('Log Asr'), findsNothing);
+    expect(
+      find.text('Sent to all your groups — may Allah accept it'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Send to remaining groups'), findsNothing);
     await _unmount(tester);
   });
 
@@ -117,6 +135,8 @@ void main() {
     await tester.tap(find.text('Undo'));
     await tester.pumpAndSettle();
     expect(find.text('Remove Asr log?'), findsOneWidget);
+    // It says what goes with it: every photo, in every group.
+    expect(find.textContaining('every photo you sent for it'), findsOneWidget);
     await tester.tap(find.text('Remove'));
     await tester.pumpAndSettle();
     expect(repo.deleted, ['log-1']);
@@ -135,6 +155,75 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.deleted, isEmpty);
     await _unmount(tester);
+  });
+
+  group('a prayer that can take more snaps', () {
+    CurrentPrayerState someSent() => openState(
+      logged: true,
+      logId: 'log-1',
+      sent: ['g1'],
+      unsent: ['g2', 'g3'],
+    );
+
+    testWidgets('logged to some groups: says how many, offers the rest', (
+      tester,
+    ) async {
+      await _pump(tester, state: someSent(), today: [logOf(PrayerName.asr)]);
+      expect(find.text('Asr logged'), findsOneWidget);
+      expect(find.text('Sent to 1 of 3 groups'), findsOneWidget);
+      expect(find.text('Send to remaining groups (2)'), findsOneWidget);
+      // The camera stays on; Undo is still there.
+      expect(find.text('Undo'), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('the button opens the snap flow again', (tester) async {
+      await _pump(tester, state: someSent(), today: [logOf(PrayerName.asr)]);
+      await tester.tap(find.text('Send to remaining groups (2)'));
+      await tester.pumpAndSettle();
+      expect(find.text('CAMERA FLOW'), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('Special days: logged for her, nothing to send, no Undo', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        state: openState(
+          logged: true,
+          logId: 'auto',
+          sent: const [],
+          unsent: const [],
+          canSend: false,
+        ),
+        today: [logOf(PrayerName.asr)],
+        specialDays: true,
+      );
+      expect(find.text('Logged for you — Special days are on'), findsOneWidget);
+      expect(find.text('Undo'), findsNothing);
+      expect(find.byType(FilledButton), findsNothing);
+      await _unmount(tester);
+    });
+
+    testWidgets('Special days, a minute before the server logs it', (
+      tester,
+    ) async {
+      await _pump(tester, state: openState(), specialDays: true);
+      expect(find.textContaining('Special days are on'), findsOneWidget);
+      expect(find.text('Log Asr'), findsNothing);
+      await _unmount(tester);
+    });
+
+    testWidgets('only groups with nobody else: disabled, and says why', (
+      tester,
+    ) async {
+      await _pump(tester, state: openState(unsent: const []));
+      final button = tester.widget<FilledButton>(find.byType(FilledButton));
+      expect(button.onPressed, isNull);
+      expect(find.textContaining('anyone else'), findsOneWidget);
+      await _unmount(tester);
+    });
   });
 
   testWidgets('no window open: disabled button and the next prayer', (

@@ -51,22 +51,37 @@ PrayerLog logOf(
   loggedAt: DateTime.now(),
 );
 
-CurrentPrayerState openState({bool logged = false, String? logId}) =>
-    CurrentPrayerState(
-      now: DateTime.now(),
-      current: CurrentPrayer(
-        prayer: PrayerName.asr,
-        date: '2026-10-13',
-        startsAt: DateTime.now().subtract(const Duration(minutes: 30)),
-        endsAt: DateTime.now().add(const Duration(hours: 1, minutes: 55)),
-        logged: logged,
-        logId: logId,
-      ),
-      next: NextPrayer(
-        prayer: PrayerName.maghrib,
-        startsAt: DateTime.now().add(const Duration(hours: 2)),
-      ),
-    );
+/// The open Asr as the server describes it. Not logged: group `g1` can still
+/// be sent to. Logged: `g1` has the photo and nothing is left. [sent] and
+/// [unsent] say otherwise.
+CurrentPrayerState openState({
+  bool logged = false,
+  String? logId,
+  List<String>? sent,
+  List<String>? unsent,
+  bool? canSend,
+}) {
+  final sentIds = sent ?? (logged ? const ['g1'] : const <String>[]);
+  final unsentIds = unsent ?? (logged ? const <String>[] : const ['g1']);
+  return CurrentPrayerState(
+    now: DateTime.now(),
+    current: CurrentPrayer(
+      prayer: PrayerName.asr,
+      date: '2026-10-13',
+      startsAt: DateTime.now().subtract(const Duration(minutes: 30)),
+      endsAt: DateTime.now().add(const Duration(hours: 1, minutes: 55)),
+      logged: logged,
+      logId: logId,
+      sentGroupIds: sentIds,
+      unsentGroupIds: unsentIds,
+      canSend: canSend ?? unsentIds.isNotEmpty,
+    ),
+    next: NextPrayer(
+      prayer: PrayerName.maghrib,
+      startsAt: DateTime.now().add(const Duration(hours: 2)),
+    ),
+  );
+}
 
 /// Repository whose results the test sets.
 class ScriptedLogsRepo implements PrayerLogsRepository {

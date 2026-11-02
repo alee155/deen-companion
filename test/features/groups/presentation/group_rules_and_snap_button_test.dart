@@ -237,7 +237,7 @@ void main() {
 
         expect(find.byType(SnackBar), findsOneWidget);
         expect(
-          find.textContaining('You’ve already sent your Asr snap'),
+          find.textContaining('You’ve sent your Asr snap to all your groups'),
           findsOneWidget,
         );
         expect(find.textContaining('Maghrib starts at'), findsOneWidget);
@@ -245,6 +245,48 @@ void main() {
         await tester.pumpWidget(const SizedBox());
       },
     );
+
+    testWidgets('grey for a group that has your snap while others do not', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        me: 'admin1',
+        current: openState(
+          logged: true,
+          logId: 'l1',
+          sent: ['g1'],
+          unsent: ['g2'],
+        ),
+      );
+      expect(_isGrey(tester), isTrue);
+      await tester.tap(find.byType(SendSnapButton));
+      await _settle(tester);
+      expect(
+        find.text('This group already has your snap for this prayer.'),
+        findsOneWidget,
+      );
+      expect(find.text('SNAP FLOW'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('not grey for a group that still has no snap', (tester) async {
+      await _pump(
+        tester,
+        me: 'admin1',
+        current: openState(
+          logged: true,
+          logId: 'l1',
+          sent: ['g2'],
+          unsent: ['g1'],
+        ),
+      );
+      expect(_isGrey(tester), isFalse);
+      await tester.tap(find.byType(SendSnapButton));
+      await _settle(tester);
+      expect(find.text('SNAP FLOW'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
 
     testWidgets('stays visible, grey, while no prayer window is open', (
       tester,

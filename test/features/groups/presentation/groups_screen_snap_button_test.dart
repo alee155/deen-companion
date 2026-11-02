@@ -140,7 +140,7 @@ void main() {
   });
 
   group('when a snap cannot be sent', () {
-    testWidgets('this prayer already has its snap: grey, and says so', (
+    testWidgets('every group already has its snap: grey, and says so', (
       tester,
     ) async {
       final visited = <String>[];
@@ -154,7 +154,7 @@ void main() {
 
       await _tapCamera(tester);
       expect(
-        find.textContaining('You’ve already sent your Asr snap'),
+        find.textContaining('You’ve sent your Asr snap to all your groups'),
         findsOneWidget,
       );
       expect(visited, isEmpty);

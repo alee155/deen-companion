@@ -70,6 +70,21 @@ final snapSentGroupIdsProvider = Provider<Set<String>>(
       const {},
 );
 
+/// Why [groupId] can't be sent a snap now, in a sentence, or null when it can
+/// (or when that isn't known yet, and the server decides on send). The group's
+/// own camera button follows it, next to [snapAvailabilityProvider].
+final groupSnapBlockProvider = Provider.family<String?, String>((ref, groupId) {
+  if (ref.watch(snapSentGroupIdsProvider).contains(groupId)) {
+    return 'This group already has your snap for this prayer.';
+  }
+  final sendable = ref.watch(snapSendableGroupIdsProvider);
+  if (sendable != null && !sendable.contains(groupId)) {
+    return 'There’s no one else in this group yet, so a snap would reach '
+        'nobody. Invite someone first.';
+  }
+  return null;
+});
+
 // ---------------------------------------------------------------------------
 // Camera
 // ---------------------------------------------------------------------------

@@ -11,6 +11,10 @@ import '../../../../core/utils/flow_log.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../../prayer_times/domain/entities/prayer_times.dart';
+import '../../../snaps/domain/snap_availability.dart';
+import '../../../snaps/presentation/providers/snap_providers.dart';
+import '../../../snaps/presentation/snap_availability_message.dart';
+import '../../../snaps/presentation/snap_entry.dart';
 import '../../domain/current_prayer.dart';
 import '../../domain/prayer_log.dart';
 import '../prayer_labels.dart';
@@ -82,17 +86,12 @@ class _PrayerLogCardState extends ConsumerState<PrayerLogCard>
     }
   }
 
-  Future<void> _log() async {
-    HapticFeedback.selectionClick();
-    FlowLog.log('HOME PRAYER', 'USER TAPPED LOG -> opening the camera flow');
-    final logged = await context.push<bool>('/prayer-log/new');
-    FlowLog.log(
-      'HOME PRAYER',
-      logged == true
-          ? 'CAMERA FLOW CLOSED: prayer logged'
-          : 'CAMERA FLOW CLOSED: nothing logged',
-    );
-    if (logged == true && mounted) _toast('Prayer logged');
+  /// Opens the snap flow: photo, then the groups that can still have it. It
+  /// says why when nothing can be sent, and confirms what was sent.
+  Future<void> _send() async {
+    FlowLog.log('HOME PRAYER', 'USER TAPPED SEND -> opening the snap flow');
+    await openSnapFlow(context, ref);
+    FlowLog.log('HOME PRAYER', 'SNAP FLOW CLOSED');
   }
 
   Future<void> _undo(CurrentPrayer current) async {
@@ -102,8 +101,9 @@ class _PrayerLogCardState extends ConsumerState<PrayerLogCard>
       builder: (context) => AlertDialog(
         title: Text('Remove ${current.prayer.label} log?'),
         content: const Text(
-          'Your photo will be deleted. You can log again while this '
-          'prayer’s time is still open.',
+          'This removes your prayer and every photo you sent for it, from '
+          'all your groups, along with its points and streak day. You can '
+          'log again while this prayer’s time is still open.',
         ),
         actions: [
           TextButton(
@@ -270,50 +270,144 @@ class _PrayerLogCardState extends ConsumerState<PrayerLogCard>
   }
 
   Widget _action(CurrentPrayer? current, DateTime now) {
-    if (current != null && current.logged) {
-      final canUndo = now.isBefore(current.endsAt) && current.logId != null;
-      return Row(
+    if (current == null) return _sendButton('Log prayer', onPressed: null);
+    final availability = ref.watch(snapAvailabilityProvider);
+    final label = current.prayer.label;
+    // Only a prayer you logged with a photo can be undone: the one Special
+    // days make for her is the server's.
+    final canUndo =
+        current.logged &&
+        current.logId != null &&
+        !current.loggedWithoutPhoto &&
+        now.isBefore(current.endsAt);
+    final undo = canUndo ? () => _undo(current) : null;
+
+    if (availability.isAvailable) {
+      if (!current.logged) return _sendButton('Log $label', onPressed: _send);
+      // Logged, and some groups have no photo yet: another can go to them.
+      final left = current.unsentGroupIds.length;
+      final sent = current.sentGroupIds.length;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(Icons.verified_rounded, color: AppColors.success, size: 18.sp),
-          SizedBox(width: 6.w),
-          Expanded(
-            child: Text(
-              'Done — may Allah accept it',
-              style: TextStyle(
-                fontSize: 13.sp,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
+          _status(
+            sent == 1
+                ? 'Sent to 1 of ${sent + left} groups'
+                : 'Sent to $sent of ${sent + left} groups',
+            onUndo: undo,
           ),
-          if (canUndo)
-            TextButton(
-              onPressed: () => _undo(current),
-              child: const Text('Undo'),
-            ),
+          SizedBox(height: 10.h),
+          _sendButton(
+            'Send to remaining groups ($left)',
+            icon: Icons.group_add_rounded,
+            outlined: true,
+            onPressed: _send,
+          ),
         ],
       );
     }
+
+    switch (availability.reason) {
+      case SnapUnavailableReason.allGroupsSent:
+        return _status(
+          'Sent to all your groups — may Allah accept it',
+          onUndo: undo,
+        );
+      case SnapUnavailableReason.specialDays:
+        return _status(
+          current.logged
+              ? 'Logged for you — Special days are on'
+              : availability.message ?? 'Special days are on',
+          icon: Icons.favorite_rounded,
+        );
+      default:
+        // Nobody to send to (or still checking): the button waits, and the
+        // reason is written under it.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _sendButton('Log $label', onPressed: null),
+            if (availability.message != null) ...[
+              SizedBox(height: 8.h),
+              Text(
+                availability.message!,
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  height: 1.35,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ],
+        );
+    }
+  }
+
+  /// A done state: a tick, what was done, and Undo while that is allowed.
+  Widget _status(String text, {VoidCallback? onUndo, IconData? icon}) {
+    return Row(
+      children: [
+        Icon(
+          icon ?? Icons.verified_rounded,
+          color: AppColors.success,
+          size: 18.sp,
+        ),
+        SizedBox(width: 6.w),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        if (onUndo != null)
+          TextButton(onPressed: onUndo, child: const Text('Undo')),
+      ],
+    );
+  }
+
+  Widget _sendButton(
+    String label, {
+    required VoidCallback? onPressed,
+    IconData icon = Icons.camera_alt_rounded,
+    bool outlined = false,
+  }) {
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16.r),
+    );
+    final text = Text(
+      label,
+      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
+    );
     return SizedBox(
       width: double.infinity,
       height: 46.h,
-      child: FilledButton.icon(
-        onPressed: current == null ? null : _log,
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.emeraldInk,
-          foregroundColor: AppColors.onEmeraldInk,
-          disabledBackgroundColor: AppColors.borderWarm,
-          disabledForegroundColor: AppColors.textMuted,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.r),
-          ),
-        ),
-        icon: const Icon(Icons.camera_alt_rounded),
-        label: Text(
-          current == null ? 'Log prayer' : 'Log ${current.prayer.label}',
-          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w800),
-        ),
-      ),
+      child: outlined
+          ? OutlinedButton.icon(
+              onPressed: onPressed,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.emeraldInk,
+                side: BorderSide(color: AppColors.emeraldInk, width: 1.4),
+                shape: shape,
+              ),
+              icon: Icon(icon),
+              label: text,
+            )
+          : FilledButton.icon(
+              onPressed: onPressed,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.emeraldInk,
+                foregroundColor: AppColors.onEmeraldInk,
+                disabledBackgroundColor: AppColors.borderWarm,
+                disabledForegroundColor: AppColors.textMuted,
+                shape: shape,
+              ),
+              icon: Icon(icon),
+              label: text,
+            ),
     );
   }
 

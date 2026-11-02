@@ -36,7 +36,7 @@ Future<void> openSnapFlow(
   }
 
   if (groupId != null) {
-    final why = _groupBlocked(ref, groupId);
+    final why = ref.read(groupSnapBlockProvider(groupId));
     if (why != null) {
       HapticFeedback.lightImpact();
       showAppToast(context, why, icon: Icons.info_outline_rounded);
@@ -54,18 +54,4 @@ Future<void> openSnapFlow(
     sentTo == 1 ? 'Snap sent' : 'Snap sent to $sentTo groups',
     icon: Icons.check_circle_rounded,
   );
-}
-
-/// Why [groupId] can't be sent a snap now, or null when it can (or when that
-/// isn't known yet, and the server decides on send).
-String? _groupBlocked(WidgetRef ref, String groupId) {
-  if (ref.read(snapSentGroupIdsProvider).contains(groupId)) {
-    return 'This group already has your snap for this prayer.';
-  }
-  final sendable = ref.read(snapSendableGroupIdsProvider);
-  if (sendable != null && !sendable.contains(groupId)) {
-    return 'There’s no one else in this group yet, so a snap would reach '
-        'nobody. Invite someone first.';
-  }
-  return null;
 }

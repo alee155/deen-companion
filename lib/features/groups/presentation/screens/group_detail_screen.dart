@@ -243,17 +243,21 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     final group = async.valueOrNull;
     final isAdmin = group?.isAdmin(myId) ?? false;
     // The camera button is always there. A snap logs the prayer that is open
-    // now, once, so when that isn't possible the button turns grey and a tap
-    // says why (rather than failing after the photo, timer and groups were
-    // all chosen).
+    // now, for the groups that have none yet, so when that isn't possible
+    // (all sent, nobody to send to, this group already has it) the button
+    // turns grey and a tap says why, rather than failing after the photo,
+    // timer and groups were all chosen.
     final snapAvailability = ref.watch(snapAvailabilityProvider);
+    final groupBlocked = group == null
+        ? null
+        : ref.watch(groupSnapBlockProvider(group.id));
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
       floatingActionButton: group == null
           ? null
           : SendSnapButton(
-              available: snapAvailability.isAvailable,
+              available: snapAvailability.isAvailable && groupBlocked == null,
               onPressed: () => openSnapFlow(context, ref, groupId: group.id),
             ),
       body: AnnotatedRegion<SystemUiOverlayStyle>(
