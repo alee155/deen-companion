@@ -10,7 +10,6 @@ import 'package:deen_companion/features/groups/presentation/screens/join_group_s
 import 'package:deen_companion/core/utils/flow_log.dart';
 import 'package:deen_companion/features/points/presentation/screens/points_rules_screen.dart';
 import 'package:deen_companion/features/statistics/presentation/screens/group_statistics_screen.dart';
-import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_log_flow_screen.dart';
 import 'package:deen_companion/features/prayer_times/presentation/screens/city_picker_screen.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_logs_screen.dart';
 import 'package:deen_companion/features/snaps/presentation/screens/snap_flow_screen.dart';
@@ -183,15 +182,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             SnapFlowScreen(initialGroupId: state.pathParameters['groupId']!),
       ),
-      // Prayer log: the day view, and the camera flow that logs the open
-      // prayer. Top level: no bottom nav.
+      // Prayer log: the day view. Top level: no bottom nav. Logging the open
+      // prayer is the snap flow above.
       GoRoute(
         path: '/prayer-log',
         builder: (context, state) => const PrayerLogsScreen(),
-      ),
-      GoRoute(
-        path: '/prayer-log/new',
-        builder: (context, state) => const PrayerLogFlowScreen(),
       ),
       // How many points each prayer earns (reached from a group's menu).
       GoRoute(
