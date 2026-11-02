@@ -45,6 +45,7 @@ dependencies:
   flutter_displaymode: ^0.7.0
   socket_io_client: ^3.1.6
   youtube_player_iframe: ^6.0.2
+  flutter_svg: ^2.3.2
 
 dev_dependencies:
   flutter_test:
@@ -59,6 +60,7 @@ flutter:
     - assets/images/
     - assets/images/hadith_covers/
     - assets/audio/
+    - assets/images/icons/
 
   fonts:
     - family: Manrope
