@@ -12,6 +12,7 @@ import '../widgets/auth_icon_badge.dart';
 import '../widgets/auth_top_header.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/gender_selector.dart';
+import '../providers/social_auth_controller.dart';
 import '../widgets/apple_button.dart';
 import '../widgets/google_button.dart';
 
@@ -89,9 +90,33 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     );
   }
 
+  /// Google or Apple. A sign-in that works goes straight in, whether the
+  /// person is new or not; closing the sheet shows nothing.
+  Future<void> _social(SocialProvider provider) async {
+    FocusScope.of(context).unfocus();
+    final outcome = await ref
+        .read(socialAuthControllerProvider.notifier)
+        .signIn(provider);
+    if (!mounted) return;
+    switch (outcome) {
+      case SocialOutcome.signedIn:
+        context.go(widget.redirect ?? '/');
+      case SocialOutcome.failed:
+        final message = ref.read(socialAuthControllerProvider).errorMessage;
+        if (message != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        }
+      case SocialOutcome.cancelled:
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final seq = RevealSequence();
+    final social = ref.watch(socialAuthControllerProvider);
     final state = ref.watch(signupControllerProvider);
 
     return Scaffold(
@@ -264,12 +289,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     SizedBox(height: 5.h),
 
                     GoogleButton(
-                      onPressed: () {},
+                      loading: social.busy == SocialProvider.google,
+                      onPressed: social.isBusy
+                          ? null
+                          : () => _social(SocialProvider.google),
                     ).slideIn(RevealDirection.end, delay: seq.next()),
-                    SizedBox(height: 5.h),
-                    AppleButton(
-                      onPressed: () {},
-                    ).slideIn(RevealDirection.bottomEnd, delay: seq.next()),
+                    if (ref.watch(appleSignInSupportedProvider)) ...[
+                      SizedBox(height: 12.h),
+                      AppleButton(
+                        loading: social.busy == SocialProvider.apple,
+                        onPressed: social.isBusy
+                            ? null
+                            : () => _social(SocialProvider.apple),
+                      ).slideIn(RevealDirection.bottomEnd, delay: seq.next()),
+                    ],
                     SizedBox(height: 15.h),
 
                     Center(
