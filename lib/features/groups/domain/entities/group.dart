@@ -111,21 +111,16 @@ class Group {
   );
 }
 
-/// What the Create Group form collects. [name], [description] and the
-/// picture at [imagePath] are sent to the API; the rest is kept so the form can grow without
-/// reshaping the domain.
+/// What the Create Group form collects: the [name], [description] and the
+/// picture at [imagePath], all sent to the API.
 class NewGroup {
   final String name;
   final String description;
-  final GroupPrivacy privacy;
-  final bool adminApproval;
   final String? imagePath;
 
   const NewGroup({
     required this.name,
     required this.description,
-    this.privacy = GroupPrivacy.public,
-    this.adminApproval = false,
     this.imagePath,
   });
 }

@@ -12,7 +12,6 @@ import '../../domain/entities/group.dart';
 import '../providers/groups_providers.dart';
 import '../widgets/group_form_widgets.dart';
 import '../widgets/group_image.dart';
-import '../widgets/privacy_option_card.dart';
 
 /// Pushed as a top-level route, so the bottom navigation bar is not shown.
 /// Pops with the created [Group] so the caller can confirm it.
@@ -32,8 +31,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   final _bar = ValueNotifier<double>(0);
 
   String? _imagePath;
-  GroupPrivacy _privacy = GroupPrivacy.public;
-  bool _adminApproval = false;
   bool _isCreating = false;
 
   @override
@@ -70,14 +67,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     setState(() => _imagePath = image.path);
   }
 
-  void _setPrivacy(GroupPrivacy p) {
-    HapticFeedback.selectionClick();
-    setState(() {
-      _privacy = p;
-      _adminApproval = p == GroupPrivacy.private;
-    });
-  }
-
   void _toast(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -103,8 +92,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
           NewGroup(
             name: _name.text.trim(),
             description: _description.text.trim(),
-            privacy: _privacy,
-            adminApproval: _adminApproval,
             imagePath: _imagePath,
           ),
         );
@@ -206,51 +193,6 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                                   ),
                                 ),
                                 SizedBox(height: 14.h),
-                                const FormSectionTitle(
-                                  title: 'Privacy',
-                                  subtitle: 'Choose who can join your group.',
-                                ).slideIn(
-                                  RevealDirection.topStart,
-                                  onVisible: true,
-                                ),
-                                SizedBox(height: 14.h),
-                                PrivacyOptionCard(
-                                  selected: _privacy == GroupPrivacy.public,
-                                  icon: Icons.public_rounded,
-                                  title: 'Public group',
-                                  description:
-                                      'Anyone can discover and join this group.',
-                                  onTap: () => _setPrivacy(GroupPrivacy.public),
-                                ).slideIn(
-                                  RevealDirection.start,
-                                  onVisible: true,
-                                ),
-                                SizedBox(height: 10.h),
-                                PrivacyOptionCard(
-                                  selected: _privacy == GroupPrivacy.private,
-                                  icon: Icons.lock_rounded,
-                                  title: 'Private group',
-                                  description:
-                                      'Only approved members can join this group.',
-                                  onTap: () =>
-                                      _setPrivacy(GroupPrivacy.private),
-                                ).slideIn(
-                                  RevealDirection.end,
-                                  onVisible: true,
-                                  delay: const Duration(milliseconds: 60),
-                                ),
-                                SizedBox(height: 14.h),
-                                ApprovalToggleCard(
-                                  value: _adminApproval,
-                                  onChanged: (v) => setState(() {
-                                    _adminApproval = v;
-                                    if (v) _privacy = GroupPrivacy.private;
-                                  }),
-                                ).slideIn(
-                                  RevealDirection.bottomStart,
-                                  onVisible: true,
-                                ),
-                                SizedBox(height: 14.h),
                                 Container(
                                   padding: EdgeInsets.all(14.w),
                                   decoration: BoxDecoration(
@@ -276,7 +218,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                                       SizedBox(width: 10.w),
                                       Expanded(
                                         child: Text(
-                                          'You can change these settings later from the group management screen.',
+                                          'Your group is private. People join with the invite link you share from the group screen.',
                                           style: TextStyle(
                                             fontSize: 12.sp,
                                             height: 1.45,
