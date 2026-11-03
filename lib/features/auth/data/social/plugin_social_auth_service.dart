@@ -37,6 +37,11 @@ class PluginSocialAuthService implements SocialAuthService {
       }
       return SocialCredential(idToken: idToken);
     } on GoogleSignInException catch (e, st) {
+      // The plugin reports some setup problems (an unregistered signing key on
+      // Android, for one) as a cancel, so what it says is logged either way.
+      AppLogger.d(
+        'Google sign-in: ${e.code} ${e.description ?? ''} ${e.details ?? ''}',
+      );
       if (e.code == GoogleSignInExceptionCode.canceled) return null;
       AppLogger.e('Google sign-in failed: ${e.code}', e, st);
       throw const SocialAuthException(
