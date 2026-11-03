@@ -152,7 +152,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 10.h),
+                    // SizedBox(height: 10.h),
 
                     CustomTextField(
                       controller: _nameController,
@@ -161,7 +161,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       prefixIcon: Icons.person_outline,
                       errorText: _nameError,
                     ).slideIn(RevealDirection.start, delay: seq.next()),
-                    SizedBox(height: 10.h),
+                    SizedBox(height: 5.h),
 
                     CustomTextField(
                       controller: _emailController,
@@ -171,7 +171,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       keyboardType: TextInputType.emailAddress,
                       errorText: _emailError,
                     ).slideIn(RevealDirection.end, delay: seq.next()),
-                    SizedBox(height: 10.h),
+                    SizedBox(height: 5.h),
 
                     CustomTextField(
                       controller: _passwordController,
@@ -181,7 +181,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       isPassword: true,
                       errorText: _passwordError,
                     ).slideIn(RevealDirection.bottom, delay: seq.next()),
-                    SizedBox(height: 10.h),
+                    SizedBox(height: 5.h),
 
                     GenderSelector(
                       value: _gender,
@@ -243,7 +243,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                               ),
                       ),
                     ).slideIn(RevealDirection.bottomEnd, delay: seq.next()),
-                    SizedBox(height: 10.h),
+                    SizedBox(height: 5.h),
 
                     Row(
                       children: [
@@ -261,12 +261,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         Expanded(child: Divider(color: AppColors.borderWarm)),
                       ],
                     ).slideIn(RevealDirection.bottomStart, delay: seq.next()),
-                    SizedBox(height: 10.h),
+                    SizedBox(height: 5.h),
 
                     GoogleButton(
                       onPressed: () {},
                     ).slideIn(RevealDirection.end, delay: seq.next()),
-                    SizedBox(height: 12.h),
+                    SizedBox(height: 5.h),
                     AppleButton(
                       onPressed: () {},
                     ).slideIn(RevealDirection.bottomEnd, delay: seq.next()),

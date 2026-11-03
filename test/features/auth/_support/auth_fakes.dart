@@ -5,6 +5,7 @@ import 'package:deen_companion/core/usecase/usecase.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_user.dart';
 import 'package:deen_companion/features/auth/domain/entities/otp_purpose.dart';
+import 'package:deen_companion/features/auth/domain/entities/social_sign_in.dart';
 import 'package:deen_companion/features/auth/domain/repositories/auth_repository.dart';
 
 /// In-memory [TokenStorage] mirroring the secure-storage slot semantics.
@@ -62,6 +63,14 @@ class FakeAuthRepository implements AuthRepository {
   Result<AuthUser> meResult = const Error(NetworkFailure());
   Result<void> deleteResult = const Success(null);
 
+  /// What the Google and Apple sign-ins return; null inside Success means the
+  /// person closed the sheet.
+  Result<SocialSignIn?> googleResult = const Success(null);
+  Result<SocialSignIn?> appleResult = const Success(null);
+  bool appleSupported = true;
+  int googleCalls = 0;
+  int appleCalls = 0;
+
   int resendCalls = 0;
   int meCalls = 0;
   OtpPurpose? lastPurpose;
@@ -77,6 +86,21 @@ class FakeAuthRepository implements AuthRepository {
     lastEmail = email;
     return loginResult;
   }
+
+  @override
+  Future<Result<SocialSignIn?>> signInWithGoogle() async {
+    googleCalls++;
+    return googleResult;
+  }
+
+  @override
+  Future<Result<SocialSignIn?>> signInWithApple() async {
+    appleCalls++;
+    return appleResult;
+  }
+
+  @override
+  bool get appleSignInSupported => appleSupported;
 
   @override
   Future<Result<AuthUser>> signup({

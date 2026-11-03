@@ -3,6 +3,7 @@ import '../entities/auth_session.dart';
 import '../entities/auth_user.dart';
 import '../entities/gender.dart';
 import '../entities/otp_purpose.dart';
+import '../entities/social_sign_in.dart';
 
 abstract class AuthRepository {
   /// Authenticates with email + password. The backend also accepts accounts
@@ -13,6 +14,17 @@ abstract class AuthRepository {
     required String email,
     required String password,
   });
+
+  /// Signs in, or signs up, with Google. Success with null means the person
+  /// closed the Google sheet: nothing happened and nothing should be shown.
+  /// A social account is already verified, so the session is active at once.
+  Future<Result<SocialSignIn?>> signInWithGoogle();
+
+  /// Same as [signInWithGoogle], with Apple (iPhone only).
+  Future<Result<SocialSignIn?>> signInWithApple();
+
+  /// Whether to offer Sign in with Apple on this device.
+  bool get appleSignInSupported;
 
   /// Creates the account and emails an OTP. The returned user is NOT signed
   /// in: their token is held aside until [verifyOtp] succeeds. [gender] is
