@@ -68,7 +68,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _goNext();
   }
 
-  void _goNext() {
+  Future<void> _goNext() async {
     if (!mounted) return;
     final storage = ref.read(localStorageServiceProvider);
     final authGateSeen =
@@ -78,11 +78,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         ) ??
         false;
 
-    // The one-time App Open ad is offered at the very start of the session,
-    // over whichever screen the user lands on: Welcome on a first install,
-    // Home for a returning user. Fire-and-forget — it shows once it has
-    // loaded and never blocks navigation.
-    ref.read(appOpenAdManagerProvider).maybeShowOnColdStart();
+    // The App Open ad belongs here, before Home. It was requested at launch,
+    // and the splash gives it a short fixed budget to be ready: shown now, or
+    // not at all this launch. It is never shown late over Home.
+    if (authGateSeen) {
+      await ref.read(appOpenAdManagerProvider).showOnColdStart();
+      if (!mounted) return;
+    }
 
     context.go(authGateSeen ? '/' : '/welcome');
   }

@@ -5,234 +5,141 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/providers.dart';
-import '../../data/constants/ads_config.dart';
-import '../../domain/repositories/ads_repository.dart';
 import 'ads_providers.dart';
 
-/// Owns the entire App Open ad lifecycle: warms an ad up in the
-/// background, watches for genuine "returned to the app from elsewhere"
-/// transitions, and shows an ad only when that's actually appropriate.
+/// Owns the App Open ad: when it may show, and — above all — *when it may no
+/// longer show*.
 ///
-/// Modelled after [PrayerReminderService] (`prayer_reminders` feature): a
-/// small `Ref`-holding service, exposed through a single provider, rather
-/// than a StateNotifier — there's no UI state here for a widget to watch,
-/// just a background process reacting to app lifecycle events.
+/// The old version started the ad and moved on to Home straight away, so an ad
+/// that took a few seconds to load popped up over Home. Now the splash screen
+/// holds on its own branded screen for a short, fixed budget while the ad that
+/// was requested at launch finishes loading:
+///
+///  * ready within the budget → shown over the splash, Home opens after it's
+///    closed;
+///  * not ready in time → Home opens, and this launch gets no ad. It is never
+///    shown late, only kept for a later return to the app.
+///
+/// To keep it from being a nuisance it also stays quiet for a 4 hour cooldown,
+/// on the very first launch, and on a launch where a consent or tracking
+/// prompt was already put in front of the user.
 class AppOpenAdManager with WidgetsBindingObserver {
   final Ref _ref;
-  AppOpenAdManager(this._ref);
+  final DateTime Function() _now;
 
-  /// Set on `paused`, cleared once consumed by a `resumed` check. `null`
-  /// means "we have no reason to believe the app was ever backgrounded",
-  /// which is exactly the state at cold start — so the very first
-  /// `resumed` event (which every app gets once, before any `paused` has
-  /// happened) never triggers a show here.
+  AppOpenAdManager(this._ref, {DateTime Function()? now})
+    : _now = now ?? DateTime.now;
+
+  /// How long the splash may wait for the ad on a cold start.
+  static const coldStartBudget = Duration(milliseconds: 1500);
+
+  /// Least time between two App Open ads.
+  static const cooldown = Duration(hours: 4);
+
+  /// Coming back sooner than this is a phone call, the camera, a permission
+  /// sheet or a quick glance — never an ad.
+  static const minAwayForResumeAd = Duration(minutes: 10);
+
   DateTime? _backgroundedAt;
-
   bool _started = false;
-  bool _coldStartAttempted = false;
+  bool _coldStartSettled = false;
 
-  /// Begins observing app lifecycle changes and warms up the first ad.
-  /// Call once, from `bootstrap.dart`, after the provider container exists.
+  /// Begins watching app lifecycle changes and requests the first ad. Call
+  /// once from `bootstrap.dart`. The request waits (inside the repository) for
+  /// the ads config and consent, and never blocks the first frame.
   void start() {
     if (_started) return;
-    if (!AdsConfig.adsEnabled) {
-      debugPrint('[Ads] [AppOpenManager] start() skipped — ads disabled');
-      return;
-    }
-    if (_hasShownOnce()) {
-      debugPrint('[Ads] [AppOpenManager] start() skipped — already shown once');
-      return;
-    }
     _started = true;
-    debugPrint('[Ads] [AppOpenManager] started — observing app lifecycle');
     WidgetsBinding.instance.addObserver(this);
-    // Fire-and-forget: the first frame must never wait on an ad network
-    // call, cold start or not.
     unawaited(_ref.read(adsRepositoryProvider).preloadAppOpenAd());
   }
 
-  /// Shows the App Open ad for a genuine **cold start** — called once by
-  /// the splash screen, right when it determines this is a *returning*
-  /// user heading straight to Home (onboarding and permissions already
-  /// completed), not a first-time install still going through onboarding.
-  ///
-  /// This is the path [didChangeAppLifecycleState] below can never cover
-  /// on its own: that observer only fires on genuine background→
-  /// foreground transitions, and a fresh process launch is neither — it's
-  /// the very first lifecycle event the app gets, with no prior `paused`
-  /// to compare against, which is exactly what [_maybeShowOnResume]
-  /// deliberately ignores. Cold start needs its own explicit trigger.
-  ///
-  /// Fire-and-forget by design, same as every other ad path in this
-  /// feature: never awaited by the caller, so a slow network or an
-  /// unavailable ad can never delay navigation to Home.
-  void maybeShowOnColdStart() {
-    // One attempt per process: Splash covers returning users, Home covers
-    // first-install users (who skip Splash's Home branch via Welcome), and
-    // whichever gets here first wins.
-    if (_coldStartAttempted) return;
-    if (!AdsConfig.adsEnabled) {
-      debugPrint(
-        '[Ads] [AppOpenManager] cold start show skipped — ads disabled',
-      );
-      return;
+  /// Called by the splash screen and awaited: shows the ad if it is ready
+  /// within [budget], otherwise returns so Home can open. Never throws.
+  Future<void> showOnColdStart({Duration budget = coldStartBudget}) async {
+    try {
+      await _showOnColdStart(budget);
+    } catch (error) {
+      debugPrint('[Ads] [AppOpenManager] cold start ad skipped: $error');
+    } finally {
+      _coldStartSettled = true;
     }
-    if (_hasShownOnce()) {
-      debugPrint(
-        '[Ads] [AppOpenManager] cold start show skipped — already shown once',
-      );
-      return;
-    }
-    _coldStartAttempted = true;
-    unawaited(_showOnColdStart());
   }
 
-  Future<void> _showOnColdStart() async {
+  Future<void> _showOnColdStart(Duration budget) async {
+    if (!_hasCompletedFirstRun()) return;
+    if (_onCooldown()) return;
+
     final repository = _ref.read(adsRepositoryProvider);
-
-    // Guards against the (unlikely but possible) case where an
-    // interstitial or another app open ad is already up by the time the
-    // splash screen makes this call.
-    if (repository.isDisplayingFullScreenAd) {
+    var ready = repository.isAppOpenAdReady;
+    if (!ready) {
+      ready = await repository.preloadAppOpenAd().timeout(
+        budget,
+        onTimeout: () => false,
+      );
+    }
+    if (!ready) {
       debugPrint(
-        '[Ads] [AppOpenManager] cold start: another full-screen ad is '
-        'already showing — skipping',
+        '[Ads] [AppOpenManager] not ready in time — no ad this launch',
       );
       return;
     }
+    if (repository.consentDialogShownThisLaunch) return;
+    if (repository.isDisplayingFullScreenAd) return;
 
-    if (!repository.isAppOpenAdReady) {
-      // THE ACTUAL FIX: on a real cold start, the ad realistically never
-      // has finished loading yet at this exact instant — SDK init plus
-      // the ad network round trip routinely takes 1-4 seconds, and this
-      // method gets called right as Home is about to render. Instead of
-      // checking readiness once and giving up (which is what silently
-      // ate every cold-start impression before), wait on the exact same
-      // preload that was already kicked off in start() — no duplicate
-      // request, just the result of the one already in flight.
-      debugPrint(
-        '[Ads] [AppOpenManager] cold start: ad not ready yet — awaiting '
-        'the in-flight preload…',
-      );
-      final loaded = await repository.preloadAppOpenAd();
-      debugPrint(
-        '[Ads] [AppOpenManager] cold start: preload settled, loaded=$loaded',
-      );
-      if (!loaded) return;
-
-      // Re-check: something else (a resume/pause cycle, an interstitial)
-      // could have started showing a full-screen ad during the wait.
-      if (repository.isDisplayingFullScreenAd) {
-        debugPrint(
-          '[Ads] [AppOpenManager] cold start: a full-screen ad started '
-          'showing while waiting for the preload — skipping',
-        );
-        return;
-      }
-    }
-
-    debugPrint('[Ads] [AppOpenManager] cold start: attempting to show');
-    final shown = await repository.showAppOpenAdIfAvailable();
-    debugPrint(
-      '[Ads] [AppOpenManager] cold start showAppOpenAdIfAvailable() -> $shown',
+    final shown = await repository.showAppOpenAdIfAvailable(
+      waitUntilClosed: true,
     );
-    if (shown) {
-      await _markShown();
-      return;
-    }
-    if (!shown) {
-      // Nothing was ready yet (the preload kicked off in `start()` may
-      // still be in flight) — don't retry-loop waiting for it now, just
-      // make sure one is queued for the next resume.
-      unawaited(repository.preloadAppOpenAd());
-    }
+    if (shown) await _markShown();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    debugPrint('[Ads] [AppOpenManager] lifecycle state changed: $state');
     final repository = _ref.read(adsRepositoryProvider);
 
     if (state == AppLifecycleState.paused) {
-      // If we're the ones currently showing a full-screen ad, the ad's
-      // own activity transition can itself emit a `paused`/`resumed`
-      // pair — that is not the user leaving the app, so it must not be
-      // recorded as a "real" backgrounding.
-      if (!repository.isDisplayingFullScreenAd) {
-        debugPrint('[Ads] [AppOpenManager] recorded a real backgrounding');
-        _backgroundedAt = DateTime.now();
-      } else {
-        debugPrint(
-          '[Ads] [AppOpenManager] paused while showing a full-screen ad — '
-          'not counted as a real backgrounding',
-        );
-      }
+      // The ad's own screen can make the app report `paused`; that is not the
+      // user leaving.
+      if (!repository.isDisplayingFullScreenAd) _backgroundedAt = _now();
       return;
     }
 
     if (state == AppLifecycleState.resumed) {
-      unawaited(_maybeShowOnResume(repository));
+      unawaited(_maybeShowOnResume());
+      unawaited(_ref.read(adsConfigStoreProvider).refreshIfStale());
     }
   }
 
-  Future<void> _maybeShowOnResume(AdsRepository repository) async {
-    final wasBackgrounded = _backgroundedAt != null;
+  Future<void> _maybeShowOnResume() async {
+    final left = _backgroundedAt;
     _backgroundedAt = null;
-    if (_hasShownOnce()) return;
-    if (!wasBackgrounded) {
-      debugPrint(
-        '[Ads] [AppOpenManager] resumed without a prior real backgrounding '
-        '(e.g. cold start) — not showing',
-      );
-      return;
-    }
+    if (left == null || !_coldStartSettled) return;
+    if (_now().difference(left) < minAwayForResumeAd) return;
+    if (!_hasCompletedFirstRun() || _onCooldown()) return;
 
-    // Never interrupt, or immediately follow, another full-screen ad —
-    // covers both "an interstitial is on screen right now" and "the
-    // resume event was actually the app open ad's own show transition".
-    if (repository.isDisplayingFullScreenAd) {
-      debugPrint(
-        '[Ads] [AppOpenManager] resumed while a full-screen ad is already '
-        'showing — not showing another',
-      );
-      return;
-    }
+    final repository = _ref.read(adsRepositoryProvider);
+    if (repository.isDisplayingFullScreenAd) return;
 
-    // Don't show a first-run user an ad before they've even reached the
-    // app: only start showing App Open ads once the Welcome/auth gate has
-    // been passed at least once.
-    if (!_hasCompletedFirstRun()) {
-      debugPrint(
-        '[Ads] [AppOpenManager] auth gate not passed yet — not showing',
-      );
-      return;
-    }
-
-    debugPrint('[Ads] [AppOpenManager] genuine resume — attempting to show');
+    // Ready now or not at all: a returning user is never made to wait.
     final shown = await repository.showAppOpenAdIfAvailable();
-    debugPrint('[Ads] [AppOpenManager] showAppOpenAdIfAvailable() -> $shown');
     if (shown) {
       await _markShown();
-      return;
-    }
-    if (!shown) {
-      // Nothing was ready — don't leave the user waiting on a load that
-      // was never going to finish in time to matter; just queue the next
-      // one for the following resume.
+    } else {
       unawaited(repository.preloadAppOpenAd());
     }
   }
 
-  /// Persisted (Hive-backed settings box) so the one-time ad stays spent
-  /// across restarts.
-  bool _hasShownOnce() =>
-      _ref
-          .read(localStorageServiceProvider)
-          .get<bool>(
-            AppConstants.settingsBoxName,
-            AppConstants.appOpenAdShownKey,
-          ) ??
-      false;
+  bool _onCooldown() {
+    final last = _ref
+        .read(localStorageServiceProvider)
+        .get<int>(
+          AppConstants.settingsBoxName,
+          AppConstants.appOpenAdLastShownKey,
+        );
+    if (last == null) return false;
+    final at = DateTime.fromMillisecondsSinceEpoch(last);
+    return _now().difference(at) < cooldown;
+  }
 
   Future<void> _markShown() async {
     try {
@@ -240,27 +147,25 @@ class AppOpenAdManager with WidgetsBindingObserver {
           .read(localStorageServiceProvider)
           .put(
             AppConstants.settingsBoxName,
-            AppConstants.appOpenAdShownKey,
-            true,
+            AppConstants.appOpenAdLastShownKey,
+            _now().millisecondsSinceEpoch,
           );
-      // Spent: stop observing lifecycle so nothing else can trigger it.
-      dispose();
-    } catch (e) {
-      debugPrint('[Ads] [AppOpenManager] failed to persist shown flag: $e');
+    } catch (error) {
+      debugPrint(
+        '[Ads] [AppOpenManager] could not save the shown time: $error',
+      );
     }
   }
 
-  bool _hasCompletedFirstRun() {
-    final storage = _ref.read(localStorageServiceProvider);
-    final authGateSeen =
-        storage.get<bool>(
-          AppConstants.settingsBoxName,
-          AppConstants.authGateSeenKey,
-        ) ??
-        false;
-    debugPrint('[Ads] [AppOpenManager] authGateSeen=$authGateSeen');
-    return authGateSeen;
-  }
+  /// A brand-new user reaches the app before seeing any ad.
+  bool _hasCompletedFirstRun() =>
+      _ref
+          .read(localStorageServiceProvider)
+          .get<bool>(
+            AppConstants.settingsBoxName,
+            AppConstants.authGateSeenKey,
+          ) ??
+      false;
 
   void dispose() {
     if (!_started) return;
