@@ -11,7 +11,9 @@ class SocialAuthButton extends StatelessWidget {
 
   /// SVG asset of the brand mark.
   final String iconAsset;
-  final VoidCallback onPressed;
+
+  /// Null disables the button (another sign-in is under way).
+  final VoidCallback? onPressed;
   final Color backgroundColor;
   final Color foregroundColor;
 
@@ -22,6 +24,10 @@ class SocialAuthButton extends StatelessWidget {
   /// button). Off keeps the icon's own colours.
   final bool tintIcon;
 
+  /// Shows a spinner in place of the icon while this provider's sheet or
+  /// request is open.
+  final bool loading;
+
   const SocialAuthButton({
     super.key,
     required this.label,
@@ -31,6 +37,7 @@ class SocialAuthButton extends StatelessWidget {
     required this.foregroundColor,
     this.borderColor,
     this.tintIcon = false,
+    this.loading = false,
   });
 
   @override
@@ -52,16 +59,26 @@ class SocialAuthButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              iconAsset,
-              height: 22.h,
-              width: 22.h,
-              colorFilter: tintIcon
-                  ? ColorFilter.mode(foregroundColor, BlendMode.srcIn)
-                  : null,
-              // The label already names it; the icon is decoration.
-              excludeFromSemantics: true,
-            ),
+            if (loading)
+              SizedBox(
+                height: 22.h,
+                width: 22.h,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: foregroundColor,
+                ),
+              )
+            else
+              SvgPicture.asset(
+                iconAsset,
+                height: 22.h,
+                width: 22.h,
+                colorFilter: tintIcon
+                    ? ColorFilter.mode(foregroundColor, BlendMode.srcIn)
+                    : null,
+                // The label already names it; the icon is decoration.
+                excludeFromSemantics: true,
+              ),
             SizedBox(width: 10.w),
             Text(
               label,

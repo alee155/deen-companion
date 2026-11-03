@@ -3,12 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'social_auth_button.dart';
 
-/// "Continue with Google". Not wired up yet: the real flow goes into
-/// [onPressed] later.
+/// "Continue with Google". A null [onPressed] disables it.
 class GoogleButton extends StatelessWidget {
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final bool loading;
 
-  const GoogleButton({super.key, required this.onPressed});
+  const GoogleButton({
+    super.key,
+    required this.onPressed,
+    this.loading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +23,7 @@ class GoogleButton extends StatelessWidget {
       backgroundColor: AppColors.surfaceLight,
       foregroundColor: AppColors.inkText,
       borderColor: AppColors.borderWarm,
+      loading: loading,
     );
   }
 }

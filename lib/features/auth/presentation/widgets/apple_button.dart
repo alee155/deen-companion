@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'social_auth_button.dart';
 
 /// "Continue with Apple": a black button with a white mark, as Apple's
-/// guidelines ask for. Not wired up yet: the real flow goes into [onPressed]
-/// later.
+/// guidelines ask for. A null [onPressed] disables it.
 class AppleButton extends StatelessWidget {
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
+  final bool loading;
 
-  const AppleButton({super.key, required this.onPressed});
+  const AppleButton({super.key, required this.onPressed, this.loading = false});
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +19,7 @@ class AppleButton extends StatelessWidget {
       backgroundColor: Colors.black,
       foregroundColor: Colors.white,
       tintIcon: true,
+      loading: loading,
     );
   }
 }
