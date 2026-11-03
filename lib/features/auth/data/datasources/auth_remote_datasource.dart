@@ -25,6 +25,24 @@ abstract class AuthRemoteDataSource {
     required String password,
   });
 
+  /// `POST /auth/google` with the ID token from the Google SDK. The session
+  /// comes back like a login's, plus whether the account is new.
+  Future<AuthTokenResponseModel> googleSignIn({
+    required String idToken,
+    String? timezone,
+  });
+
+  /// `POST /auth/apple`. [authorizationCode] is required: without it the
+  /// server cannot revoke the Apple token when the account is deleted. [name]
+  /// is only known on a person's first Apple sign-in, so it is sent whenever
+  /// there is one; the server uses it only to create an account.
+  Future<AuthTokenResponseModel> appleSignIn({
+    required String idToken,
+    required String authorizationCode,
+    String? name,
+    String? timezone,
+  });
+
   Future<VerifyEmailResponseModel> verifyEmail({
     required String email,
     required String otp,
@@ -77,6 +95,37 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     () => dio.post(
       ApiEndpoints.authLogin,
       data: {'email': email, 'password': password},
+    ),
+    AuthTokenResponseModel.fromJson,
+  );
+
+  @override
+  Future<AuthTokenResponseModel> googleSignIn({
+    required String idToken,
+    String? timezone,
+  }) => _data(
+    () => dio.post(
+      ApiEndpoints.authGoogle,
+      data: {'idToken': idToken, 'timezone': ?timezone},
+    ),
+    AuthTokenResponseModel.fromJson,
+  );
+
+  @override
+  Future<AuthTokenResponseModel> appleSignIn({
+    required String idToken,
+    required String authorizationCode,
+    String? name,
+    String? timezone,
+  }) => _data(
+    () => dio.post(
+      ApiEndpoints.authApple,
+      data: {
+        'idToken': idToken,
+        'authorizationCode': authorizationCode,
+        'name': ?name,
+        'timezone': ?timezone,
+      },
     ),
     AuthTokenResponseModel.fromJson,
   );

@@ -212,6 +212,13 @@ class ApiEndpoints {
   static const String health = '$_deenBase/health';
   static const String authRegister = '$_deenBase/auth/register';
   static const String authLogin = '$_deenBase/auth/login';
+
+  /// `POST {idToken, timezone?}` — sign in or sign up with Google.
+  static const String authGoogle = '$_deenBase/auth/google';
+
+  /// `POST {idToken, authorizationCode, name?, timezone?}` — sign in or sign
+  /// up with Apple.
+  static const String authApple = '$_deenBase/auth/apple';
   static const String authResendOtp = '$_deenBase/auth/resend-otp';
   static const String authForgotPassword = '$_deenBase/auth/forgot-password';
   static const String authResetPassword = '$_deenBase/auth/reset-password';

@@ -37,17 +37,27 @@ class AuthUserModel {
   );
 }
 
-/// `data` of `POST /auth/register` and `POST /auth/login`.
+/// `data` of `POST /auth/register`, `/auth/login`, `/auth/google` and
+/// `/auth/apple`.
 class AuthTokenResponseModel {
   final String accessToken;
   final AuthUserModel user;
 
-  const AuthTokenResponseModel({required this.accessToken, required this.user});
+  /// Only the Google and Apple sign-ins say it: true when this call created
+  /// the account.
+  final bool isNewUser;
+
+  const AuthTokenResponseModel({
+    required this.accessToken,
+    required this.user,
+    this.isNewUser = false,
+  });
 
   factory AuthTokenResponseModel.fromJson(Map<String, dynamic> json) =>
       AuthTokenResponseModel(
         accessToken: json['accessToken'] as String,
         user: AuthUserModel.fromJson(json['user'] as Map<String, dynamic>),
+        isNewUser: json['isNewUser'] as bool? ?? false,
       );
 }
 

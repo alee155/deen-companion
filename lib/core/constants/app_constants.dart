@@ -57,6 +57,16 @@ class AppConstants {
   /// Hosted legal documents, opened in the device browser via url_launcher
   /// (Settings → Privacy Policy / Terms & Conditions). Keep these in sync
   /// with whatever is actually published at these URLs.
+  /// Google OAuth client IDs (public, not secrets). The web client is what the
+  /// backend verifies the ID token against, so it is passed as the
+  /// `serverClientId` on both platforms; the iOS client is the app's own.
+  /// Android needs no ID in code: its client is matched by package name and
+  /// signing fingerprint in the Google Cloud console.
+  static const String googleWebClientId =
+      '689478778228-r8q5c04h33cfspqc16mnnndsggpav2ul.apps.googleusercontent.com';
+  static const String googleIosClientId =
+      '689478778228-di6k2u6goi01s8et2gcdhmejeigi6doo.apps.googleusercontent.com';
+
   static const String privacyPolicyUrl =
       'https://legal-sites.dgexpense.com/deen-app/privacy_policy.html';
   static const String termsAndConditionsUrl =
