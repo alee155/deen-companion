@@ -1,4 +1,7 @@
 import 'package:deen_companion/features/ads/data/services/ad_unit_resolver.dart';
+import 'package:deen_companion/features/ads/data/services/ads_config_store.dart';
+import 'package:deen_companion/features/ads/data/services/ads_consent.dart';
+import 'package:deen_companion/features/ads/domain/entities/remote_ads_config.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -6,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// the disabled / real / test cases independent of build mode.
 class StubResolver extends AdUnitResolver {
   final ResolvedAdUnit result;
-  const StubResolver(this.result);
+  StubResolver(this.result) : super(() => RemoteAdsConfig.off);
 
   @override
   ResolvedAdUnit banner() => result;
@@ -48,4 +51,39 @@ class FakeAppOpenAd extends Fake implements AppOpenAd {
 
   @override
   Future<void> dispose() async => disposeCount++;
+}
+
+const allOn = RemoteAdsConfig(
+  adsEnabled: true,
+  banner: AdSlotConfig(enabled: true, unitId: 'b'),
+  interstitial: AdSlotConfig(enabled: true, unitId: 'i'),
+  appOpen: AdSlotConfig(enabled: true, unitId: 'o'),
+);
+
+/// A config store that is always ready with [current].
+class FakeConfigStore extends Fake implements AdsConfigStore {
+  @override
+  RemoteAdsConfig current;
+  FakeConfigStore([this.current = allOn]);
+
+  @override
+  Future<void> get ready => Future.value();
+
+  @override
+  Future<void> refreshIfStale() async {}
+}
+
+class FakeConsent implements AdsConsent {
+  bool canRequestAds = true;
+  bool dialogShown = false;
+  int calls = 0;
+
+  @override
+  Future<AdsConsentResult> gather() async {
+    calls++;
+    return AdsConsentResult(
+      canRequestAds: canRequestAds,
+      dialogShown: dialogShown,
+    );
+  }
 }

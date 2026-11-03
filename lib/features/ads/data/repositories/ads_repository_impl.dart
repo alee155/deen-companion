@@ -6,31 +6,41 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../../../../core/utils/logger.dart';
 import '../../domain/entities/banner_ad_handle.dart';
 import '../../domain/repositories/ads_repository.dart';
-import '../constants/ads_config.dart';
 import '../datasources/app_open_ad_datasource.dart';
 import '../datasources/banner_ad_datasource.dart';
 import '../datasources/interstitial_ad_datasource.dart';
 import '../datasources/mobile_ads_initializer.dart';
 import '../services/ad_unit_resolver.dart';
+import '../services/ads_config_store.dart';
+import '../services/ads_consent.dart';
 
 class AdsRepositoryImpl implements AdsRepository {
   final MobileAdsInitializer _initializer;
   final AdUnitResolver _adUnitResolver;
+  final AdsConfigStore _config;
+  final AdsConsent _consent;
   final BannerAdDataSource _bannerDataSource;
   final InterstitialAdDataSource _interstitialDataSource;
   final AppOpenAdDataSource _appOpenDataSource;
+  final DateTime Function() _now;
 
   AdsRepositoryImpl({
     required MobileAdsInitializer initializer,
     required AdUnitResolver adUnitResolver,
+    required AdsConfigStore config,
+    required AdsConsent consent,
     required BannerAdDataSource bannerDataSource,
     required InterstitialAdDataSource interstitialDataSource,
     required AppOpenAdDataSource appOpenDataSource,
+    DateTime Function()? now,
   }) : _initializer = initializer,
        _adUnitResolver = adUnitResolver,
+       _config = config,
+       _consent = consent,
        _bannerDataSource = bannerDataSource,
        _interstitialDataSource = interstitialDataSource,
-       _appOpenDataSource = appOpenDataSource;
+       _appOpenDataSource = appOpenDataSource,
+       _now = now ?? DateTime.now;
 
   // ---------------------------------------------------------------------
   // Interstitial state
@@ -45,53 +55,59 @@ class AdsRepositoryImpl implements AdsRepository {
   AppOpenAd? _appOpenAd;
   DateTime? _appOpenLoadedAt;
   bool _isShowingAppOpenAd = false;
+  Completer<void>? _appOpenClosed;
 
   /// Google's own guidance: discard an unshown app open ad after roughly
   /// 4 hours rather than showing stale creative.
   static const _appOpenMaxAge = Duration(hours: 4);
 
+  DateTime? _lastFullScreenAdEndedAt;
+  bool _consentDialogShown = false;
+
+  @override
+  DateTime? get lastFullScreenAdEndedAt => _lastFullScreenAdEndedAt;
+
+  @override
+  bool get consentDialogShownThisLaunch => _consentDialogShown;
+
   // ---------------------------------------------------------------------
-  // Initialization gate
+  // Gate: config → consent → SDK
   // ---------------------------------------------------------------------
-  // Every ad load path funnels through [_ensureInitialized] before doing
-  // anything else, so no matter what order the app happens to call things
-  // in, the Mobile Ads SDK is ready before the first ad request happens.
-  Completer<void>? _initCompleter;
+  // Every load path goes through [_canServe]. Nothing is requested before
+  // the ads service has answered (or its saved answer was read), and nothing
+  // before the user's consent choices are settled — so no ad request can
+  // fire before either.
+  Future<bool>? _sdkReady;
 
-  Future<void> _ensureInitialized() {
-    final existing = _initCompleter;
-    if (existing != null) return existing.future;
-
-    final completer = Completer<void>();
-    _initCompleter = completer;
-
-    _initMobileAdsSdk().then((_) => completer.complete()).catchError((
-      Object error,
-      StackTrace stackTrace,
-    ) {
-      debugPrint('[Ads] Initialization threw: $error');
-      AppLogger.e('Ads initialization threw', error, stackTrace);
-      // Complete anyway — a stuck Completer would permanently wedge
-      // every future ad request behind a load that will never finish.
-      completer.complete();
-    });
-
-    return completer.future;
+  Future<bool> _canServe() async {
+    await _config.ready;
+    if (!_config.current.adsEnabled) return false;
+    return _sdkReady ??= _prepareSdk();
   }
 
-  Future<void> _initMobileAdsSdk() async {
-    debugPrint('[Ads] Initializing Mobile Ads SDK…');
-    await _initializer.initialize();
-    debugPrint('[Ads] Mobile Ads SDK initialized ✅');
+  Future<bool> _prepareSdk() async {
+    try {
+      final consent = await _consent.gather();
+      _consentDialogShown = consent.dialogShown;
+      if (!consent.canRequestAds) {
+        debugPrint('[Ads] consent does not allow ad requests — no ads');
+        return false;
+      }
+      await _initializer.initialize();
+      debugPrint('[Ads] Mobile Ads SDK initialized ✅');
+      return true;
+    } catch (error, stackTrace) {
+      debugPrint('[Ads] Initialization threw: $error');
+      AppLogger.e('Ads initialization threw', error, stackTrace);
+      // Keep going: a wedged gate would block every later ad request.
+      return true;
+    }
   }
 
   @override
-  Future<void> initialize() {
-    if (!AdsConfig.adsEnabled) {
-      debugPrint('[Ads] initialize() skipped — AdsConfig.adsEnabled is false');
-      return Future.value();
-    }
-    return _ensureInitialized();
+  Future<void> initialize() async {
+    if (!await _canServe()) return;
+    unawaited(preloadInterstitial());
   }
 
   // ---------------------------------------------------------------------
@@ -100,11 +116,10 @@ class AdsRepositoryImpl implements AdsRepository {
 
   @override
   Future<BannerAdHandle?> loadBanner({required double width}) async {
-    if (!AdsConfig.adsEnabled) {
-      debugPrint('[Ads] loadBanner() skipped — ads disabled');
+    if (!await _canServe()) {
+      debugPrint('[Ads] loadBanner() skipped — ads off');
       return null;
     }
-    await _ensureInitialized();
 
     final resolved = _adUnitResolver.banner();
     if (!resolved.shouldLoad) {
@@ -134,12 +149,6 @@ class AdsRepositoryImpl implements AdsRepository {
 
   @override
   Future<void> preloadInterstitial() async {
-    if (!AdsConfig.adsEnabled) {
-      debugPrint('[Ads] preloadInterstitial() skipped — ads disabled');
-      return;
-    }
-    // Guards duplicate loads: a load already in flight, or an ad already
-    // sitting ready and unused, both make a fresh load pointless.
     if (_isLoadingInterstitial || isInterstitialReady) {
       debugPrint(
         '[Ads] Interstitial: preload skipped (loading=$_isLoadingInterstitial, '
@@ -147,80 +156,72 @@ class AdsRepositoryImpl implements AdsRepository {
       );
       return;
     }
-
-    await _ensureInitialized();
-
-    final resolved = _adUnitResolver.interstitial();
-    if (!resolved.shouldLoad) {
-      debugPrint('[Ads] Interstitial: preload skipped — resolved to disabled');
-      return;
-    }
-
     _isLoadingInterstitial = true;
-    debugPrint('[Ads] Interstitial: requesting ad…');
-    final ad = await _interstitialDataSource.load(adUnitId: resolved.adUnitId!);
-    _isLoadingInterstitial = false;
+    try {
+      if (!await _canServe()) return;
 
-    if (ad == null) {
-      debugPrint(
-        '[Ads] Interstitial: load returned null (failed — see error above)',
+      final resolved = _adUnitResolver.interstitial();
+      if (!resolved.shouldLoad) {
+        debugPrint('[Ads] Interstitial: preload skipped — disabled');
+        return;
+      }
+
+      debugPrint('[Ads] Interstitial: requesting ad…');
+      final ad = await _interstitialDataSource.load(
+        adUnitId: resolved.adUnitId!,
       );
-      return;
+      if (ad == null) {
+        debugPrint('[Ads] Interstitial: load returned null (failed)');
+        return;
+      }
+      debugPrint('[Ads] Interstitial: loaded ✅');
+
+      ad.fullScreenContentCallback = FullScreenContentCallback(
+        onAdShowedFullScreenContent: (_) {
+          debugPrint('[Ads] Interstitial: shown');
+          _isShowingInterstitialAd = true;
+        },
+        onAdDismissedFullScreenContent: (ad) {
+          debugPrint('[Ads] Interstitial: dismissed — refilling');
+          _isShowingInterstitialAd = false;
+          _lastFullScreenAdEndedAt = _now();
+          ad.dispose();
+          _interstitialAd = null;
+          unawaited(preloadInterstitial());
+        },
+        onAdFailedToShowFullScreenContent: (ad, error) {
+          debugPrint('[Ads] Interstitial: failed to show: $error');
+          AppLogger.e('Interstitial failed to show: $error');
+          _isShowingInterstitialAd = false;
+          ad.dispose();
+          _interstitialAd = null;
+          unawaited(preloadInterstitial());
+        },
+      );
+      _interstitialAd = ad;
+    } finally {
+      _isLoadingInterstitial = false;
     }
-    debugPrint('[Ads] Interstitial: loaded ✅');
-
-    ad.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (_) {
-        debugPrint('[Ads] Interstitial: shown');
-        _isShowingInterstitialAd = true;
-      },
-      onAdDismissedFullScreenContent: (ad) {
-        debugPrint('[Ads] Interstitial: dismissed — refilling');
-        _isShowingInterstitialAd = false;
-        ad.dispose();
-        _interstitialAd = null;
-        // Refill immediately in the background so the *next* due click
-        // already has an ad waiting instead of starting a load from zero.
-        unawaited(preloadInterstitial());
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        debugPrint('[Ads] Interstitial: failed to show: $error');
-        AppLogger.e('Interstitial failed to show: $error');
-        _isShowingInterstitialAd = false;
-        ad.dispose();
-        _interstitialAd = null;
-        unawaited(preloadInterstitial());
-      },
-    );
-
-    _interstitialAd = ad;
   }
 
   @override
-  void showInterstitial({required AdFlowComplete onComplete}) {
-    if (!AdsConfig.adsEnabled) {
-      debugPrint('[Ads] showInterstitial() skipped — ads disabled');
-      onComplete();
-      return;
-    }
-
+  bool showInterstitial({required AdFlowComplete onComplete}) {
     // Never stack interstitials, and never make a second call double-fire
     // the completion callback for a show already in progress.
-    if (_isShowingInterstitialAd) {
-      debugPrint('[Ads] Interstitial: already showing one — skipping');
+    if (_isShowingInterstitialAd || _isShowingAppOpenAd) {
+      debugPrint('[Ads] Interstitial: a full-screen ad is up — skipping');
       onComplete();
-      return;
+      return false;
     }
 
     final ad = _interstitialAd;
     if (ad == null) {
-      // Nothing ready — proceed immediately rather than blocking
-      // navigation on a network round trip, and queue a load for next
-      // time this placement comes due.
+      // Nothing ready — proceed immediately rather than blocking the user
+      // on a network round trip, and queue a load for next time.
       debugPrint('[Ads] Interstitial: none ready — continuing without an ad');
       unawaited(preloadInterstitial());
       onComplete();
-      return;
+      return false;
     }
 
     debugPrint('[Ads] Interstitial: showing…');
@@ -231,10 +232,8 @@ class AdsRepositoryImpl implements AdsRepository {
       onComplete();
     }
 
-    // Wrap the ad's own callback so completion fires exactly once,
-    // regardless of whether it came from dismissal or a show failure —
-    // both are already handled above, this just guarantees the caller's
-    // continuation always runs.
+    // Completion fires exactly once, whether the ad was dismissed or failed
+    // to show, so the caller's continuation always runs.
     final previous = ad.fullScreenContentCallback;
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: previous?.onAdShowedFullScreenContent,
@@ -249,6 +248,7 @@ class AdsRepositoryImpl implements AdsRepository {
     );
 
     ad.show();
+    return true;
   }
 
   // ---------------------------------------------------------------------
@@ -262,8 +262,7 @@ class AdsRepositoryImpl implements AdsRepository {
   @override
   bool get isAppOpenAdReady {
     if (_appOpenAd == null || _appOpenLoadedAt == null) return false;
-    final expired =
-        DateTime.now().difference(_appOpenLoadedAt!) > _appOpenMaxAge;
+    final expired = _now().difference(_appOpenLoadedAt!) > _appOpenMaxAge;
     if (expired) {
       // Stale ad — drop it now so the next preload actually runs instead
       // of being skipped by the "already have one" guard below.
@@ -276,53 +275,53 @@ class AdsRepositoryImpl implements AdsRepository {
     return true;
   }
 
-  // Shared by every caller of preloadAppOpenAd() while a load is in
-  // flight — this is what lets AppOpenAdManager's cold-start path *wait*
-  // for the exact same preload that was already kicked off back in
-  // start(), instead of instantly checking readiness and giving up
-  // because the network round trip (routinely 1-4s, SDK init included)
-  // hasn't finished yet.
+  // Shared by every caller of preloadAppOpenAd() while a load is in flight,
+  // so the cold-start path can wait on the preload that is already running
+  // instead of starting a second request.
   Completer<bool>? _appOpenLoadCompleter;
 
   @override
   Future<bool> preloadAppOpenAd() async {
-    if (!AdsConfig.adsEnabled) {
-      debugPrint('[Ads] preloadAppOpenAd() skipped — ads disabled');
-      return false;
-    }
     if (isAppOpenAdReady) return true;
 
     final inFlight = _appOpenLoadCompleter;
-    if (inFlight != null) {
-      debugPrint('[Ads] App Open: preload already in flight — awaiting it');
-      return inFlight.future;
-    }
+    if (inFlight != null) return inFlight.future;
 
     final completer = Completer<bool>();
     _appOpenLoadCompleter = completer;
 
-    await _ensureInitialized();
+    Future<bool> finish(bool loaded) {
+      _appOpenLoadCompleter = null;
+      completer.complete(loaded);
+      return completer.future;
+    }
+
+    if (!await _canServe()) return finish(false);
 
     final resolved = _adUnitResolver.appOpen();
     if (!resolved.shouldLoad) {
-      debugPrint('[Ads] App Open: preload skipped — resolved to disabled');
-      _appOpenLoadCompleter = null;
-      completer.complete(false);
-      return false;
+      debugPrint('[Ads] App Open: preload skipped — disabled');
+      return finish(false);
     }
 
     debugPrint('[Ads] App Open: requesting ad…');
     final ad = await _appOpenDataSource.load(adUnitId: resolved.adUnitId!);
-
     if (ad == null) {
-      debugPrint(
-        '[Ads] App Open: load returned null (failed — see error above)',
-      );
-      _appOpenLoadCompleter = null;
-      completer.complete(false);
-      return false;
+      debugPrint('[Ads] App Open: load returned null (failed)');
+      return finish(false);
     }
     debugPrint('[Ads] App Open: loaded ✅');
+
+    void closed(AppOpenAd ad) {
+      _isShowingAppOpenAd = false;
+      _lastFullScreenAdEndedAt = _now();
+      ad.dispose();
+      _appOpenAd = null;
+      _appOpenLoadedAt = null;
+      final waiting = _appOpenClosed;
+      _appOpenClosed = null;
+      if (waiting != null && !waiting.isCompleted) waiting.complete();
+    }
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdShowedFullScreenContent: (_) {
@@ -331,41 +330,26 @@ class AdsRepositoryImpl implements AdsRepository {
       },
       onAdDismissedFullScreenContent: (ad) {
         debugPrint('[Ads] App Open: dismissed — refilling');
-        _isShowingAppOpenAd = false;
-        ad.dispose();
-        _appOpenAd = null;
-        _appOpenLoadedAt = null;
+        closed(ad);
         unawaited(preloadAppOpenAd());
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         debugPrint('[Ads] App Open: failed to show: $error');
         AppLogger.e('App open ad failed to show: $error');
-        _isShowingAppOpenAd = false;
-        ad.dispose();
-        _appOpenAd = null;
-        _appOpenLoadedAt = null;
+        closed(ad);
         unawaited(preloadAppOpenAd());
       },
     );
 
     _appOpenAd = ad;
-    _appOpenLoadedAt = DateTime.now();
-    _appOpenLoadCompleter = null;
-    completer.complete(true);
-    return true;
+    _appOpenLoadedAt = _now();
+    return finish(true);
   }
 
   @override
-  Future<bool> showAppOpenAdIfAvailable() async {
-    if (!AdsConfig.adsEnabled) {
-      debugPrint('[Ads] showAppOpenAdIfAvailable() skipped — ads disabled');
-      return false;
-    }
-
-    // Guards: don't stack on top of an interstitial, don't double-show,
-    // don't show an expired ad. Every one of these is "return false now",
-    // never "wait and try again" — a resume event is not the moment to
-    // introduce a loading delay.
+  Future<bool> showAppOpenAdIfAvailable({bool waitUntilClosed = false}) async {
+    // Don't stack on top of another ad, don't show an expired one. Never
+    // "wait and try again": a show attempt is not the moment to add a delay.
     if (isDisplayingFullScreenAd || !isAppOpenAdReady) {
       debugPrint(
         '[Ads] App Open: not shown (displayingFullScreenAd='
@@ -377,8 +361,12 @@ class AdsRepositoryImpl implements AdsRepository {
     final ad = _appOpenAd;
     if (ad == null) return false;
 
+    final closed = waitUntilClosed
+        ? (_appOpenClosed = Completer<void>())
+        : null;
     debugPrint('[Ads] App Open: showing…');
     ad.show();
+    if (closed != null) await closed.future;
     return true;
   }
 

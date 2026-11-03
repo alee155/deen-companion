@@ -25,21 +25,6 @@ Future<void> bootstrap() async {
 
   final container = ProviderContainer();
 
-  // THE ACTUAL WIN: MobileAds.instance.initialize() has no dependency on
-  // local storage, so there's no reason for it to wait behind it. Firing
-  // it here, before storage.init(), lets the ad network's own (slow —
-  // routinely 1-4s) round trip start that much earlier. Not awaited: AdsRepositoryImpl._ensureInitialized()
-  // calls MobileAdsInitializer.initialize() again later and — thanks to
-  // the guard added there — just picks up this same in-flight/completed
-  // call instead of double-firing it.
-  final mobileAdsInitFuture = container
-      .read(mobileAdsInitializerProvider)
-      .initialize();
-  debugPrint(
-    '[Boot] MobileAds SDK init kicked off at '
-    '+${DateTime.now().difference(bootStart).inMilliseconds}ms',
-  );
-
   final storageService = container.read(localStorageServiceProvider);
   await storageService.init();
   debugPrint(
@@ -74,11 +59,9 @@ Future<void> bootstrap() async {
     UncontrolledProviderScope(container: container, child: const DeenApp()),
   );
 
-  // Ads first: this is the fire-and-forget call that matters most for
-  // perceived App Open latency, so it gets first crack at the event loop
-  // among everything below. It reuses mobileAdsInitFuture's work via the
-  // guard in MobileAdsInitializer — nothing is requested twice.
-  debugPrint('[Ads] bootstrap: starting AppOpenAdManager + ads SDK init');
+  // Ads first, so the App Open ad has the whole splash animation to load.
+  // Order inside the repository: ads config (saved copy or fetch) → consent
+  // → SDK → ad request. Nothing here blocks the first frame.
   container.read(appOpenAdManagerProvider).start();
   unawaited(container.read(adsInitializationProvider.future));
 
@@ -87,8 +70,6 @@ Future<void> bootstrap() async {
   _syncPrayerDnd(container);
   container.read(dailyNotificationServiceProvider).start();
   container.read(prayerAlarmLaunchServiceProvider).start();
-
-  unawaited(mobileAdsInitFuture); // keep the reference alive/analyzed
 }
 
 Future<void> _syncPrayerReminders(ProviderContainer container) async {

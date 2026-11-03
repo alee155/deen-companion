@@ -21,8 +21,18 @@ class AppConstants {
 
   // Persisted signed-in identity (the access token itself lives in secure
   // storage — see TokenStorage).
-  /// Set once the App Open ad has been shown; it is never shown again.
-  static const String appOpenAdShownKey = 'app_open_ad_shown';
+  /// When the App Open ad last closed (epoch ms), for its cooldown.
+  static const String appOpenAdLastShownKey = 'app_open_ad_last_shown';
+
+  /// Today's randomly chosen snap-viewing ad slots (see SnapAdPlan).
+  static const String snapAdPlanKey = 'snap_ad_plan';
+
+  /// Last good answer from the ads service, so ads work offline.
+  static const String adsConfigCacheKey = 'ads_config_cache';
+
+  /// Central ads service (no login). The app asks it which ads to show.
+  static const String adsConfigBaseUrl = 'https://ads.dgexpense.com';
+  static const String adsAppKey = 'deen_companion';
 
   static const String authUserIdKey = 'auth_user_id';
   static const String authEmailKey = 'auth_email';

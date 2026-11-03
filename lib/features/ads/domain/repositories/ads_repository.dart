@@ -12,9 +12,18 @@ typedef AdFlowComplete = void Function();
 /// `AppOpenAd`, ...) stay inside the data layer's datasources and the
 /// implementation of this repository.
 abstract class AdsRepository {
-  /// Initializes the Mobile Ads SDK. Safe to call once at startup; must
-  /// complete (or be skipped) before any ad is requested.
+  /// Gets ads ready: waits for the ads config, settles consent (UMP and, on
+  /// iPhone, App Tracking Transparency), then starts the SDK. Safe to call
+  /// more than once; every ad request goes through the same gate anyway.
   Future<void> initialize();
+
+  /// When the last full-screen ad (app open or interstitial) was closed, so
+  /// callers can keep two ads from landing back to back.
+  DateTime? get lastFullScreenAdEndedAt;
+
+  /// True when a consent form or the iPhone tracking prompt was shown this
+  /// launch. The App Open ad skips that launch.
+  bool get consentDialogShownThisLaunch;
 
   // ---------------------------------------------------------------------
   // Banner
@@ -43,8 +52,9 @@ abstract class AdsRepository {
   /// [onComplete] exactly once — after the user dismisses it, if it fails
   /// to show, or immediately if none is ready. Never makes the caller wait
   /// on a network load; if nothing is ready right now, [onComplete] fires
-  /// straight away and a fresh ad is queued for next time.
-  void showInterstitial({required AdFlowComplete onComplete});
+  /// straight away and a fresh ad is queued for next time. Returns whether
+  /// an ad was actually put on screen.
+  bool showInterstitial({required AdFlowComplete onComplete});
 
   // ---------------------------------------------------------------------
   // App Open
@@ -72,7 +82,9 @@ abstract class AdsRepository {
   /// Shows the loaded app open ad if one is ready and nothing else is
   /// currently on screen. Returns `true` if it actually showed. Never
   /// waits on a load — if nothing is ready, returns `false` immediately.
-  Future<bool> showAppOpenAdIfAvailable();
+  /// With [waitUntilClosed] the future completes only once the user has
+  /// closed the ad (the cold start holds the splash screen until then).
+  Future<bool> showAppOpenAdIfAvailable({bool waitUntilClosed = false});
 
   /// Releases any ad currently held in memory (interstitial and app open).
   /// Call once, from the composition root, when the repository itself is

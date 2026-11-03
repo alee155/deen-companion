@@ -1,12 +1,17 @@
+import 'dart:io' show Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/di/providers.dart';
+import '../../data/datasources/ads_config_remote_datasource.dart';
 import '../../data/datasources/app_open_ad_datasource.dart';
 import '../../data/datasources/banner_ad_datasource.dart';
 import '../../data/datasources/interstitial_ad_datasource.dart';
 import '../../data/datasources/mobile_ads_initializer.dart';
 import '../../data/repositories/ads_repository_impl.dart';
 import '../../data/services/ad_unit_resolver.dart';
+import '../../data/services/ads_config_store.dart';
+import '../../data/services/ads_consent.dart';
 import '../../domain/repositories/ads_repository.dart';
 
 final mobileAdsInitializerProvider = Provider<MobileAdsInitializer>((ref) {
@@ -27,9 +32,23 @@ final appOpenAdDataSourceProvider = Provider<AppOpenAdDataSource>((ref) {
   return const AppOpenAdDataSource();
 });
 
+/// The ads service's answer (saved copy first, refetched after its TTL).
+final adsConfigStoreProvider = Provider<AdsConfigStore>((ref) {
+  return AdsConfigStore(
+    remote: AdsConfigRemoteDataSource(),
+    storage: ref.watch(localStorageServiceProvider),
+    platform: Platform.isIOS ? 'ios' : 'android',
+  );
+});
+
+final adsConsentProvider = Provider<AdsConsent>((ref) {
+  return const PlatformAdsConsent();
+});
+
 /// The centralized real/test/disabled decision maker.
 final adUnitResolverProvider = Provider<AdUnitResolver>((ref) {
-  return const AdUnitResolver();
+  final config = ref.watch(adsConfigStoreProvider);
+  return AdUnitResolver(() => config.current);
 });
 
 /// One repository instance for the whole app lifetime — interstitial and
@@ -39,6 +58,8 @@ final adsRepositoryProvider = Provider<AdsRepository>((ref) {
   final repository = AdsRepositoryImpl(
     initializer: ref.watch(mobileAdsInitializerProvider),
     adUnitResolver: ref.watch(adUnitResolverProvider),
+    config: ref.watch(adsConfigStoreProvider),
+    consent: ref.watch(adsConsentProvider),
     bannerDataSource: ref.watch(bannerAdDataSourceProvider),
     interstitialDataSource: ref.watch(interstitialAdDataSourceProvider),
     appOpenDataSource: ref.watch(appOpenAdDataSourceProvider),

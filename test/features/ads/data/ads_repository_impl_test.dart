@@ -6,6 +6,7 @@ import 'package:deen_companion/features/ads/data/datasources/interstitial_ad_dat
 import 'package:deen_companion/features/ads/data/datasources/mobile_ads_initializer.dart';
 import 'package:deen_companion/features/ads/data/repositories/ads_repository_impl.dart';
 import 'package:deen_companion/features/ads/data/services/ad_unit_resolver.dart';
+import 'package:deen_companion/features/ads/domain/entities/remote_ads_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:mocktail/mocktail.dart';
@@ -26,11 +27,18 @@ void main() {
   late MockInterstitialSource interstitialSrc;
   late MockAppOpenSource appOpenSrc;
 
+  late FakeConfigStore config;
+  late FakeConsent consent;
+  late DateTime clock;
+
   AdsRepositoryImpl make([
     ResolvedAdUnit resolved = const ResolvedAdUnit.test('unit-1'),
   ]) => AdsRepositoryImpl(
     initializer: init,
     adUnitResolver: StubResolver(resolved),
+    config: config,
+    consent: consent,
+    now: () => clock,
     bannerDataSource: banner,
     interstitialDataSource: interstitialSrc,
     appOpenDataSource: appOpenSrc,
@@ -38,6 +46,9 @@ void main() {
 
   setUp(() {
     init = MockInit();
+    config = FakeConfigStore();
+    consent = FakeConsent();
+    clock = DateTime(2026, 11, 4, 9);
     banner = MockBanner();
     interstitialSrc = MockInterstitialSource();
     appOpenSrc = MockAppOpenSource();
@@ -66,8 +77,52 @@ void main() {
       ).thenAnswer((_) async => FakeInterstitialAd());
       final repo = make();
       await repo.initialize();
-      await repo.preloadInterstitial();
+      await pumpEventQueue();
       expect(repo.isInterstitialReady, isTrue);
+    });
+  });
+
+  group('gate (config → consent → SDK)', () {
+    test('ads off in the config: no consent, no SDK, no requests', () async {
+      config.current = RemoteAdsConfig.off;
+      final repo = make();
+      await repo.initialize();
+      expect(await repo.loadBanner(width: 320), isNull);
+      expect(await repo.preloadAppOpenAd(), isFalse);
+      expect(consent.calls, 0);
+      verifyNever(() => init.initialize());
+      verifyNever(() => appOpenSrc.load(adUnitId: any(named: 'adUnitId')));
+    });
+
+    test('consent refusing ads: SDK never starts, nothing loads', () async {
+      consent.canRequestAds = false;
+      final repo = make();
+      await repo.initialize();
+      expect(await repo.preloadAppOpenAd(), isFalse);
+      verifyNever(() => init.initialize());
+      verifyNever(() => appOpenSrc.load(adUnitId: any(named: 'adUnitId')));
+    });
+
+    test('consent runs before the SDK and only once', () async {
+      final repo = make();
+      when(
+        () => appOpenSrc.load(adUnitId: any(named: 'adUnitId')),
+      ).thenAnswer((_) async => null);
+      await repo.preloadAppOpenAd();
+      await repo.preloadAppOpenAd();
+      expect(consent.calls, 1);
+      verify(() => init.initialize()).called(1);
+    });
+
+    test('remembers that a consent dialog was shown this launch', () async {
+      consent.dialogShown = true;
+      final repo = make();
+      when(
+        () => appOpenSrc.load(adUnitId: any(named: 'adUnitId')),
+      ).thenAnswer((_) async => null);
+      expect(repo.consentDialogShownThisLaunch, isFalse);
+      await repo.preloadAppOpenAd();
+      expect(repo.consentDialogShownThisLaunch, isTrue);
     });
   });
 
@@ -220,6 +275,23 @@ void main() {
       },
     );
 
+    test('show reports whether an ad was put on screen', () async {
+      final repo = make();
+      expect(repo.showInterstitial(onComplete: () {}), isFalse);
+      await pumpEventQueue();
+      expect(repo.isInterstitialReady, isTrue, reason: 'queued load finished');
+      expect(repo.showInterstitial(onComplete: () {}), isTrue);
+    });
+
+    test('dismissal records when the last full-screen ad ended', () async {
+      final repo = make();
+      await repo.preloadInterstitial();
+      expect(repo.lastFullScreenAdEndedAt, isNull);
+      repo.showInterstitial(onComplete: () {});
+      ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+      expect(repo.lastFullScreenAdEndedAt, clock);
+    });
+
     test('dispose releases a loaded ad', () async {
       final repo = make();
       await repo.preloadInterstitial();
@@ -309,6 +381,30 @@ void main() {
         ).called(2);
       },
     );
+
+    test('waitUntilClosed holds until the ad is dismissed', () async {
+      final repo = make();
+      await repo.preloadAppOpenAd();
+      var finished = false;
+      final shown = repo
+          .showAppOpenAdIfAvailable(waitUntilClosed: true)
+          .then((v) => finished = v);
+      await Future<void>.delayed(Duration.zero);
+      expect(ad.showCount, 1);
+      expect(finished, isFalse, reason: 'still on screen');
+      ad.fullScreenContentCallback!.onAdDismissedFullScreenContent!(ad);
+      expect(await shown, isTrue);
+      expect(repo.lastFullScreenAdEndedAt, clock);
+    });
+
+    test('an ad older than 4 hours is discarded, not shown', () async {
+      final repo = make();
+      await repo.preloadAppOpenAd();
+      clock = clock.add(const Duration(hours: 4, minutes: 1));
+      expect(repo.isAppOpenAdReady, isFalse);
+      expect(await repo.showAppOpenAdIfAvailable(), isFalse);
+      expect(ad.disposeCount, 1);
+    });
 
     test('will not show over an interstitial that is on screen', () async {
       when(

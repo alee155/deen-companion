@@ -1,6 +1,6 @@
 import 'package:deen_companion/features/ads/data/constants/ad_mob_ids.dart';
-import 'package:deen_companion/features/ads/data/constants/ads_config.dart';
 import 'package:deen_companion/features/ads/data/services/ad_unit_resolver.dart';
+import 'package:deen_companion/features/ads/domain/entities/remote_ads_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -25,50 +25,62 @@ void main() {
   });
 
   group('AdUnitResolver (debug build under test)', () {
-    const resolver = AdUnitResolver();
+    setUp(() => expect(kDebugMode, isTrue));
 
-    setUp(() {
-      // Guard: these assertions describe the debug-mode branch.
-      expect(kDebugMode, isTrue);
+    RemoteAdsConfig cfg({
+      bool all = true,
+      AdSlotConfig banner = const AdSlotConfig(enabled: true, unitId: 'b'),
+      AdSlotConfig interstitial = const AdSlotConfig(
+        enabled: true,
+        unitId: 'i',
+      ),
+      AdSlotConfig appOpen = const AdSlotConfig(enabled: true, unitId: 'o'),
+    }) => RemoteAdsConfig(
+      adsEnabled: all,
+      banner: banner,
+      interstitial: interstitial,
+      appOpen: appOpen,
+    );
+
+    test('enabled slots resolve to Google test units, never the server id', () {
+      final resolver = AdUnitResolver(cfg);
+      expect(resolver.banner().adUnitId, AdMobIds.testBanner);
+      expect(resolver.interstitial().adUnitId, AdMobIds.testInterstitial);
+      expect(resolver.appOpen().adUnitId, AdMobIds.testAppOpen);
+      expect(resolver.banner().availability, AdAvailability.test);
     });
 
-    test('config enables every format by default', () {
-      expect(AdsConfig.adsEnabled, isTrue);
-      expect(AdsConfig.bannerEnabled, isTrue);
-      expect(AdsConfig.interstitialEnabled, isTrue);
-      expect(AdsConfig.appOpenEnabled, isTrue);
+    test('the global switch off disables every type', () {
+      final resolver = AdUnitResolver(() => cfg(all: false));
+      expect(resolver.banner().shouldLoad, isFalse);
+      expect(resolver.interstitial().shouldLoad, isFalse);
+      expect(resolver.appOpen().shouldLoad, isFalse);
     });
 
-    test('banner resolves to Google test unit', () {
-      final r = resolver.banner();
-      expect(r.availability, AdAvailability.test);
-      expect(r.adUnitId, AdMobIds.testBanner);
+    test('a type is off when disabled, or enabled without a unit id', () {
+      final resolver = AdUnitResolver(
+        () => cfg(
+          banner: const AdSlotConfig(enabled: false, unitId: 'b'),
+          interstitial: const AdSlotConfig(enabled: true, unitId: null),
+          appOpen: const AdSlotConfig(enabled: true, unitId: '  '),
+        ),
+      );
+      expect(resolver.banner().shouldLoad, isFalse);
+      expect(resolver.interstitial().shouldLoad, isFalse);
+      expect(resolver.appOpen().shouldLoad, isFalse);
     });
 
-    test('interstitial resolves to Google test unit', () {
-      final r = resolver.interstitial();
-      expect(r.availability, AdAvailability.test);
-      expect(r.adUnitId, AdMobIds.testInterstitial);
+    test('with no config at all nothing is shown', () {
+      final resolver = AdUnitResolver(() => RemoteAdsConfig.off);
+      expect(resolver.banner().shouldLoad, isFalse);
     });
 
-    test('app open resolves to Google test unit', () {
-      final r = resolver.appOpen();
-      expect(r.availability, AdAvailability.test);
-      expect(r.adUnitId, AdMobIds.testAppOpen);
-    });
-
-    test('never picks a production id in debug', () {
-      for (final r in [
-        resolver.banner(),
-        resolver.interstitial(),
-        resolver.appOpen(),
-      ]) {
-        expect(
-          r.adUnitId,
-          isNot(AdMobIds.prodBanner.isEmpty ? '' : AdMobIds.prodBanner),
-        );
-        expect(r.adUnitId, startsWith('ca-app-pub-3940256099942544/'));
-      }
+    test('reads the config each time, so a refresh takes effect', () {
+      var current = RemoteAdsConfig.off;
+      final resolver = AdUnitResolver(() => current);
+      expect(resolver.banner().shouldLoad, isFalse);
+      current = cfg();
+      expect(resolver.banner().shouldLoad, isTrue);
     });
   });
 
@@ -82,7 +94,7 @@ void main() {
         AdMobIds.iosTestInterstitial,
         AdMobIds.iosTestAppOpen,
       ]) {
-        expect(id, matches(RegExp(r'^ca-app-pub-\d{16}/\d{10}$')));
+        expect(id, matches(RegExp(r'^ca-app-pub-3940256099942544/\d{10}$')));
       }
     });
 
@@ -90,12 +102,6 @@ void main() {
       expect(AdMobIds.testBanner, isNot(AdMobIds.iosTestBanner));
       expect(AdMobIds.testInterstitial, isNot(AdMobIds.iosTestInterstitial));
       expect(AdMobIds.testAppOpen, isNot(AdMobIds.iosTestAppOpen));
-    });
-
-    test('production ids are not committed (empty without dart-define)', () {
-      expect(AdMobIds.prodBanner, isEmpty);
-      expect(AdMobIds.prodInterstitial, isEmpty);
-      expect(AdMobIds.prodAppOpen, isEmpty);
     });
   });
 }
