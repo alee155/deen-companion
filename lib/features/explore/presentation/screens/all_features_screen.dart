@@ -10,8 +10,6 @@ import '../../../../shared/domain/explore_category.dart';
 import '../../../../shared/widgets/coming_soon.dart';
 import '../../../../shared/widgets/islamic_ornaments.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
-import '../../../ads/domain/entities/ad_placement_key.dart';
-import '../../../ads/presentation/providers/interstitial_ad_coordinator.dart';
 import '../../../ads/presentation/widgets/banner_ad_widget.dart';
 import '../widgets/explore_grid_tile.dart';
 
@@ -59,20 +57,10 @@ class _AllFeaturesScreenState extends ConsumerState<AllFeaturesScreen> {
   void _open(ExploreCategory category) {
     HapticFeedback.selectionClick();
     if (category.route.isEmpty) {
-      // Nothing to navigate to yet — an interstitial here would just delay
-      // a "coming soon" message, so it skips the ad flow entirely.
       showComingSoonSnackbar(context, category.label);
       return;
     }
-    // Every real navigation out of Explore goes through the shared
-    // interstitial rule: the 1st, 3rd, 5th… tap (across the whole section,
-    // not per category) shows an ad before the destination opens.
-    ref
-        .read(interstitialAdCoordinatorProvider)
-        .showThenRun(
-          placement: AdPlacementKey.exploreSection,
-          action: () => context.push(category.route),
-        );
+    context.push(category.route);
   }
 
   @override

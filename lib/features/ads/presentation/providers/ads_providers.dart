@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -55,7 +54,4 @@ final adsRepositoryProvider = Provider<AdsRepository>((ref) {
 final adsInitializationProvider = FutureProvider<void>((ref) async {
   final repository = ref.watch(adsRepositoryProvider);
   await repository.initialize();
-  // Warm the first interstitial as soon as the SDK is ready — the first
-  // placement a user reaches shouldn't have to wait on a cold load.
-  unawaited(repository.preloadInterstitial());
 });

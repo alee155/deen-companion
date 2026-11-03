@@ -1,12 +1,9 @@
 import 'package:deen_companion/core/constants/app_constants.dart';
 import 'package:deen_companion/core/storage/local_storage_service.dart';
 import 'package:deen_companion/features/ads/domain/entities/banner_ad_handle.dart';
-import 'package:deen_companion/features/ads/domain/entities/ad_placement_key.dart';
 import 'package:deen_companion/features/ads/domain/repositories/ads_repository.dart';
 import 'package:deen_companion/features/ads/presentation/providers/ads_providers.dart';
 import 'package:deen_companion/features/ads/presentation/providers/app_open_ad_manager.dart';
-import 'package:deen_companion/features/ads/presentation/providers/interstitial_ad_coordinator.dart';
-import 'package:deen_companion/features/ads/presentation/providers/interstitial_click_counter_provider.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -104,128 +101,11 @@ void main() {
     container = makeContainer(repo, storage);
   });
 
-  group('InterstitialClickCounter', () {
-    bool click(AdPlacementKey k) => container
-        .read(interstitialClickCounterProvider(k).notifier)
-        .registerClickAndShouldShow();
-
-    test('1st, 3rd, 5th click are due; 2nd, 4th are not', () {
-      final results = [
-        for (var i = 0; i < 6; i++) click(AdPlacementKey.hadithList),
-      ];
-      expect(results, [true, false, true, false, true, false]);
-      expect(
-        container.read(
-          interstitialClickCounterProvider(AdPlacementKey.hadithList),
-        ),
-        6,
-      );
-    });
-
-    test('placements count independently', () {
-      expect(click(AdPlacementKey.hadithList), isTrue);
-      expect(click(AdPlacementKey.hadithList), isFalse);
-      // Another placement still starts at its own first click.
-      expect(click(AdPlacementKey.duaList), isTrue);
-      expect(
-        container.read(
-          interstitialClickCounterProvider(AdPlacementKey.duaList),
-        ),
-        1,
-      );
-    });
-
-    test('count is in-memory: a fresh container starts from zero', () {
-      click(AdPlacementKey.exploreSection);
-      final other = makeContainer(repo, storage);
-      expect(
-        other.read(
-          interstitialClickCounterProvider(AdPlacementKey.exploreSection),
-        ),
-        0,
-      );
-    });
-  });
-
-  group('InterstitialAdCoordinator.showThenRun', () {
-    InterstitialAdCoordinator coord() =>
-        container.read(interstitialAdCoordinatorProvider);
-
-    test('first click with ad ready shows ad, action runs after dismissal', () {
-      repo.interstitialReady = true;
-      var ran = 0;
-      coord().showThenRun(
-        placement: AdPlacementKey.quranSurahList,
-        action: () => ran++,
-      );
-      expect(repo.showInterstitialCalls, 1);
-      expect(ran, 0);
-      repo.pendingComplete!();
-      expect(ran, 1);
-    });
-
-    test('first click without a ready ad runs action immediately, no show', () {
-      var ran = 0;
-      coord().showThenRun(
-        placement: AdPlacementKey.quranSurahList,
-        action: () => ran++,
-      );
-      expect(ran, 1);
-      expect(repo.showInterstitialCalls, 0);
-    });
-
-    test(
-      'second click is not due: action runs immediately even if ad ready',
-      () {
-        repo.interstitialReady = true;
-        repo.completeImmediately = true;
-        var ran = 0;
-        void go() => coord().showThenRun(
-          placement: AdPlacementKey.duaList,
-          action: () => ran++,
-        );
-        go(); // due -> shows
-        go(); // not due
-        expect(repo.showInterstitialCalls, 1);
-        expect(ran, 2);
-        go(); // 3rd: due again
-        expect(repo.showInterstitialCalls, 2);
-        expect(ran, 3);
-      },
-    );
-
-    test('a due click with no ad still consumes the click', () {
-      var ran = 0;
-      void go() => coord().showThenRun(
-        placement: AdPlacementKey.asmaUlHusnaList,
-        action: () => ran++,
-      );
-      go(); // 1st: due but nothing ready
-      repo.interstitialReady = true;
-      go(); // 2nd: not due even though ad is ready now
-      expect(repo.showInterstitialCalls, 0);
-      expect(ran, 2);
-    });
-
-    test('action runs exactly once per call in every path', () {
-      repo.interstitialReady = true;
-      repo.completeImmediately = true;
-      var ran = 0;
-      for (var i = 0; i < 5; i++) {
-        coord().showThenRun(
-          placement: AdPlacementKey.islamicNamesList,
-          action: () => ran++,
-        );
-      }
-      expect(ran, 5);
-    });
-  });
-
   group('adsInitializationProvider', () {
-    test('initializes the repository then warms an interstitial', () async {
+    test('initializes the repository and loads no interstitial', () async {
       await container.read(adsInitializationProvider.future);
       expect(repo.initializeCalls, 1);
-      expect(repo.preloadInterstitialCalls, 1);
+      expect(repo.preloadInterstitialCalls, 0);
     });
   });
 
