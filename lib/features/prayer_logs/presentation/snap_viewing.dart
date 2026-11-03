@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/usecase/usecase.dart';
 import '../../../core/utils/flow_log.dart';
 import '../../../shared/widgets/app_toast.dart';
+import '../../ads/presentation/providers/interstitial_ad_service.dart';
 import '../domain/prayer_log.dart';
 import '../domain/prayer_log_failure.dart';
 import 'providers/prayer_logs_providers.dart';
@@ -43,6 +44,14 @@ Future<SnapViewerAction?> openMemberSnap(
     case SnapState.unopened:
       break;
   }
+
+  // On three random prayers a day an ad comes first. It runs before the
+  // server is asked, so the one-time view is never spent while an ad is up,
+  // and the snap opens regardless of whether an ad was shown.
+  await ref
+      .read(interstitialAdServiceProvider)
+      .maybeShow(InterstitialPlacement.snapView, prayer: log.prayer.name);
+  if (!context.mounted) return null;
 
   FlowLog.log(
     tag,

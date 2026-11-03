@@ -14,6 +14,7 @@ import '../../../reliability_setup/presentation/widgets/reliability_banner.dart'
 import '../../../reliability_setup/presentation/widgets/reliability_setup_sheet.dart';
 import '../../../daily_content/presentation/providers/daily_notification_service.dart';
 import '../../../prayer_reminders/presentation/providers/prayer_alarm_launch_service.dart';
+import '../../../ads/presentation/providers/interstitial_ad_service.dart';
 import '../widgets/home_category_grid.dart';
 import '../../../videos/presentation/widgets/home_video_section.dart';
 import '../widgets/home_slider_header.dart';
@@ -34,6 +35,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Router is live and Home is on screen: deliver any notification tap
     // queued during launch and (once) ask for notification permission.
     WidgetsBinding.instance.addPostFrameCallback((_) => _startUp());
+  }
+
+  /// "See All": an interstitial first when one is due (rarely; see
+  /// InterstitialAdService), then the screen the user asked for.
+  Future<void> _openWithAd(String route) async {
+    await ref
+        .read(interstitialAdServiceProvider)
+        .maybeShow(InterstitialPlacement.homeSeeAll);
+    if (mounted) context.push(route);
   }
 
   /// Home is the moment to ask for everything reminders and notifications
@@ -119,7 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const ReliabilityBanner(),
                     _SectionHeader(
                       title: 'Categories',
-                      onSeeAll: () => context.push('/explore'),
+                      onSeeAll: () => _openWithAd('/explore'),
                       seq: seq,
                       titleDirection: RevealDirection.bottomStart,
                       actionDirection: RevealDirection.topEnd,
@@ -139,7 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         padding: EdgeInsets.only(bottom: 14.h),
                         child: _SectionHeader(
                           title: 'Bayan of the day',
-                          onSeeAll: () => context.push('/videos'),
+                          onSeeAll: () => _openWithAd('/videos'),
                           seq: seq,
                           titleDirection: RevealDirection.end,
                           actionDirection: RevealDirection.bottomEnd,
