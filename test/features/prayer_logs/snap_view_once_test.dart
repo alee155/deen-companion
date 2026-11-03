@@ -21,6 +21,7 @@ import 'package:mocktail/mocktail.dart';
 
 import '../_support/dio_test_support.dart';
 import 'presentation/_prayer_log_test_support.dart';
+import '../../helpers/no_interstitials.dart';
 
 final _now = DateTime.now();
 
@@ -214,7 +215,10 @@ void main() {
     Future<void> pump(WidgetTester tester, PrayerLog log) async {
       repo = ScriptedLogsRepo();
       container = ProviderContainer(
-        overrides: [prayerLogsRepositoryProvider.overrideWithValue(repo)],
+        overrides: [
+          prayerLogsRepositoryProvider.overrideWithValue(repo),
+          noInterstitials,
+        ],
       );
       addTearDown(container.dispose);
       await tester.pumpWidget(

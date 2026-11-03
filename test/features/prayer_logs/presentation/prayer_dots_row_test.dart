@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../helpers/no_interstitials.dart';
 import '_prayer_log_test_support.dart';
 
 PrayerLog _log(PrayerName p, {String? url}) => PrayerLog(
@@ -42,6 +43,7 @@ Future<void> _pump(WidgetTester tester, Widget child) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        noInterstitials,
         prayerLogsRepositoryProvider.overrideWithValue(
           ScriptedLogsRepo()
             ..viewResult = const Success(OpenedSnap(url: 'https://img.test/a')),

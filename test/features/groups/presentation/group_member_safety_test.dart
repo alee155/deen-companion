@@ -25,6 +25,7 @@ import '../../prayer_logs/presentation/_prayer_log_test_support.dart';
 import '../../group_live/_live_support.dart';
 import '../../moderation/_moderation_support.dart';
 import '../../streaks/_streaks_support.dart';
+import '../../../helpers/no_interstitials.dart';
 
 class _Session extends AuthSessionNotifier {
   final String id;
@@ -106,6 +107,7 @@ Future<FakeModeration> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        noInterstitials,
         groupSummaryRemoteDataSourceProvider.overrideWithValue(
           FakeSummaryRemote(),
         ),

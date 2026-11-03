@@ -26,6 +26,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:deen_companion/features/streaks/domain/entities/group_streaks.dart';
 import '../../streaks/_streaks_support.dart';
 import '../../group_live/_live_support.dart';
+import '../../../helpers/no_interstitials.dart';
 
 class _Session extends AuthSessionNotifier {
   @override
@@ -147,6 +148,7 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        noInterstitials,
         ...overrides,
         groupSummaryRemoteDataSourceProvider.overrideWithValue(
           FakeSummaryRemote(),
