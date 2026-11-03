@@ -24,6 +24,19 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>GIDClientID</key>
+	<string>689478778228-di6k2u6goi01s8et2gcdhmejeigi6doo.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.689478778228-di6k2u6goi01s8et2gcdhmejeigi6doo</string>
+			</array>
+		</dict>
+	</array>
 	<key>FlutterDeepLinkingEnabled</key>
 	<true/>
 	<key>GADApplicationIdentifier</key>
