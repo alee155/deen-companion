@@ -11,11 +11,15 @@ void main() {
       url: url,
     );
     expect(m, contains('Sara Ahmed has invited you'));
-    expect(m, contains('“Family Namaz”'));
-    expect(m, contains('Deen Companion is a free app'));
-    expect(m, contains('prayer times'));
+    expect(m, contains('“Family Namaz” on Deen Companion'));
     expect(m, contains('Join now'));
     expect(m, contains(url));
+  });
+
+  test('has no app description paragraph', () {
+    final m = groupInviteMessage(senderName: 'Sara', groupName: 'G', url: url);
+    expect(m, isNot(contains('free app')));
+    expect(m, isNot(contains('Quran')));
   });
 
   test('the link is on its own line so it is tappable in any app', () {
