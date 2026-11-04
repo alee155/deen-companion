@@ -9,6 +9,7 @@ import 'package:deen_companion/features/groups/presentation/screens/group_detail
 import 'package:deen_companion/features/groups/presentation/screens/join_group_screen.dart';
 import 'package:deen_companion/core/utils/flow_log.dart';
 import 'package:deen_companion/features/points/presentation/screens/points_rules_screen.dart';
+import 'package:deen_companion/features/leaderboard/presentation/screens/group_leaderboard_screen.dart';
 import 'package:deen_companion/features/statistics/presentation/screens/group_statistics_screen.dart';
 import 'package:deen_companion/features/prayer_times/presentation/screens/city_picker_screen.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_logs_screen.dart';
@@ -150,6 +151,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/groups/:groupId/stats',
         builder: (context, state) =>
             GroupStatisticsScreen(groupId: state.pathParameters['groupId']!),
+      ),
+      // A group's ranking (podium and every member in order).
+      GoRoute(
+        path: '/groups/:groupId/leaderboard',
+        builder: (context, state) =>
+            GroupLeaderboardScreen(groupId: state.pathParameters['groupId']!),
       ),
       // Home > Bayan of the day.
       GoRoute(

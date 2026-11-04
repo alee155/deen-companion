@@ -313,6 +313,15 @@ void main() {
     },
   );
 
+  testWidgets('the header links to the leaderboard next to statistics', (
+    tester,
+  ) async {
+    await _pump(tester, me: 'member1');
+    expect(find.text('Leaderboard'), findsOneWidget);
+    expect(find.text('View statistics'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('a regular member can open another member\'s details', (
     tester,
   ) async {

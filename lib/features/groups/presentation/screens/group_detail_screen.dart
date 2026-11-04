@@ -388,6 +388,9 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                   showInviteGroupSheet(context, group: g, isAdmin: isAdmin),
               onOpenStats: () =>
                   context.push('/groups/${Uri.encodeComponent(g.id)}/stats'),
+              onOpenLeaderboard: () => context.push(
+                '/groups/${Uri.encodeComponent(g.id)}/leaderboard',
+              ),
             ),
           ),
           SliverToBoxAdapter(

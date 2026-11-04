@@ -23,6 +23,9 @@ class GroupDetailHero extends StatelessWidget {
   /// Opens the group's statistics screen.
   final VoidCallback onOpenStats;
 
+  /// Opens the group's leaderboard screen.
+  final VoidCallback onOpenLeaderboard;
+
   /// The group's streak board, for today's progress in the header. Null while
   /// loading or if it failed.
   final GroupStreakBoard? board;
@@ -33,6 +36,7 @@ class GroupDetailHero extends StatelessWidget {
     required this.myRole,
     required this.onInvite,
     required this.onOpenStats,
+    required this.onOpenLeaderboard,
     this.board,
   });
 
@@ -179,12 +183,18 @@ class GroupDetailHero extends StatelessWidget {
                     chip(Icons.link_rounded, 'Invite', onTap: onInvite),
                     // The summary below carries its own link; this keeps the
                     // statistics reachable while that summary is not shown.
-                    if (board == null || board!.isEmpty)
+                    if (board == null || board!.isEmpty) ...[
                       chip(
                         Icons.insights_rounded,
                         'Statistics',
                         onTap: onOpenStats,
                       ),
+                      chip(
+                        Icons.leaderboard_rounded,
+                        'Leaderboard',
+                        onTap: onOpenLeaderboard,
+                      ),
+                    ],
                   ],
                 ).slideIn(
                   RevealDirection.bottom,
@@ -196,6 +206,7 @@ class GroupDetailHero extends StatelessWidget {
                   _HeroTodaySummary(
                     board: board!,
                     onOpenStats: onOpenStats,
+                    onOpenLeaderboard: onOpenLeaderboard,
                   ).slideIn(
                     RevealDirection.bottom,
                     delay: const Duration(milliseconds: 180),
@@ -217,7 +228,35 @@ class GroupDetailHero extends StatelessWidget {
 class _HeroTodaySummary extends StatelessWidget {
   final GroupStreakBoard board;
   final VoidCallback onOpenStats;
-  const _HeroTodaySummary({required this.board, required this.onOpenStats});
+  final VoidCallback onOpenLeaderboard;
+  const _HeroTodaySummary({
+    required this.board,
+    required this.onOpenStats,
+    required this.onOpenLeaderboard,
+  });
+
+  Widget _heroLink(IconData icon, String text, VoidCallback onTap) =>
+      TextButton.icon(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.goldLight,
+          padding: EdgeInsets.symmetric(horizontal: 0, vertical: 2.h),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        icon: Icon(icon, size: 16.sp),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              text,
+              style: TextStyle(fontSize: 12.5.sp, fontWeight: FontWeight.w700),
+            ),
+            SizedBox(width: 2.w),
+            Icon(Icons.chevron_right_rounded, size: 16.sp),
+          ],
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -335,33 +374,17 @@ class _HeroTodaySummary extends StatelessWidget {
               color: onHero.withValues(alpha: 0.7),
             ),
           ),
-          // Everything beyond today's snapshot lives on the statistics screen.
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: onOpenStats,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.goldLight,
-                padding: EdgeInsets.symmetric(horizontal: 0, vertical: 2.h),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          // Everything beyond today's snapshot lives on these two screens.
+          Wrap(
+            spacing: 18.w,
+            children: [
+              _heroLink(Icons.insights_rounded, 'View statistics', onOpenStats),
+              _heroLink(
+                Icons.leaderboard_rounded,
+                'Leaderboard',
+                onOpenLeaderboard,
               ),
-              icon: Icon(Icons.insights_rounded, size: 16.sp),
-              label: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'View statistics',
-                    style: TextStyle(
-                      fontSize: 12.5.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  SizedBox(width: 2.w),
-                  Icon(Icons.chevron_right_rounded, size: 16.sp),
-                ],
-              ),
-            ),
+            ],
           ),
         ],
       ),
