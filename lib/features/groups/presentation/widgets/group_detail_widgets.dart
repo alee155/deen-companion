@@ -377,8 +377,7 @@ class MemberSnapTile extends StatelessWidget {
   final int rank;
   final bool isMe;
 
-  /// Whether tapping the row opens the member's details (admin, or self).
-  final bool canOpenDetails;
+  /// Tapping the row opens the member's details, for every member.
   final VoidCallback onOpenDetails;
 
   /// Opens the member's latest snap. Only offered while it is unopened.
@@ -407,7 +406,6 @@ class MemberSnapTile extends StatelessWidget {
     required this.member,
     required this.rank,
     required this.isMe,
-    required this.canOpenDetails,
     required this.onOpenDetails,
     required this.onOpenSnap,
     this.snapState = SnapState.none,
@@ -424,7 +422,7 @@ class MemberSnapTile extends StatelessWidget {
     final hasFigures =
         prayersToday != null || pointsToday != null || streakLine != null;
     return InkWell(
-      onTap: canOpenDetails ? onOpenDetails : null,
+      onTap: onOpenDetails,
       child: Padding(
         padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
         child: Row(

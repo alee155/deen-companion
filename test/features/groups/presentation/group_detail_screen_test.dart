@@ -313,13 +313,17 @@ void main() {
     },
   );
 
-  testWidgets('a regular member cannot open another member\'s details', (
+  testWidgets('a regular member can open another member\'s details', (
     tester,
   ) async {
     await _pump(tester, me: 'member1');
     await tester.tap(find.text('Alee Khan'));
     await _settle(tester);
-    expect(find.text('Best streak'), findsNothing);
+    await _settle(tester);
+    expect(find.text('Best streak'), findsOneWidget);
+    // Opening is for everyone; removing and the admin banner are not.
+    expect(find.text('Remove from group'), findsNothing);
+    expect(find.textContaining('Admin view'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 }

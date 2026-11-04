@@ -508,8 +508,6 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     // board, today's prayers and points from the group feed.
     final streak = board?.of(m.userId);
     final isMe = m.userId == myId;
-    // Admins can open anyone's details; other members only their own.
-    final canOpen = isAdmin || isMe;
     // A blocked member's snaps are hidden from the viewer.
     final isBlocked = ref.watch(blockedUserIdsProvider).contains(m.userId);
     // Snaps are for the other members: the sender does not open their own.
@@ -535,7 +533,6 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       pointsToday: prayers?.totalPoints,
       rank: rank,
       isMe: isMe,
-      canOpenDetails: canOpen,
       onOpenDetails: () async {
         final action = await showMemberDetailSheet(
           context,
