@@ -286,6 +286,8 @@ class ApiEndpoints {
       '$_deenBase/groups/${Uri.encodeComponent(id)}/streak-rule';
   static String groupStreaks(String id) =>
       '$_deenBase/groups/${Uri.encodeComponent(id)}/streaks';
+  static String groupLeaderboard(String id) =>
+      '$_deenBase/groups/${Uri.encodeComponent(id)}/leaderboard';
   static const String myStreaks = '$_deenBase/users/me/streaks';
   static const String myStatsSummary = '$_deenBase/users/me/stats/summary';
   static const String myStatsDaily = '$_deenBase/users/me/stats/daily';
