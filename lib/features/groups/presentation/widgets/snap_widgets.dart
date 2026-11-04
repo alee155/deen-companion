@@ -29,9 +29,7 @@ class RoleBadge extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
       decoration: BoxDecoration(
-        color: admin
-            ? AppColors.emeraldInk.withValues(alpha: 0.18)
-            : AppColors.worshipAccentBg,
+        color: admin ? AppColors.emeraldInk : AppColors.worshipAccentBg,
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: Text(
@@ -40,7 +38,7 @@ class RoleBadge extends StatelessWidget {
           fontSize: 8.5.sp,
           letterSpacing: 0.8,
           fontWeight: FontWeight.w800,
-          color: AppColors.worshipAccent,
+          color: admin ? AppColors.onEmeraldInk : AppColors.worshipAccent,
         ),
       ),
     );
