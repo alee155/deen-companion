@@ -11,12 +11,16 @@ class SettingsAboutCard extends StatelessWidget {
   final String version;
   final VoidCallback onPrivacy;
   final VoidCallback onTerms;
+  final VoidCallback onSupport;
+  final VoidCallback onDeleteAccount;
 
   const SettingsAboutCard({
     super.key,
     required this.version,
     required this.onPrivacy,
     required this.onTerms,
+    required this.onSupport,
+    required this.onDeleteAccount,
   });
 
   @override
@@ -88,6 +92,20 @@ class SettingsAboutCard extends StatelessWidget {
             title: 'Terms & Conditions',
             trailing: Icons.north_east_rounded,
             onTap: onTerms,
+          ),
+          Divider(height: 1, color: AppColors.borderWarm),
+          _Row(
+            icon: Icons.support_agent_rounded,
+            title: 'Support',
+            trailing: Icons.north_east_rounded,
+            onTap: onSupport,
+          ),
+          Divider(height: 1, color: AppColors.borderWarm),
+          _Row(
+            icon: Icons.person_remove_outlined,
+            title: 'Delete Account',
+            trailing: Icons.north_east_rounded,
+            onTap: onDeleteAccount,
           ),
           Divider(height: 1, color: AppColors.borderWarm),
           _Row(

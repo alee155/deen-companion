@@ -587,6 +587,9 @@ class SettingsScreen extends ConsumerWidget {
                     _openLink(context, AppConstants.privacyPolicyUrl),
                 onTerms: () =>
                     _openLink(context, AppConstants.termsAndConditionsUrl),
+                onSupport: () => _openLink(context, AppConstants.supportUrl),
+                onDeleteAccount: () =>
+                    _openLink(context, AppConstants.deleteAccountUrl),
               ),
               // SizedBox(height: 26.h),
 

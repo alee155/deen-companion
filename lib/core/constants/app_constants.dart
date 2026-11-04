@@ -81,4 +81,8 @@ class AppConstants {
       'https://legal-sites.dgexpense.com/deen-app/privacy_policy.html';
   static const String termsAndConditionsUrl =
       'https://legal-sites.dgexpense.com/deen-app/terms_and_conditions.html';
+  static const String supportUrl =
+      'https://legal-sites.dgexpense.com/deen-app/support.html';
+  static const String deleteAccountUrl =
+      'https://legal-sites.dgexpense.com/deen-app/delete_account.html';
 }
