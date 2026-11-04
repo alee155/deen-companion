@@ -20,7 +20,15 @@ class _MockChannel extends Mock implements PrayerAlarmChannel {}
 /// independent of the wall clock.
 PrayerTimes dayFromNow(List<double> hours, {DateTime? base}) {
   final now = base ?? DateTime.now();
-  DateTime at(double h) => now.add(Duration(minutes: (h * 60).round()));
+  // A time "already passed" must still be dated today: the service skips a day
+  // whose Fajr is dated before today, which is what "now minus 5 hours" would
+  // be between midnight and 5 AM.
+  final startOfDay = DateTime(now.year, now.month, now.day);
+  DateTime at(double h) {
+    final t = now.add(Duration(minutes: (h * 60).round()));
+    return t.isBefore(startOfDay) ? startOfDay : t;
+  }
+
   return PrayerTimes(
     fajr: at(hours[0]),
     dhuhr: at(hours[1]),
