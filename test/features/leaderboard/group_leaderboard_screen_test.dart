@@ -155,6 +155,52 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('ten members: podium of three, seven rows, long names fit', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320 * 3, 800 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final ten = [
+      for (var i = 1; i <= 10; i++)
+        _e(
+          i,
+          'u$i',
+          'Muhammad Abdurrahman Ibn Khalid Number $i',
+          points: 100 - i * 5,
+          role: i == 1 ? GroupRole.admin : GroupRole.member,
+        ),
+    ];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          groupSummaryRemoteDataSourceProvider.overrideWithValue(
+            FakeSummaryRemote(),
+          ),
+          authSessionProvider.overrideWith(() => _Session('u7')),
+          groupDetailProvider('g1').overrideWith((ref) async => _detail),
+          leaderboardRepositoryProvider.overrideWithValue(
+            _Repo([Success(ten)]),
+          ),
+        ],
+        child: ScreenUtilInit(
+          designSize: const Size(390, 844),
+          builder: (_, _) =>
+              const MaterialApp(home: GroupLeaderboardScreen(groupId: 'g1')),
+        ),
+      ),
+    );
+    await _settle(tester);
+    expect(find.text('You’re #7 of 10'), findsOneWidget);
+    // Scroll to the last row: ranks 4..10 are rows, 1..3 the podium.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -3000));
+    await _settle(tester);
+    expect(find.textContaining('Number 10'), findsOneWidget);
+    expect(find.textContaining('Number 7 (you)'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('a failure shows a retry that loads the board', (tester) async {
     final repo = _Repo([const Error(NetworkFailure()), Success(_four)]);
     await _pump(tester, repo);
