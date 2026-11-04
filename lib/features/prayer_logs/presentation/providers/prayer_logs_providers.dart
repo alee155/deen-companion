@@ -6,6 +6,8 @@ import '../../../../core/state/keep_alive_for.dart';
 import '../../../../core/usecase/usecase.dart';
 import '../../../../core/utils/flow_log.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
+import '../../../leaderboard/presentation/providers/leaderboard_providers.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../statistics/presentation/providers/statistics_providers.dart';
 import '../../../streaks/presentation/providers/streaks_providers.dart';
 import '../../data/prayer_logs_remote_datasource.dart';
@@ -278,6 +280,11 @@ class PrayerLogActions {
     // A prayer logged or removed changes every streak it counted toward.
     invalidateStreaks(ref);
     invalidateStatistics(ref);
+    // Points move too: the Profile total and each group's leaderboard are kept
+    // for a few minutes, so without this they showed the old numbers after a
+    // send or an undo.
+    ref.invalidate(myPointsProvider);
+    ref.invalidate(groupLeaderboardProvider);
     await ref.read(currentPrayerProvider.notifier).refresh();
   }
 }

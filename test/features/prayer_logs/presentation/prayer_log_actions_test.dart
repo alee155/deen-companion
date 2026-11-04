@@ -8,6 +8,10 @@ import 'package:deen_companion/features/prayer_times/domain/entities/prayer_time
 import 'package:deen_companion/features/prayer_times/domain/entities/prayer_times_bundle.dart';
 import 'package:deen_companion/features/prayer_times/presentation/providers/prayer_times_loader.dart';
 import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
+import 'package:deen_companion/features/leaderboard/domain/entities/leaderboard_entry.dart';
+import 'package:deen_companion/features/leaderboard/presentation/providers/leaderboard_providers.dart';
+import 'package:deen_companion/features/profile/domain/entities/user_profile.dart';
+import 'package:deen_companion/features/profile/presentation/providers/profile_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -136,4 +140,49 @@ void main() {
     expect(repo.logged, hasLength(1));
     expect(_refreshes, isEmpty);
   });
+
+  test(
+    'a send and an undo refresh the Profile points and the leaderboard',
+    () async {
+      var pointsLoads = 0;
+      var boardLoads = 0;
+      final repo = _Scripted([Success(logOf(PrayerName.asr))]);
+      final c = ProviderContainer(
+        overrides: [
+          authSessionProvider.overrideWith(SignedIn.new),
+          prayerLogsRepositoryProvider.overrideWithValue(repo),
+          currentPrayerProvider.overrideWith(() => FixedCurrent(openState())),
+          myPointsProvider.overrideWith((ref) async {
+            pointsLoads++;
+            return UserPoints.empty;
+          }),
+          groupLeaderboardProvider.overrideWith((ref, id) async {
+            boardLoads++;
+            return const <LeaderboardEntry>[];
+          }),
+        ],
+      );
+      addTearDown(c.dispose);
+      // Both are being watched, as they are while their screens are open.
+      c.listen(myPointsProvider, (_, _) {});
+      c.listen(groupLeaderboardProvider('g1'), (_, _) {});
+      await c.read(myPointsProvider.future);
+      await c.read(groupLeaderboardProvider('g1').future);
+      expect((pointsLoads, boardLoads), (1, 1));
+
+      await c.read(prayerLogActionsProvider).log('/tmp/p.jpg');
+      await c.read(myPointsProvider.future);
+      await c.read(groupLeaderboardProvider('g1').future);
+      expect(
+        (pointsLoads, boardLoads),
+        (2, 2),
+        reason: 'refetched after a send',
+      );
+
+      await c.read(prayerLogActionsProvider).undo('log-1');
+      await c.read(myPointsProvider.future);
+      await c.read(groupLeaderboardProvider('g1').future);
+      expect((pointsLoads, boardLoads), (3, 3), reason: 'and after an undo');
+    },
+  );
 }
