@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/providers.dart';
@@ -32,12 +33,17 @@ final appOpenAdDataSourceProvider = Provider<AppOpenAdDataSource>((ref) {
   return const AppOpenAdDataSource();
 });
 
+const _honorServer = bool.fromEnvironment('ADS_HONOR_SERVER');
+
 /// The ads service's answer (saved copy first, refetched after its TTL).
 final adsConfigStoreProvider = Provider<AdsConfigStore>((ref) {
   return AdsConfigStore(
     remote: AdsConfigRemoteDataSource(),
     storage: ref.watch(localStorageServiceProvider),
     platform: Platform.isIOS ? 'ios' : 'android',
+    // Debug builds show Google test ads even while the server has ads off.
+    // `--dart-define=ADS_HONOR_SERVER=true` makes debug obey the server too.
+    forceTestAds: kDebugMode && !_honorServer,
   );
 });
 

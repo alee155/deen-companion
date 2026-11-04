@@ -191,5 +191,29 @@ void main() {
       expect(remote.calls, 1);
       expect(s.current.banner.usable, isTrue);
     });
+
+    test('forceTestAds switches every ad type on, still fetching', () async {
+      final remote = FakeRemote(AdsConfigFetch(config: RemoteAdsConfig.off));
+      final s = AdsConfigStore(
+        remote: remote,
+        storage: storage,
+        platform: 'ios',
+        now: () => clock,
+        forceTestAds: true,
+      );
+      await s.ready;
+      expect(remote.calls, 1);
+      expect(s.current.adsEnabled, isTrue);
+      expect(s.current.banner.usable, isTrue);
+      expect(s.current.interstitial.usable, isTrue);
+      expect(s.current.appOpen.usable, isTrue);
+    });
+
+    test('without forceTestAds an off answer stays off', () async {
+      final remote = FakeRemote(AdsConfigFetch(config: RemoteAdsConfig.off));
+      final s = store(remote);
+      await s.ready;
+      expect(s.current.adsEnabled, isFalse);
+    });
   });
 }

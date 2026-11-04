@@ -27,10 +27,26 @@ class AdsConfigStore {
     required LocalStorageService storage,
     required String platform,
     DateTime Function()? now,
+    this.forceTestAds = false,
   }) : _remote = remote,
        _storage = storage,
        _platform = platform,
        _now = now ?? DateTime.now;
+
+  /// Debug builds only: every ad type is treated as switched on, whatever the
+  /// server says, so Google's test ads can be checked during development. The
+  /// fetch and saved copy still run as normal; release builds never set this.
+  final bool forceTestAds;
+
+  static const _debugUnit = 'debug-test-unit';
+  static const _allOn = RemoteAdsConfig(
+    adsEnabled: true,
+    banner: AdSlotConfig(enabled: true, unitId: _debugUnit),
+    interstitial: AdSlotConfig(enabled: true, unitId: _debugUnit),
+    appOpen: AdSlotConfig(enabled: true, unitId: _debugUnit),
+    configVersion: 0,
+    ttlSeconds: 3600,
+  );
 
   RemoteAdsConfig _current = RemoteAdsConfig.off;
   DateTime? _fetchedAt;
@@ -38,7 +54,7 @@ class AdsConfigStore {
   Future<void>? _loading;
   Future<void>? _refreshing;
 
-  RemoteAdsConfig get current => _current;
+  RemoteAdsConfig get current => forceTestAds ? _allOn : _current;
 
   /// Completes once the config is known: from the saved copy, or from the
   /// first fetch when there is none. Never throws.
