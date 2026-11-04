@@ -6,7 +6,9 @@ import '../../../../core/utils/share_text.dart';
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
+import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../domain/entities/group_detail.dart';
+import '../../domain/group_invite_message.dart';
 import '../providers/groups_providers.dart';
 import 'group_sheet_widgets.dart';
 
@@ -60,13 +62,21 @@ class _InviteGroupSheetState extends ConsumerState<InviteGroupSheet> {
     if (error == null) HapticFeedback.mediumImpact();
   }
 
+  /// What is copied and shared: an invitation that says who is inviting and
+  /// what Deen Companion is, with the link, not the bare link.
+  String _message(String url) => groupInviteMessage(
+    senderName: ref.read(authSessionProvider).name,
+    groupName: widget.group.name,
+    url: url,
+  );
+
   Future<void> _copy(String url) async {
-    await Clipboard.setData(ClipboardData(text: url));
+    await Clipboard.setData(ClipboardData(text: _message(url)));
     HapticFeedback.selectionClick();
     if (!mounted) return;
     setState(() {
       _error = null;
-      _success = 'Link copied';
+      _success = 'Invitation copied';
     });
   }
 
@@ -181,11 +191,7 @@ class _InviteGroupSheetState extends ConsumerState<InviteGroupSheet> {
                     icon: Icons.ios_share_rounded,
                     onPressed: resetting
                         ? null
-                        : () => shareText(
-                            context,
-                            'Join “${widget.group.name}” on Deen Companion: '
-                            '${invite.url}',
-                          ),
+                        : () => shareText(context, _message(invite.url)),
                   ),
                 ),
               ],

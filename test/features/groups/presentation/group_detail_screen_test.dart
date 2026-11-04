@@ -9,6 +9,7 @@ import 'package:deen_companion/features/groups/presentation/providers/groups_pro
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
 import 'package:deen_companion/features/streaks/presentation/providers/streaks_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -193,6 +194,41 @@ void main() {
     expect(find.text('Reset invite link'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets(
+    'Copy puts the whole invitation on the clipboard, not just the link',
+    (tester) async {
+      final copied = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied.add((call.arguments as Map)['text'] as String);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      await _pump(tester, me: 'member1');
+      await tester.tap(find.text('Invite'));
+      await _settle(tester);
+      await tester.tap(find.text('Copy'));
+      await _settle(tester);
+
+      expect(copied, hasLength(1));
+      expect(copied.single, contains('member1 has invited you'));
+      expect(copied.single, contains('Namaz Family Group'));
+      expect(copied.single, contains('Deen Companion'));
+      expect(copied.single, contains('https://x.test/invite/tok-g1-0'));
+      expect(find.text('Invitation copied'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
 
   testWidgets('edit sheet: save locked until something changes', (
     tester,
