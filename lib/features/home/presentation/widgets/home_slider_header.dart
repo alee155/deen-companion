@@ -163,7 +163,7 @@ class _HomeSliderHeaderState extends ConsumerState<HomeSliderHeader> {
                   ),
                   SizedBox(height: 22.h),
                   _NextPrayerSummary(formatTime: _formatTime),
-                  SizedBox(height: 42.h),
+                  SizedBox(height: 22.h),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
