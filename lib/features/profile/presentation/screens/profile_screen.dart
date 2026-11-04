@@ -280,20 +280,18 @@ class ProfileScreen extends ConsumerWidget {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     padding: EdgeInsets.zero,
-                    // A fixed height (not an aspect ratio) so larger system
-                    // text can't overflow the tile.
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      mainAxisSpacing: 12.w,
-                      crossAxisSpacing: 12.w,
-                      mainAxisExtent: 140.h,
+                      mainAxisSpacing: 5.w,
+                      crossAxisSpacing: 5.w,
+                      mainAxisExtent: 80.h,
                     ),
                     children: [
                       for (var i = 0; i < shortcuts.length; i++)
                         reveal(shortcuts[i], i + 2),
                     ],
                   ),
-                  SizedBox(height: 24.h),
+                  SizedBox(height: 5.h),
                   reveal(const GroupedSectionLabel('More'), 6),
                   reveal(
                     GroupedCard(
@@ -335,7 +333,7 @@ class ProfileScreen extends ConsumerWidget {
                     7,
                   ),
                   if (signedIn) ...[
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 10.h),
                     reveal(
                       GroupedCard(
                         children: [

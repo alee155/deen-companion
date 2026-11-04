@@ -83,8 +83,10 @@ void main() {
 
   testWidgets('and the list scrolls to the last row', (tester) async {
     await _pump(tester);
-    await tester.drag(find.byType(ListView).first, const Offset(0, -1200));
-    await tester.pump(const Duration(milliseconds: 600));
+    // The page is compact now, so it barely scrolls; a drag far past its end
+    // would bounce the list out of view before it settles.
+    await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+    await tester.pump(const Duration(seconds: 2));
     final delete = find.text('Delete account');
     // Within the screen, above the bottom tab bar's room.
     expect(tester.getTopLeft(delete).dy, lessThan(844 - 100));
