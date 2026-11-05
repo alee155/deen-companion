@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/usecase/usecase.dart';
@@ -8,6 +10,7 @@ import '../../domain/entities/group_invite.dart';
 import '../../domain/entities/invite_preview.dart';
 import '../../domain/repositories/groups_repository.dart';
 import '../datasources/groups_remote_datasource.dart';
+import '../models/group_model.dart';
 
 class GroupsRepositoryImpl implements GroupsRepository {
   final GroupsRemoteDataSource remote;
@@ -17,8 +20,26 @@ class GroupsRepositoryImpl implements GroupsRepository {
   @override
   Future<Result<List<Group>>> getMyGroups() => _guard(
     'getMyGroups',
-    () async => [for (final m in await remote.getGroups()) m.toEntity()],
+    () async => Future.wait([
+      for (final m in await remote.getGroups()) _withMemberCount(m),
+    ]),
   );
+
+  /// The group with its member count. `GET /groups` does not say how many
+  /// members a group has, and the entity's default of 1 showed every group as
+  /// a one-person group (the snap picker, the Groups list). So when the list
+  /// carries no count it is taken from the group's details. A failure there
+  /// keeps the list usable: that group just keeps the default.
+  Future<Group> _withMemberCount(GroupModel m) async {
+    if (m.memberCount != null) return m.toEntity();
+    try {
+      final detail = (await remote.getGroupDetail(m.id)).toEntity();
+      return m.toEntity(memberCount: detail.memberCount);
+    } catch (error) {
+      debugPrint('[Groups] member count for ${m.id} unavailable: $error');
+      return m.toEntity();
+    }
+  }
 
   @override
   Future<Result<Group>> createGroup(NewGroup input) =>

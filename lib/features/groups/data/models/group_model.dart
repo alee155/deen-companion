@@ -19,6 +19,10 @@ class GroupModel {
   /// Signed link to the group picture, null when it has none.
   final String? avatarUrl;
 
+  /// How many members the group has, when the list answer says. It was not
+  /// part of `GET /groups`, so null means "ask the group's details".
+  final int? memberCount;
+
   const GroupModel({
     required this.id,
     required this.name,
@@ -30,6 +34,7 @@ class GroupModel {
     required this.updatedAt,
     required this.role,
     this.avatarUrl,
+    this.memberCount,
   });
 
   factory GroupModel.fromJson(Map<String, dynamic> json) => GroupModel(
@@ -43,9 +48,12 @@ class GroupModel {
     updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
     role: json['role'] as String?,
     avatarUrl: _url(json['avatarUrl']),
+    memberCount: (json['memberCount'] as num?)?.toInt(),
   );
 
-  Group toEntity({GroupRole? fallbackRole}) => Group(
+  /// [memberCount] overrides the model's own (the count taken from the group's
+  /// details when the list did not carry one).
+  Group toEntity({GroupRole? fallbackRole, int? memberCount}) => Group(
     id: id,
     name: name,
     description: description ?? '',
@@ -58,6 +66,7 @@ class GroupModel {
     role: role == null
         ? (fallbackRole ?? GroupRole.member)
         : GroupRole.parse(role),
+    memberCount: memberCount ?? this.memberCount ?? 1,
   );
 }
 

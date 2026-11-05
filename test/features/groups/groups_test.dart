@@ -196,6 +196,34 @@ extension on FakeRemote {
       });
 }
 
+/// Answers each group's details with a member count scripted by group id; an
+/// id in [failing] throws instead.
+class _CountingRemote extends FakeRemote {
+  _CountingRemote(super.groups, this.counts, {this.failing = const {}});
+  final Map<String, int> counts;
+  final Set<String> failing;
+  final detailCalls = <String>[];
+
+  @override
+  Future<GroupDetailModel> getGroupDetail(String groupId) async {
+    detailCalls.add(groupId);
+    if (failing.contains(groupId)) throw const ServerException('boom');
+    return GroupDetailModel.fromJson({
+      ..._json(id: groupId),
+      'members': [
+        for (var i = 0; i < (counts[groupId] ?? 0); i++)
+          {
+            'userId': 'u$i',
+            'name': 'M$i',
+            'email': 'm$i@b.c',
+            'role': i == 0 ? 'admin' : 'member',
+            'joinedAt': '2026-10-06T07:13:41.343Z',
+          },
+      ],
+    });
+  }
+}
+
 class _FixedSession extends AuthSessionNotifier {
   final AuthSession session;
   _FixedSession(this.session);
@@ -332,6 +360,58 @@ void main() {
       final groups = (await repo.getMyGroups() as Success<List<Group>>).data;
       expect(groups.map((g) => g.id), ['g1', 'g2']);
       expect(groups.map((g) => g.isOwner), [true, false]);
+    });
+
+    test('the list gives each group its real member count', () async {
+      final counting = _CountingRemote(
+        [
+          GroupModel.fromJson(_json(role: 'admin')),
+          GroupModel.fromJson(_json(id: 'g2', name: 'Other', role: 'member')),
+        ],
+        {'g1': 4, 'g2': 2},
+      );
+      final groups =
+          (await GroupsRepositoryImpl(remote: counting).getMyGroups()
+                  as Success<List<Group>>)
+              .data;
+      expect(groups.map((g) => g.memberCount), [4, 2]);
+      expect(groups.map((g) => g.id), ['g1', 'g2'], reason: 'order is kept');
+    });
+
+    test(
+      'a count the list already carries is used without asking again',
+      () async {
+        final counting = _CountingRemote(
+          [
+            GroupModel.fromJson({..._json(role: 'admin'), 'memberCount': 7}),
+          ],
+          {'g1': 3},
+        );
+        final groups =
+            (await GroupsRepositoryImpl(remote: counting).getMyGroups()
+                    as Success<List<Group>>)
+                .data;
+        expect(groups.single.memberCount, 7);
+        expect(counting.detailCalls, isEmpty);
+      },
+    );
+
+    test('one group whose details fail does not break the list', () async {
+      final counting = _CountingRemote(
+        [
+          GroupModel.fromJson(_json(role: 'admin')),
+          GroupModel.fromJson(_json(id: 'g2', name: 'Other', role: 'member')),
+        ],
+        {'g1': 4, 'g2': 2},
+        failing: {'g2'},
+      );
+      final groups =
+          (await GroupsRepositoryImpl(remote: counting).getMyGroups()
+                  as Success<List<Group>>)
+              .data;
+      expect(groups, hasLength(2));
+      expect(groups.first.memberCount, 4);
+      expect(groups.last.memberCount, 1, reason: 'falls back to the default');
     });
 
     test('empty list is a success, not an error', () async {
