@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../features/audio_player/presentation/providers/audio_player_provider.dart';
-import '../../features/audio_player/presentation/providers/surah_navigation.dart';
-import '../../features/audio_player/presentation/widgets/mini_player_bar.dart';
+import '../../features/audio_player/presentation/widgets/now_playing_dock.dart';
 import '../../features/profile/presentation/widgets/gender_prompt_sheet.dart';
-import '../motion/motion.dart';
 import '../widgets/floating_nav_bar.dart';
 
 /// Shell around the bottom-tab destinations (Home / Favorites / Settings /
@@ -47,8 +44,6 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final audioState = ref.watch(audioPlayerNotifierProvider);
-
     return Scaffold(
       extendBody: true,
       // Asks once, per app run, for the gender of an account that has none.
@@ -57,37 +52,7 @@ class AppShell extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Docked above the nav bar only when a track is loaded.
-          AnimatedSize(
-            duration: context.motion.duration(AppMotion.normal),
-            curve: AppMotion.emphasized,
-            alignment: Alignment.bottomCenter,
-            child: ContentSwitcher(
-              alignment: Alignment.bottomCenter,
-              child: !audioState.hasTrack
-                  ? const SizedBox(
-                      key: ValueKey('no-mini'),
-                      width: double.infinity,
-                    )
-                  : MiniPlayerBar(
-                      key: const ValueKey('mini'),
-                      title: audioState.track!.titleEnglish,
-                      titleArabic: audioState.track!.titleArabic,
-                      subtitle: audioState.track!.reciterName,
-                      isPlaying: audioState.isPlaying,
-                      progress: audioState.duration.inMilliseconds == 0
-                          ? 0.0
-                          : audioState.position.inMilliseconds /
-                                audioState.duration.inMilliseconds,
-                      onTap: () => context.push('/player'),
-                      onPlayPause: () => ref
-                          .read(audioPlayerNotifierProvider.notifier)
-                          .togglePlayPause(),
-                      onNext: () => playAdjacentSurah(ref, delta: 1),
-                      onClose: () =>
-                          ref.read(audioPlayerNotifierProvider.notifier).stop(),
-                    ),
-            ),
-          ),
+          const NowPlayingDock(),
           FloatingNavBar(
             currentIndex: navigationShell.currentIndex,
             onTap: _onTabTapped,

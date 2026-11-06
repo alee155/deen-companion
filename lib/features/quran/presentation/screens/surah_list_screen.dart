@@ -1,5 +1,6 @@
 import 'package:deen_companion/core/theme/app_motion.dart';
 import 'package:flutter/material.dart';
+import '../../../audio_player/presentation/widgets/now_playing_dock.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -24,7 +25,7 @@ class SurahListScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-
+      bottomNavigationBar: const NowPlayingDock(),
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: RefreshIndicator(

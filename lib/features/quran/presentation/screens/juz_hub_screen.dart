@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import '../../../audio_player/presentation/widgets/now_playing_dock.dart';
 
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -24,6 +25,7 @@ class JuzHubScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.parchment,
+      bottomNavigationBar: const NowPlayingDock(),
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: CustomScrollView(

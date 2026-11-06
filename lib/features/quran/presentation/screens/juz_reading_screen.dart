@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import '../../../audio_player/presentation/widgets/now_playing_dock.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -128,6 +129,7 @@ class _JuzReadingScreenState extends ConsumerState<JuzReadingScreen>
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
+      bottomNavigationBar: const NowPlayingDock(),
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
         child: Column(
