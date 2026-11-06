@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/app_info/app_info_service.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -94,14 +95,35 @@ class ProfileScreen extends ConsumerWidget {
             color: AppColors.inkText,
           ),
         ),
-        content: Text(
-          'This permanently deletes your account and can’t be undone. '
-          'Favorites and settings on this device are kept.',
-          style: TextStyle(
-            fontSize: 13.sp,
-            height: 1.45,
-            color: AppColors.textSecondary,
-          ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'This permanently deletes your account and can’t be undone. '
+              'Favorites and settings on this device are kept.',
+              style: TextStyle(
+                fontSize: 13.sp,
+                height: 1.45,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            SizedBox(height: 8.h),
+            GestureDetector(
+              onTap: () => launchUrl(
+                Uri.parse(AppConstants.deleteAccountUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+              child: Text(
+                'See what is deleted and what is kept',
+                style: TextStyle(
+                  fontSize: 12.5.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.emeraldInk,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
