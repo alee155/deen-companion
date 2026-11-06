@@ -15,6 +15,7 @@ import '../widgets/gender_selector.dart';
 import '../providers/social_auth_controller.dart';
 import '../widgets/apple_button.dart';
 import '../widgets/google_button.dart';
+import '../widgets/legal_consent_text.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   /// Where to land once the account is verified and signed in (e.g. the
@@ -268,7 +269,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                               ),
                       ),
                     ).slideIn(RevealDirection.bottomEnd, delay: seq.next()),
-                    SizedBox(height: 5.h),
+                    SizedBox(height: 8.h),
+                    const LegalConsentText(
+                      prefix: 'By creating an account, you agree to our ',
+                    ),
+                    SizedBox(height: 8.h),
 
                     Row(
                       children: [

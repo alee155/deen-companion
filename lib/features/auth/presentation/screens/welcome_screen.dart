@@ -1,12 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/motion/motion.dart';
@@ -14,6 +12,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/domain/explore_icon_assets.dart';
 import '../../../../shared/widgets/islamic_ornaments.dart';
 import '../providers/auth_gate_provider.dart';
+import '../widgets/legal_consent_text.dart';
 import '../widgets/welcome_emblem.dart';
 
 class _Highlight {
@@ -89,12 +88,6 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
     await ref.read(authGateProvider).markSeen();
     if (!mounted) return;
     context.go('/');
-  }
-
-  Future<void> _open(String url) async {
-    try {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    } catch (_) {}
   }
 
   @override
@@ -337,38 +330,9 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> {
               ],
             ),
           ).appear(delay: const Duration(milliseconds: 240)),
-          RichText(
-            textAlign: TextAlign.center,
-            text: TextSpan(
-              style: TextStyle(
-                fontSize: 11.5.sp,
-                color: AppColors.textMuted,
-                height: 1.4,
-              ),
-              children: [
-                const TextSpan(text: 'By continuing, you agree to our '),
-                TextSpan(
-                  text: 'Terms',
-                  style: TextStyle(
-                    color: AppColors.emeraldInk,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () => _open(AppConstants.termsAndConditionsUrl),
-                ),
-                const TextSpan(text: ' and '),
-                TextSpan(
-                  text: 'Privacy Policy',
-                  style: TextStyle(
-                    color: AppColors.emeraldInk,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () => _open(AppConstants.privacyPolicyUrl),
-                ),
-              ],
-            ),
-          ).appear(delay: const Duration(milliseconds: 300)),
+          const LegalConsentText().appear(
+            delay: const Duration(milliseconds: 300),
+          ),
         ],
       ),
     );
