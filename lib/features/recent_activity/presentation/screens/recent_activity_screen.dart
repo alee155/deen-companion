@@ -1,10 +1,13 @@
 import 'package:deen_companion/features/ads/presentation/widgets/banner_ad_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
+import '../../../audio_player/presentation/widgets/now_playing_dock.dart';
+import '../../../quran/presentation/widgets/quran_hero.dart';
 import '../../domain/entities/recent_activity_item.dart';
 import '../providers/recent_activity_providers.dart';
 
@@ -42,77 +45,80 @@ class RecentActivityScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      body: SafeArea(
-        child: recentAsync.when(
-          loading: () => const SizedBox.shrink(),
-          error: (_, _) => Center(
-            child: Text(
-              'Could not load recent activity.',
-              style: TextStyle(color: AppColors.textSecondary),
-            ).slideIn(RevealDirection.bottom),
-          ),
-          data: (items) {
-            return ListView(
-              padding: EdgeInsets.all(20.w),
-              children: [
-                Text(
-                  'Recent Activity',
-                  style: TextStyle(
-                    fontSize: 22.sp,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.inkText,
-                  ),
-                ).slideIn(RevealDirection.topStart),
-                SizedBox(height: 20.h),
-                const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+      bottomNavigationBar: const NowPlayingDock(),
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Column(
+          children: [
+            const QuranHero(
+              arabicTitle: 'الأخيرة',
+              subtitle: 'What you read, play and open',
+            ),
+            Expanded(
+              child: recentAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => Center(
+                  child: Text(
+                    'Could not load recent activity.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ).slideIn(RevealDirection.bottom),
+                ),
+                data: (items) {
+                  return ListView(
+                    padding: EdgeInsets.all(20.w),
+                    children: [
+                      const BannerAdWidget(margin: EdgeInsets.only(bottom: 14)),
 
-                if (items.isEmpty)
-                  Container(
-                    padding: EdgeInsets.all(24.w),
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(color: AppColors.borderWarm),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.history,
-                          size: 32.sp,
-                          color: AppColors.textMuted,
-                        ).slideIn(RevealDirection.top),
-                        SizedBox(height: 10.h),
-                        Text(
-                          'What you read, play, or open will show up here — '
-                          'your last 5 activities.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: AppColors.textSecondary,
+                      if (items.isEmpty)
+                        Container(
+                          padding: EdgeInsets.all(24.w),
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(14.r),
+                            border: Border.all(color: AppColors.borderWarm),
                           ),
-                        ).slideIn(
-                          RevealDirection.bottom,
-                          delay: const Duration(milliseconds: 80),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.history,
+                                size: 32.sp,
+                                color: AppColors.textMuted,
+                              ).slideIn(RevealDirection.top),
+                              SizedBox(height: 10.h),
+                              Text(
+                                'What you read, play, or open will show up here — '
+                                'your last 5 activities.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ).slideIn(
+                                RevealDirection.bottom,
+                                delay: const Duration(milliseconds: 80),
+                              ),
+                            ],
+                          ),
+                        ).slideIn(RevealDirection.bottomStart)
+                      else
+                        ...items.asMap().entries.map(
+                          (entry) => Padding(
+                            padding: EdgeInsets.only(bottom: 10.h),
+                            child: _RecentTile(
+                              item: entry.value,
+                              icon: _iconFor(entry.value.type),
+                              timeLabel: _timeAgo(entry.value.viewedAt),
+                              onTap: () => context.push(entry.value.route),
+                            ).slideInAt(entry.key),
+                          ),
                         ),
-                      ],
-                    ),
-                  ).slideIn(RevealDirection.bottomStart)
-                else
-                  ...items.asMap().entries.map(
-                    (entry) => Padding(
-                      padding: EdgeInsets.only(bottom: 10.h),
-                      child: _RecentTile(
-                        item: entry.value,
-                        icon: _iconFor(entry.value.type),
-                        timeLabel: _timeAgo(entry.value.viewedAt),
-                        onTap: () => context.push(entry.value.route),
-                      ).slideInAt(entry.key),
-                    ),
-                  ),
-              ],
-            );
-          },
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
