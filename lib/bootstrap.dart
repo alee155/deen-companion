@@ -86,6 +86,7 @@ Future<void> _initAudioBackground(DateTime bootStart) async {
       androidNotificationChannelId: 'com.devsouq.deen_companion.app.audio',
       androidNotificationChannelName: 'Quran audio playback',
       androidNotificationOngoing: true,
+      androidNotificationIcon: 'drawable/ic_stat_logo',
     );
     debugPrint(
       '[Boot] audio background init done at '
