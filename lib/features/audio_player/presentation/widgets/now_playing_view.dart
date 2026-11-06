@@ -143,7 +143,20 @@ class NowPlayingView extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 24.w),
                 child: Column(
                   children: [
-                    _Grabber(onTap: onMinimize),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        _Grabber(onTap: onMinimize),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: GlassIconButton(
+                            icon: Icons.arrow_back_rounded,
+                            tooltip: 'Back',
+                            onPressed: onMinimize,
+                          ),
+                        ),
+                      ],
+                    ),
                     Expanded(
                       child: LayoutBuilder(
                         builder: (context, box) {
