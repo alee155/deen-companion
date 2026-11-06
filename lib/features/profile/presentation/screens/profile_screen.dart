@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/app_info/app_info_service.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -13,12 +12,13 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/grouped_settings_tile.dart';
 import '../../../audio_player/presentation/providers/audio_player_provider.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
-import '../../../auth/presentation/providers/delete_account_controller.dart';
 import '../../../favorites/presentation/providers/favorites_providers.dart';
 import '../../../groups/presentation/providers/groups_providers.dart';
 import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
 import '../providers/profile_providers.dart';
+import '../widgets/delete_account_sheet.dart';
 import '../widgets/guest_benefits_card.dart';
+import '../widgets/log_out_sheet.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_shortcut_tile.dart';
 import '../widgets/profile_stats_strip.dart';
@@ -30,135 +30,18 @@ class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      animationStyle: AppMotion.dialogStyle,
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.parchment,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        title: Text(
-          'Log out?',
-          style: TextStyle(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w700,
-            color: AppColors.inkText,
-          ),
-        ),
-        content: Text(
-          'You’ll go back to browsing as a guest. Favorites and settings on this device are kept.',
-          style: TextStyle(
-            fontSize: 13.sp,
-            height: 1.45,
-            color: AppColors.textSecondary,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.heroSurface,
-              foregroundColor: AppColors.goldLight,
-            ),
-            child: const Text('Log out'),
-          ),
-        ],
-      ),
-    );
+    final ok = await showLogOutSheet(context);
     if (ok != true) return;
     HapticFeedback.mediumImpact();
     await ref.read(authSessionProvider.notifier).signOut();
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final ok = await showDialog<bool>(
-      animationStyle: AppMotion.dialogStyle,
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.parchment,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24.r),
-        ),
-        title: Text(
-          'Delete account?',
-          style: TextStyle(
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w700,
-            color: AppColors.inkText,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'This permanently deletes your account and can’t be undone. '
-              'Favorites and settings on this device are kept.',
-              style: TextStyle(
-                fontSize: 13.sp,
-                height: 1.45,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            SizedBox(height: 8.h),
-            GestureDetector(
-              onTap: () => launchUrl(
-                Uri.parse(AppConstants.deleteAccountUrl),
-                mode: LaunchMode.externalApplication,
-              ),
-              child: Text(
-                'See what is deleted and what is kept',
-                style: TextStyle(
-                  fontSize: 12.5.sp,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.emeraldInk,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !context.mounted) return;
-    HapticFeedback.mediumImpact();
     final messenger = ScaffoldMessenger.of(context);
-    final deleted = await ref
-        .read(deleteAccountControllerProvider.notifier)
-        .delete();
+    final deleted = await showDeleteAccountSheet(context);
+    if (deleted != true) return;
     messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          deleted
-              ? 'Your account has been deleted.'
-              : ref.read(deleteAccountControllerProvider).errorMessage ??
-                    'Couldn’t delete your account. Try again.',
-        ),
-      ),
+      const SnackBar(content: Text('Your account has been deleted.')),
     );
   }
 
