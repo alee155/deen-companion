@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- INTERNET must be declared here, in the main manifest. Flutter's
          template only declares it in src/debug and src/profile (for hot
          reload), so a release build without this line has no network access
@@ -13,6 +14,17 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <!-- The camera plugin declares camera.any as required and adds
+         RECORD_AUDIO. Snaps are photo-only (enableAudio: false), and the app
+         works without a camera, so keep both out of the device filter. -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" tools:node="replace" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
+    <!-- Location permissions imply required GPS/network hardware. Only prayer
+         times and Qibla use location; the rest of the app does not, so don't
+         exclude devices that lack it. -->
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.location.network" android:required="false" />
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
