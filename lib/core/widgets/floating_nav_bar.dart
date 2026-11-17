@@ -16,6 +16,9 @@ const _inactive = Color(0xFFC9B3A0);
 /// The ring around the centre button.
 const _ring = Colors.white;
 
+/// One size for every icon in the bar, the centre button included.
+const double _iconSize = 26;
+
 /// How far the centre button rises above the pill.
 const double _lift = 9.5;
 
@@ -164,10 +167,13 @@ class _NavItem extends StatelessWidget {
               child: KeyedSubtree(
                 key: ValueKey(isSelected),
                 child: data.iconBuilder != null
-                    ? data.iconBuilder!(isSelected ? _accent : _inactive, 26.sp)
+                    ? data.iconBuilder!(
+                        isSelected ? _accent : _inactive,
+                        _iconSize.sp,
+                      )
                     : Icon(
                         isSelected ? data.activeIcon : data.icon,
-                        size: 26.sp,
+                        size: _iconSize.sp,
                         color: isSelected ? _accent : _inactive,
                       ),
               ),
@@ -201,7 +207,7 @@ class _CenterButton extends StatelessWidget {
             height: 51.w,
             decoration: BoxDecoration(shape: BoxShape.circle, color: _accent),
             alignment: Alignment.center,
-            child: Icon(data.icon, size: 24.sp, color: _barColor),
+            child: Icon(data.icon, size: _iconSize.sp, color: Colors.white),
           ),
         ),
       ),
