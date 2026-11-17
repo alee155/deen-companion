@@ -5,7 +5,10 @@ import '../../../../core/theme/app_colors.dart';
 
 class GroupSearchField extends StatelessWidget {
   final TextEditingController controller;
-  const GroupSearchField({super.key, required this.controller});
+
+  /// Lets the screen react to the field being tapped.
+  final FocusNode? focusNode;
+  const GroupSearchField({super.key, required this.controller, this.focusNode});
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +35,7 @@ class GroupSearchField extends StatelessWidget {
               Expanded(
                 child: TextField(
                   controller: controller,
+                  focusNode: focusNode,
                   textInputAction: TextInputAction.search,
                   cursorColor: AppColors.worshipAccent,
                   style: TextStyle(fontSize: 14.sp, color: AppColors.inkText),

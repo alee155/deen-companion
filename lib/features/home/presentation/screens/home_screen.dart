@@ -72,70 +72,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await ref.read(currentPrayerProvider.notifier).refresh();
   }
 
+  /// The header's open height, and the slim bar it closes to (below the
+  /// status bar) while the page scrolls.
+  static double _expandedHeight(BuildContext context) => 372.h;
+  static double _collapsedHeight(BuildContext context) =>
+      MediaQuery.paddingOf(context).top + 62.h;
+
   @override
   Widget build(BuildContext context) {
+    final expanded = _expandedHeight(context);
+    final collapsed = _collapsedHeight(context);
+
     return Scaffold(
-      backgroundColor: AppColors.surfaceLight,
+      backgroundColor: AppColors.parchment,
       body: Stack(
         children: [
+          // Only seen if the page is pulled down past the top: the header
+          // keeps its dark colour instead of the page showing through.
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            height: 340.h,
-            child: HomeSliderHeader(
-              height: 340.h,
-              onAvatarTap: () => context.go('/profile'),
-            ),
+            height: collapsed,
+            child: ColoredBox(color: AppColors.heroSurface),
           ),
-          Positioned(
-            top: 300.h,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.parchment,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(30.r)),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.shadow,
-                    blurRadius: 20,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
+          RefreshIndicator(
+            edgeOffset: MediaQuery.paddingOf(context).top + 8.h,
+            onRefresh: _refresh,
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
               ),
-              child: RefreshIndicator(
-                onRefresh: _refresh,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  // Room under the last group for the floating bottom bar.
-                  padding: EdgeInsets.fromLTRB(18.w, 12.h, 18.w, 130.h),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          height: 5.h,
-                          width: 50.w,
-                          decoration: BoxDecoration(
-                            color: AppColors.borderWarm,
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 22.h),
-                      const ReliabilityBanner(),
-                      // Today's five prayers (signed-in users).
-                      const HomePrayerStrip(),
-                      // The groups list: the old Groups tab, now here.
-                      const HomeGroupsSection(),
-                    ],
+              slivers: [
+                // The whole page scrolls; only this stays, shrunk to a slim
+                // bar with the next prayer and the bell.
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: HomeHeaderDelegate(
+                    expandedHeight: expanded,
+                    collapsedHeight: collapsed,
+                    builder: (context, height, collapse) => HomeSliderHeader(
+                      height: height,
+                      expandedHeight: expanded,
+                      collapse: collapse,
+                      onAvatarTap: () => context.go('/profile'),
+                    ),
                   ),
                 ),
-              ),
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(18.w, 4.h, 18.w, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        ReliabilityBanner(),
+                        // Today's five prayers (signed-in users).
+                        HomePrayerStrip(),
+                      ],
+                    ),
+                  ),
+                ),
+                // The groups list: the old Groups tab, now here.
+                HomeGroupsSection(topInset: collapsed),
+                // Room under the last group for the floating bottom bar.
+                SliverToBoxAdapter(child: SizedBox(height: 130.h)),
+              ],
             ),
           ),
         ],

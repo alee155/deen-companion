@@ -47,6 +47,14 @@ Future<void> _pump(
   CurrentPrayerState? prayer,
   List<PrayerLog> logs = const [],
   List<String>? visited,
+
+  /// [child] is a sliver (the groups section), not a box.
+  bool sliver = false,
+
+  /// With [sliver]: the scroll view's controller, and slivers around [child].
+  ScrollController? controller,
+  List<Widget> before = const [],
+  List<Widget> after = const [],
 }) async {
   tester.view.physicalSize = const Size(390 * 3, 900 * 3);
   tester.view.devicePixelRatio = 3;
@@ -56,7 +64,14 @@ Future<void> _pump(
     routes: [
       GoRoute(
         path: '/',
-        builder: (_, _) => Scaffold(body: SingleChildScrollView(child: child)),
+        builder: (_, _) => Scaffold(
+          body: sliver
+              ? CustomScrollView(
+                  controller: controller,
+                  slivers: [...before, child, ...after],
+                )
+              : SingleChildScrollView(child: child),
+        ),
       ),
       GoRoute(
         path: '/groups/:id',
@@ -126,7 +141,7 @@ void main() {
     testWidgets('lists the user\'s groups under a Groups heading', (
       tester,
     ) async {
-      await _pump(tester, const HomeGroupsSection());
+      await _pump(tester, const HomeGroupsSection(), sliver: true);
       expect(find.text('Groups'), findsOneWidget);
       expect(find.text('+ New'), findsOneWidget);
       expect(find.text('Search groups'), findsOneWidget);
@@ -141,7 +156,12 @@ void main() {
 
     testWidgets('tapping a group opens it', (tester) async {
       final visited = <String>[];
-      await _pump(tester, const HomeGroupsSection(), visited: visited);
+      await _pump(
+        tester,
+        const HomeGroupsSection(),
+        visited: visited,
+        sliver: true,
+      );
       await tester.tap(find.text('Quran Circle'));
       await tester.pump(const Duration(milliseconds: 400));
       expect(visited, ['/groups/g2']);
@@ -149,7 +169,7 @@ void main() {
     });
 
     testWidgets('search narrows the list', (tester) async {
-      await _pump(tester, const HomeGroupsSection());
+      await _pump(tester, const HomeGroupsSection(), sliver: true);
       await tester.enterText(find.byType(TextField), 'quran');
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text('Quran Circle'), findsOneWidget);
@@ -160,7 +180,12 @@ void main() {
     testWidgets('no groups: the empty state, with a way to create one', (
       tester,
     ) async {
-      await _pump(tester, const HomeGroupsSection(), groups: const []);
+      await _pump(
+        tester,
+        const HomeGroupsSection(),
+        groups: const [],
+        sliver: true,
+      );
       expect(find.text('Namaz Family'), findsNothing);
       expect(find.text('+ New'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
@@ -176,11 +201,60 @@ void main() {
         signedIn: false,
         groups: const [],
         visited: visited,
+        sliver: true,
       );
       await tester.tap(find.text('+ New'));
       await tester.pump(const Duration(milliseconds: 400));
       expect(visited.single, startsWith('/signup'));
       expect(visited.single, contains('redirect=%2F'));
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
+
+  group('Groups section scrolling', () {
+    testWidgets(
+      'tapping search brings the Groups heading up under the header',
+      (tester) async {
+        final controller = ScrollController();
+        addTearDown(controller.dispose);
+        await _pump(
+          tester,
+          const HomeGroupsSection(topInset: 100),
+          sliver: true,
+          controller: controller,
+          // The section starts 700 down, with plenty of page after it.
+          before: [SliverToBoxAdapter(child: SizedBox(height: 700))],
+          after: [SliverToBoxAdapter(child: SizedBox(height: 1500))],
+        );
+        controller.jumpTo(450);
+        await tester.pump();
+        expect(controller.offset, 450);
+
+        await tester.tap(find.byType(TextField));
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        // The heading (700 down) now sits at the top inset (100): scrolled to
+        // about 600.
+        expect(controller.offset, closeTo(600, 30));
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets('rows are built as they come into view, not all at once', (
+      tester,
+    ) async {
+      final many = [
+        for (var i = 0; i < 40; i++) Group(id: 'g$i', name: 'Group number $i'),
+      ];
+      await _pump(
+        tester,
+        const HomeGroupsSection(),
+        sliver: true,
+        groups: many,
+      );
+      expect(find.text('Group number 0'), findsOneWidget);
+      expect(find.text('Group number 39'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
   });
