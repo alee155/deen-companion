@@ -41,16 +41,10 @@ class ProfileHeader extends StatelessWidget {
               cell: 52,
             ),
           ),
-          // Top right, level with the avatar.
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 6.h,
-            right: 12.w,
-            child: const _SettingsButton(),
-          ),
           Padding(
             padding: EdgeInsets.fromLTRB(
               24.w,
-              MediaQuery.of(context).padding.top + 10.h,
+              MediaQuery.of(context).padding.top + 56.h,
               24.w,
               14.h + bottomOverlap,
             ),
@@ -164,37 +158,6 @@ class ProfileHeader extends StatelessWidget {
       ),
     ],
   );
-}
-
-/// Opens Settings, which is no longer a tab in the bottom bar.
-class _SettingsButton extends StatelessWidget {
-  const _SettingsButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Settings',
-      excludeSemantics: true,
-      child: Pressable(
-        onTap: () => context.push('/settings'),
-        child: Container(
-          width: 40.w,
-          height: 40.w,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.onHeroSurface.withValues(alpha: 0.12),
-          ),
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.settings_outlined,
-            size: 22.sp,
-            color: AppColors.onHeroSurface,
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _Avatar extends StatelessWidget {

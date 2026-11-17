@@ -10,6 +10,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/grouped_settings_tile.dart';
+import '../../../../shared/widgets/pinned_hero_bar.dart';
 import '../../../audio_player/presentation/providers/audio_player_provider.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
 import '../../../favorites/presentation/providers/favorites_providers.dart';
@@ -27,8 +28,35 @@ import '../widgets/profile_stats_strip.dart';
 /// Profile tab. Adapts to the auth state: guests get a sign-in prompt and
 /// what an account adds; signed-in users get their figures, shortcuts and
 /// account actions.
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  final _scroll = ScrollController();
+  final _bar = ValueNotifier<double>(0);
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() {
+      final t = (_scroll.hasClients ? _scroll.offset / 140 : 0.0).clamp(
+        0.0,
+        1.0,
+      );
+      if (t != _bar.value) _bar.value = t;
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _bar.dispose();
+    super.dispose();
+  }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
     final ok = await showLogOutSheet(context);
@@ -52,7 +80,7 @@ class ProfileScreen extends ConsumerWidget {
   static String _fmt(num n) => n == n.roundToDouble() ? '${n.toInt()}' : '$n';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final session = ref.watch(authSessionProvider);
     final signedIn = session.isAuthenticated;
     final favoritesCount =
@@ -130,160 +158,181 @@ class ProfileScreen extends ConsumerWidget {
       backgroundColor: AppColors.parchment,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.light,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          physics: const BouncingScrollPhysics(),
+        child: Stack(
           children: [
-            Stack(
-              clipBehavior: Clip.none,
+            ListView(
+              controller: _scroll,
+              padding: EdgeInsets.zero,
+              physics: const BouncingScrollPhysics(),
               children: [
-                ProfileHeader(session: session, bottomOverlap: overlap),
-                if (signedIn)
-                  Positioned(
-                    left: 20.w,
-                    right: 20.w,
-                    bottom: -overlap,
-                    child:
-                        ProfileStatsStrip(
-                          stats: [
-                            ProfileStat(
-                              label: 'Points',
-                              value: points?.total ?? 0,
-                              icon: Icons.stars_rounded,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ProfileHeader(session: session, bottomOverlap: overlap),
+                    if (signedIn)
+                      Positioned(
+                        left: 20.w,
+                        right: 20.w,
+                        bottom: -overlap,
+                        child:
+                            ProfileStatsStrip(
+                              stats: [
+                                ProfileStat(
+                                  label: 'Points',
+                                  value: points?.total ?? 0,
+                                  icon: Icons.stars_rounded,
+                                ),
+                                ProfileStat(
+                                  label: 'Joined',
+                                  value: groups.length,
+                                  icon: Icons.groups_rounded,
+                                ),
+                                ProfileStat(
+                                  label: 'Created',
+                                  value: owned,
+                                  icon: Icons.workspace_premium_rounded,
+                                ),
+                              ],
+                            ).slideIn(
+                              RevealDirection.bottom,
+                              delay: const Duration(milliseconds: 240),
+                              distance: 18,
                             ),
-                            ProfileStat(
-                              label: 'Joined',
-                              value: groups.length,
-                              icon: Icons.groups_rounded,
-                            ),
-                            ProfileStat(
-                              label: 'Created',
-                              value: owned,
-                              icon: Icons.workspace_premium_rounded,
-                            ),
-                          ],
-                        ).slideIn(
-                          RevealDirection.bottom,
-                          delay: const Duration(milliseconds: 240),
-                          distance: 18,
-                        ),
-                  ),
-              ],
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                20.w,
-                overlap + 22.h,
-                20.w,
-                bottomRoom,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!signedIn) ...[
-                    reveal(const GuestBenefitsCard(), 0),
-                    SizedBox(height: 24.h),
+                      ),
                   ],
-                  reveal(const GroupedSectionLabel('Shortcuts'), 1),
-                  GridView(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: EdgeInsets.zero,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 5.w,
-                      crossAxisSpacing: 5.w,
-                      mainAxisExtent: 80.h,
-                    ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20.w,
+                    overlap + 22.h,
+                    20.w,
+                    bottomRoom,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (var i = 0; i < shortcuts.length; i++)
-                        reveal(shortcuts[i], i + 2),
-                    ],
-                  ),
-                  SizedBox(height: 5.h),
-                  reveal(const GroupedSectionLabel('More'), 6),
-                  reveal(
-                    GroupedCard(
-                      children: [
-                        GroupedTile(
-                          icon: Icons.settings_outlined,
-                          iconColor: AppColors.toolsAccent,
-                          iconBg: AppColors.toolsAccentBg,
-                          title: 'Settings',
-                          subtitle:
-                              'Appearance, prayer alerts, storage and about',
-                          onTap: () => context.push('/settings'),
-                        ),
-                        // Only when the server says this account can use it.
-                        if (signedIn && ref.watch(specialDaysEligibleProvider))
-                          GroupedTile(
-                            icon: Icons.favorite_rounded,
-                            iconColor: AppColors.worshipAccent,
-                            iconBg: AppColors.worshipAccentBg,
-                            title: 'Special days',
-                            subtitle:
-                                'Keep your streak going during exempt days',
-                            onTap: () => context.push('/special-days'),
-                          ),
-                        if (signedIn)
-                          GroupedTile(
-                            icon: Icons.lock_reset_rounded,
-                            iconColor: AppColors.toolsAccent,
-                            iconBg: AppColors.toolsAccentBg,
-                            title: 'Reset password',
-                            forceChevron: true,
-                            onTap: () => context.push(
-                              '/forgot-password'
-                              '?email=${Uri.encodeQueryComponent(session.email ?? '')}',
-                            ),
-                          ),
+                      if (!signedIn) ...[
+                        reveal(const GuestBenefitsCard(), 0),
+                        SizedBox(height: 24.h),
                       ],
-                    ),
-                    7,
-                  ),
-                  if (signedIn) ...[
-                    SizedBox(height: 10.h),
-                    reveal(
-                      GroupedCard(
+                      reveal(const GroupedSectionLabel('Shortcuts'), 1),
+                      GridView(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 5.w,
+                          crossAxisSpacing: 5.w,
+                          mainAxisExtent: 80.h,
+                        ),
                         children: [
-                          GroupedTile(
-                            icon: Icons.logout_rounded,
-                            iconColor: AppColors.textSecondary,
-                            iconBg: AppColors.parchment,
-                            title: 'Log out',
-                            showChevron: false,
-                            onTap: () => _confirmLogout(context, ref),
-                          ),
-                          GroupedTile(
-                            icon: Icons.delete_outline_rounded,
-                            iconColor: AppColors.error,
-                            iconBg: AppColors.hadithAccentBg,
-                            title: 'Delete account',
-                            titleColor: AppColors.error,
-                            forceChevron: true,
-                            onTap: () => _confirmDelete(context, ref),
-                          ),
+                          for (var i = 0; i < shortcuts.length; i++)
+                            reveal(shortcuts[i], i + 2),
                         ],
                       ),
-                      8,
-                    ),
-                  ],
-                  SizedBox(height: 20.h),
-                  Center(
-                    child: Text(
-                      ref
-                          .watch(appVersionNameProvider)
-                          .when(
-                            data: (v) => '${AppConstants.appName} · v$v',
-                            loading: () => AppConstants.appName,
-                            error: (_, _) => AppConstants.appName,
-                          ),
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textMuted,
+                      SizedBox(height: 5.h),
+                      reveal(const GroupedSectionLabel('More'), 6),
+                      reveal(
+                        GroupedCard(
+                          children: [
+                            GroupedTile(
+                              icon: Icons.settings_outlined,
+                              iconColor: AppColors.toolsAccent,
+                              iconBg: AppColors.toolsAccentBg,
+                              title: 'Settings',
+                              subtitle:
+                                  'Appearance, prayer alerts, storage and about',
+                              onTap: () => context.push('/settings'),
+                            ),
+                            // Only when the server says this account can use it.
+                            if (signedIn &&
+                                ref.watch(specialDaysEligibleProvider))
+                              GroupedTile(
+                                icon: Icons.favorite_rounded,
+                                iconColor: AppColors.worshipAccent,
+                                iconBg: AppColors.worshipAccentBg,
+                                title: 'Special days',
+                                subtitle:
+                                    'Keep your streak going during exempt days',
+                                onTap: () => context.push('/special-days'),
+                              ),
+                            if (signedIn)
+                              GroupedTile(
+                                icon: Icons.lock_reset_rounded,
+                                iconColor: AppColors.toolsAccent,
+                                iconBg: AppColors.toolsAccentBg,
+                                title: 'Reset password',
+                                forceChevron: true,
+                                onTap: () => context.push(
+                                  '/forgot-password'
+                                  '?email=${Uri.encodeQueryComponent(session.email ?? '')}',
+                                ),
+                              ),
+                          ],
+                        ),
+                        7,
                       ),
-                    ),
-                  ).slideIn(RevealDirection.top, distance: 14),
-                ],
+                      if (signedIn) ...[
+                        SizedBox(height: 10.h),
+                        reveal(
+                          GroupedCard(
+                            children: [
+                              GroupedTile(
+                                icon: Icons.logout_rounded,
+                                iconColor: AppColors.textSecondary,
+                                iconBg: AppColors.parchment,
+                                title: 'Log out',
+                                showChevron: false,
+                                onTap: () => _confirmLogout(context, ref),
+                              ),
+                              GroupedTile(
+                                icon: Icons.delete_outline_rounded,
+                                iconColor: AppColors.error,
+                                iconBg: AppColors.hadithAccentBg,
+                                title: 'Delete account',
+                                titleColor: AppColors.error,
+                                forceChevron: true,
+                                onTap: () => _confirmDelete(context, ref),
+                              ),
+                            ],
+                          ),
+                          8,
+                        ),
+                      ],
+                      SizedBox(height: 20.h),
+                      Center(
+                        child: Text(
+                          ref
+                              .watch(appVersionNameProvider)
+                              .when(
+                                data: (v) => '${AppConstants.appName} · v$v',
+                                loading: () => AppConstants.appName,
+                                error: (_, _) => AppConstants.appName,
+                              ),
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ).slideIn(RevealDirection.top, distance: 14),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // Like Explore: the header scrolls away and this bar, with
+            // Settings, stays pinned and fades in.
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: PinnedHeroBar(
+                opacity: _bar,
+                title: 'Profile',
+                showBack: false,
+                trailingIcon: Icons.settings_outlined,
+                trailingTooltip: 'Settings',
+                onTrailing: () => context.push('/settings'),
               ),
             ),
           ],
