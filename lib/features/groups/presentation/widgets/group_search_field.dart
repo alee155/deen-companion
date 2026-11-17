@@ -41,7 +41,7 @@ class GroupSearchField extends StatelessWidget {
                     focusedBorder: InputBorder.none,
                     filled: false,
                     contentPadding: EdgeInsets.zero,
-                    hintText: 'Search your groups…',
+                    hintText: 'Search groups',
                     hintStyle: TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 14.sp,

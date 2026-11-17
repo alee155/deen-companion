@@ -23,11 +23,12 @@ class JoinGroupScreen extends ConsumerWidget {
 
   String get _self => InviteLink.routeFor(token);
 
-  void _toGroups(BuildContext context) => context.go('/groups');
+  void _toGroups(BuildContext context) => context.go('/');
 
-  /// Opens the group with the Groups tab underneath, so Back lands there.
+  /// Opens the group with Home (and its groups list) underneath, so Back
+  /// lands there.
   void _openGroup(BuildContext context, String groupId) {
-    context.go('/groups');
+    context.go('/');
     context.push('/groups/$groupId');
   }
 

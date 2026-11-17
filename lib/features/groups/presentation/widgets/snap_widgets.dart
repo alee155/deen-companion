@@ -21,7 +21,11 @@ String joinedLabel(DateTime? t) =>
 
 class RoleBadge extends StatelessWidget {
   final GroupRole role;
-  const RoleBadge({super.key, required this.role});
+
+  /// A pale pill with dark text instead of the solid accent one (the Members
+  /// list).
+  final bool soft;
+  const RoleBadge({super.key, required this.role, this.soft = false});
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +33,11 @@ class RoleBadge extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
       decoration: BoxDecoration(
-        color: admin ? AppColors.emeraldInk : AppColors.worshipAccentBg,
+        color: admin
+            ? (soft
+                  ? AppColors.emeraldInk.withValues(alpha: 0.16)
+                  : AppColors.emeraldInk)
+            : AppColors.worshipAccentBg,
         borderRadius: BorderRadius.circular(8.r),
       ),
       child: Text(
@@ -38,7 +46,9 @@ class RoleBadge extends StatelessWidget {
           fontSize: 8.5.sp,
           letterSpacing: 0.8,
           fontWeight: FontWeight.w800,
-          color: admin ? AppColors.onEmeraldInk : AppColors.worshipAccent,
+          color: admin
+              ? (soft ? AppColors.amberDeep : AppColors.onEmeraldInk)
+              : AppColors.worshipAccent,
         ),
       ),
     );

@@ -8,7 +8,7 @@ import 'package:deen_companion/features/groups/domain/entities/group.dart';
 import 'package:deen_companion/features/groups/domain/entities/group_detail.dart';
 import 'package:deen_companion/features/groups/presentation/providers/groups_providers.dart';
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
-import 'package:deen_companion/features/groups/presentation/widgets/snap_widgets.dart';
+import 'package:deen_companion/features/groups/presentation/widgets/group_detail_widgets.dart';
 import 'package:deen_companion/features/moderation/domain/entities/report_target.dart';
 import 'package:deen_companion/features/moderation/presentation/providers/moderation_providers.dart';
 import 'package:deen_companion/features/prayer_logs/domain/group_member_prayers.dart';
@@ -137,7 +137,25 @@ Future<void> _settle(WidgetTester tester) async {
   }
 }
 
+/// The ⋮ in the corner of a member's profile sheet (rows have none).
 Finder get _more => find.byIcon(Icons.more_vert_rounded);
+
+/// Opens [name]'s profile by tapping their row.
+Future<void> _openProfile(WidgetTester tester, String name) async {
+  await tester.tap(find.textContaining(name).first);
+  for (var i = 0; i < 8; i++) {
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+}
+
+/// Opens [name]'s profile and taps its ⋮, which opens the report / block
+/// sheet.
+Future<void> _openMenu(WidgetTester tester, String name) async {
+  await _openProfile(tester, name);
+  await tester.tap(_more);
+  await _settle(tester);
+}
+
 Finder get _blockedTag => find.text('BLOCKED');
 
 /// A widget test with semantics on: several checks read the tree (for example,
@@ -154,26 +172,43 @@ void _test(String name, Future<void> Function(WidgetTester tester) body) {
   });
 }
 
-/// Whether Sara's snap can be opened (her row's photo button).
+/// Whether Sara's snap can be opened (the "New snap" line on her row).
 bool _canOpenSnap(WidgetTester tester) => find
     .byWidgetPredicate(
-      (w) => w is SnapBox && w.state == SnapState.unopened && w.onTap != null,
+      (w) =>
+          w is MemberSnapStatus &&
+          w.state == SnapState.unopened &&
+          w.onTap != null,
     )
     .evaluate()
     .isNotEmpty;
 
 void main() {
   group('who gets the ⋯ menu', () {
-    _test('on everyone else, not on yourself (as an admin)', (tester) async {
+    _test('member rows have none: it is in the profile', (tester) async {
       await _pump(tester, me: 'admin1');
+      expect(_more, findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    _test('on everyone else\'s profile, not on your own (as an admin)', (
+      tester,
+    ) async {
+      await _pump(tester, me: 'admin1');
+      await _openProfile(tester, 'Sara Ahmed');
       expect(_more, findsOneWidget);
       expect(find.byTooltip('More about Sara Ahmed'), findsOneWidget);
-      expect(find.byTooltip('More about Alee Khan'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+
+      await _pump(tester, me: 'admin1');
+      await _openProfile(tester, 'Alee Khan');
+      expect(_more, findsNothing, reason: 'you cannot report yourself');
       await tester.pumpWidget(const SizedBox());
     });
 
     _test('a regular member has it too, whatever their role', (tester) async {
       await _pump(tester, me: 'member1');
+      await _openProfile(tester, 'Alee Khan');
       expect(_more, findsOneWidget);
       expect(find.byTooltip('More about Alee Khan'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
@@ -182,28 +217,27 @@ void main() {
 
   _test('the menu offers to report and to block that person', (tester) async {
     await _pump(tester, me: 'admin1');
-    await tester.tap(_more);
-    await _settle(tester);
+    await _openMenu(tester, 'Sara Ahmed');
     expect(find.text('Report Sara Ahmed'), findsOneWidget);
     expect(find.text('Block Sara Ahmed'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
-  group('blocking from a member row', () {
+  group('blocking from a profile', () {
     _test('marks them Blocked and hides their snap', (tester) async {
       final repo = await _pump(tester, me: 'admin1');
       expect(_blockedTag, findsNothing);
       expect(_canOpenSnap(tester), isTrue);
 
-      await tester.tap(_more);
-      await _settle(tester);
+      await _openMenu(tester, 'Sara Ahmed');
       await tester.tap(find.text('Block Sara Ahmed'));
       await _settle(tester);
       await tester.tap(find.widgetWithText(FilledButton, 'Block'));
       await _settle(tester);
 
       expect(repo.list.single.userId, 'member1');
-      expect(_blockedTag, findsOneWidget);
+      // Marked on her row and on her open profile.
+      expect(_blockedTag, findsNWidgets(2));
       expect(_canOpenSnap(tester), isFalse);
       expect(find.textContaining('is blocked'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
@@ -228,8 +262,7 @@ void main() {
         me: 'admin1',
         moderation: FakeModeration([blocked('member1', name: 'Sara Ahmed')]),
       );
-      await tester.tap(_more);
-      await _settle(tester);
+      await _openMenu(tester, 'Sara Ahmed');
       expect(find.text('Unblock Sara Ahmed'), findsOneWidget);
       expect(find.text('Block Sara Ahmed'), findsNothing);
 
@@ -253,9 +286,10 @@ void main() {
     });
   });
 
-  group('reporting from a member row', () {
+  group('reporting from a profile', () {
     _test('reports the person, then offers to block', (tester) async {
       final repo = await _pump(tester, me: 'admin1');
+      await _openProfile(tester, 'Sara Ahmed');
       await tester.tap(_more);
       await _settle(tester);
       await tester.tap(find.text('Report Sara Ahmed'));
@@ -276,7 +310,7 @@ void main() {
     Future<void> openSnap(WidgetTester tester) async {
       await tester.tap(
         find.byWidgetPredicate(
-          (w) => w is SnapBox && w.state == SnapState.unopened,
+          (w) => w is MemberSnapStatus && w.state == SnapState.unopened,
         ),
       );
       await tester.pump(const Duration(milliseconds: 300));

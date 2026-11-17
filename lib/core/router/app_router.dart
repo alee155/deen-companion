@@ -14,7 +14,6 @@ import 'package:deen_companion/features/statistics/presentation/screens/group_st
 import 'package:deen_companion/features/prayer_times/presentation/screens/city_picker_screen.dart';
 import 'package:deen_companion/features/prayer_logs/presentation/screens/prayer_logs_screen.dart';
 import 'package:deen_companion/features/snaps/presentation/screens/snap_flow_screen.dart';
-import 'package:deen_companion/features/groups/presentation/screens/groups_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/edit_profile_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/profile_screen.dart';
 import 'package:deen_companion/features/profile/presentation/screens/settings_screen.dart';
@@ -59,8 +58,6 @@ import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/auth/presentation/screens/otp_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
 import '../../features/special_days/presentation/screens/special_days_screen.dart';
-import '../../features/videos/presentation/screens/video_player_screen.dart';
-import '../../features/videos/presentation/screens/videos_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/prayer_dnd/presentation/screens/prayer_dnd_screen.dart';
 import '../../features/prayer_reminders/presentation/screens/reminders_screen.dart';
@@ -158,20 +155,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             GroupLeaderboardScreen(groupId: state.pathParameters['groupId']!),
       ),
-      // Home > Bayan of the day.
-      GoRoute(
-        path: '/videos',
-        builder: (context, state) => const VideosScreen(),
-      ),
-      GoRoute(
-        path: '/video/:id',
-        builder: (context, state) =>
-            VideoPlayerScreen(videoId: state.pathParameters['id']!),
-      ),
+      // Bayan of the day (lib/features/videos) is switched off for this
+      // version: no Home section and no routes. The feature's code and tests
+      // stay in the project; to bring it back, restore HomeVideoSection on
+      // Home and the '/videos' and '/video/:id' routes here (git tag
+      // bayan-v1 has them as they were).
       // Profile > Special days (female accounts only; the screen says so).
       GoRoute(
         path: '/special-days',
         builder: (context, state) => const SpecialDaysScreen(),
+      ),
+      // Settings: opened from the Profile header, so no bottom nav.
+      GoRoute(
+        path: AppRoutes.settings,
+        builder: (context, state) => const SettingsScreen(),
       ),
       // Settings > Blocked users.
       GoRoute(
@@ -213,6 +210,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             JoinGroupScreen(token: state.pathParameters['token']!),
       ),
+      // The groups list lives on Home now: old links to it land there.
+      GoRoute(path: '/groups', redirect: (context, state) => AppRoutes.home),
       GoRoute(
         path: '/groups/:groupId',
         builder: (context, state) =>
@@ -303,10 +302,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-        path: '/explore',
-        builder: (context, state) => const AllFeaturesScreen(),
-      ),
-      GoRoute(
         path: '/duas',
         builder: (context, state) => const DuasHubScreen(),
       ),
@@ -387,27 +382,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          // Explore: every feature in the app (it was a pushed screen before).
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/explore',
+                builder: (context, state) => const AllFeaturesScreen(),
+              ),
+            ],
+          ),
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/favorites',
                 builder: (context, state) => const FavoritesScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/groups',
-                builder: (context, state) => const GroupsScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/settings',
-                builder: (context, state) => const SettingsScreen(),
               ),
             ],
           ),

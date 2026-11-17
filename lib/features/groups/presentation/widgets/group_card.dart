@@ -1,140 +1,176 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/providers/auth_session_provider.dart';
+import '../../../group_live/presentation/providers/group_live_store.dart';
+import '../../../prayer_logs/domain/group_member_prayers.dart';
+import '../../../prayer_logs/domain/prayer_log.dart';
+import '../../../prayer_logs/presentation/prayer_labels.dart';
 import '../../domain/entities/group.dart';
 import 'group_image.dart';
 
-class GroupCard extends StatelessWidget {
+/// One group in the Home list: the picture in an accent ring, the name, the
+/// latest thing a member did today, and on the right the group's best streak
+/// and how many have prayed. Rows sit on the page, separated by a thin line
+/// (the list draws it), not in boxes.
+///
+/// The numbers and the latest activity come from the same live data the group
+/// screen uses, so they move as members log prayers. Until the numbers arrive
+/// the row shows just the member count.
+class GroupCard extends ConsumerWidget {
   final Group group;
   final VoidCallback onTap;
 
   const GroupCard({super.key, required this.group, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final numbers = ref.watch(
+      groupLiveProvider(group.id).select((s) => s.summary?.group),
+    );
+    final me = ref.watch(authSessionProvider.select((s) => s.userId));
+    final feed = ref.watch(liveGroupFeedProvider(group.id));
+    final activity = latestGroupActivity(feed, me: me, now: DateTime.now());
+
     return PressScale(
-      child: Material(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(22.r),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22.r),
-              border: Border.all(color: AppColors.borderWarm),
-            ),
-            child: Row(
-              children: [
-                GroupImage(path: group.imagePath, size: 72.w, radius: 18.r),
-                SizedBox(width: 14.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              group.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15.sp,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.inkText,
-                              ),
-                            ),
-                          ),
-                          if (group.isOwner) ...[
-                            SizedBox(width: 6.w),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 7.w,
-                                vertical: 2.h,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.gold.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(8.r),
-                              ),
-                              child: Text(
-                                'OWNER',
-                                style: TextStyle(
-                                  fontSize: 8.5.sp,
-                                  letterSpacing: 0.8,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.gold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16.r),
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 14.h),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(2.w),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.emeraldInk, width: 2),
+                ),
+                child: GroupImage(
+                  path: group.imagePath,
+                  size: 52.w,
+                  radius: 26.w,
+                ),
+              ),
+              SizedBox(width: 14.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.inkText,
                       ),
-                      if (group.description.isNotEmpty) ...[
-                        SizedBox(height: 4.h),
-                        Text(
-                          group.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            height: 1.35,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: 8.h),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.people_alt_rounded,
-                            size: 14.sp,
-                            color: AppColors.worshipAccent,
-                          ),
-                          SizedBox(width: 4.w),
-                          AnimatedCount(
-                            value: group.memberCount,
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          SizedBox(width: 12.w),
-                          Icon(
-                            group.isPrivate
-                                ? Icons.lock_rounded
-                                : Icons.public_rounded,
-                            size: 13.sp,
-                            color: AppColors.textMuted,
-                          ),
-                          SizedBox(width: 4.w),
-                          Text(
-                            group.isPrivate ? 'Private' : 'Public',
-                            style: TextStyle(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            Icons.local_fire_department_rounded,
-                            size: 15.sp,
-                            color: AppColors.amber,
-                          ),
-                        ],
+                    ),
+                    SizedBox(height: 3.h),
+                    Text(
+                      activity ?? _quietLine(numbers == null),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        color: AppColors.textSecondary,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
+              ),
+              if (numbers != null) ...[
+                SizedBox(width: 10.w),
+                _Trailing(
+                  streak: numbers.topCurrentStreak,
+                  line:
+                      '${numbers.goalMetCount} of ${numbers.memberCount} prayed',
                 ),
               ],
-            ),
+            ],
           ),
         ),
       ),
     );
   }
+
+  /// What the second line says when nobody has logged anything today.
+  String _quietLine(bool loading) => loading
+      ? '${group.memberCount} ${group.memberCount == 1 ? 'member' : 'members'}'
+      : 'No prayers logged yet today';
+}
+
+class _Trailing extends StatelessWidget {
+  final int streak;
+  final String line;
+  const _Trailing({required this.streak, required this.line});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.local_fire_department_rounded,
+              size: 20.sp,
+              color: AppColors.emeraldInk,
+            ),
+            SizedBox(width: 2.w),
+            AnimatedCount(
+              value: streak,
+              style: TextStyle(
+                fontSize: 19.sp,
+                fontWeight: FontWeight.w800,
+                color: AppColors.emeraldInk,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 3.h),
+        Text(
+          line,
+          style: TextStyle(fontSize: 12.5.sp, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+}
+
+/// "Hamza snapped Asr · 1m": the newest log in today's feed, or null when
+/// there is none (or the feed has not loaded). [me] is shown as "You".
+String? latestGroupActivity(
+  List<GroupMemberPrayers>? feed, {
+  required String? me,
+  required DateTime now,
+}) {
+  if (feed == null) return null;
+  GroupMemberPrayers? who;
+  PrayerLog? newest;
+  for (final member in feed) {
+    for (final log in member.logs) {
+      if (newest == null || log.loggedAt.isAfter(newest.loggedAt)) {
+        newest = log;
+        who = member;
+      }
+    }
+  }
+  if (newest == null || who == null) return null;
+  final name = who.userId == me ? 'You' : who.displayName.split(' ').first;
+  final verb = newest.snapState(now) == SnapState.none ? 'prayed' : 'snapped';
+  return '$name $verb ${newest.prayer.label} · ${shortAgo(now.difference(newest.loggedAt))}';
+}
+
+/// `now`, `5m`, `2h`, `3d`: how long ago, in the fewest characters.
+String shortAgo(Duration d) {
+  if (d.inMinutes < 1) return 'now';
+  if (d.inHours < 1) return '${d.inMinutes}m';
+  if (d.inDays < 1) return '${d.inHours}h';
+  return '${d.inDays}d';
 }

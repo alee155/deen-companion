@@ -135,17 +135,34 @@ class SettingsScreen extends ConsumerWidget {
         bottom: false,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 120.h),
+          padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 40.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Settings',
-                style: TextStyle(
-                  fontSize: 28.sp,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.inkText,
-                ),
+              Row(
+                children: [
+                  // No longer a tab, so it needs a way back.
+                  IconButton(
+                    onPressed: () => context.pop(),
+                    tooltip: 'Back',
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    color: AppColors.inkText,
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints.tightFor(
+                      width: 40.w,
+                      height: 40.w,
+                    ),
+                  ),
+                  SizedBox(width: 6.w),
+                  Text(
+                    'Settings',
+                    style: TextStyle(
+                      fontSize: 28.sp,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.inkText,
+                    ),
+                  ),
+                ],
               ).slideIn(RevealDirection.topStart),
               SizedBox(height: 12.h),
 

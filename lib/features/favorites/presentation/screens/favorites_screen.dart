@@ -95,7 +95,7 @@ class FavoritesScreen extends ConsumerWidget {
                     'Tap the heart on a Surah, Hadith, Dua or Name to save it '
                     'here for quick access.',
                 actionLabel: 'Explore',
-                onAction: () => context.push('/explore'),
+                onAction: () => context.go('/explore'),
               ),
             )
           else ...[

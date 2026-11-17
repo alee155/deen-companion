@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_typography.dart';
 import '../../../../core/location/location_service.dart';
 import '../../../../core/permissions/camera_permission_service.dart';
 import '../../../../core/storage/local_storage_service.dart';
@@ -14,10 +12,12 @@ import '../../../reliability_setup/presentation/widgets/reliability_banner.dart'
 import '../../../reliability_setup/presentation/widgets/reliability_setup_sheet.dart';
 import '../../../daily_content/presentation/providers/daily_notification_service.dart';
 import '../../../prayer_reminders/presentation/providers/prayer_alarm_launch_service.dart';
-import '../../../ads/presentation/providers/interstitial_ad_service.dart';
-import '../widgets/home_category_grid.dart';
-import '../../../videos/presentation/widgets/home_video_section.dart';
+import '../widgets/home_groups_section.dart';
+import '../widgets/home_prayer_strip.dart';
 import '../widgets/home_slider_header.dart';
+import '../../../groups/presentation/providers/groups_providers.dart';
+import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
+import '../../../push/presentation/providers/push_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -27,8 +27,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _selectedCategoryIndex = 0;
-
   @override
   void initState() {
     super.initState();
@@ -37,20 +35,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _startUp());
   }
 
-  /// "See All": an interstitial first when one is due (rarely; see
-  /// InterstitialAdService), then the screen the user asked for.
-  Future<void> _openWithAd(String route) async {
-    await ref
-        .read(interstitialAdServiceProvider)
-        .maybeShow(InterstitialPlacement.homeSeeAll);
-    if (mounted) context.push(route);
-  }
-
   /// Home is the moment to ask for everything reminders and notifications
   /// need, so no alert ever fails later because of a missing permission.
   Future<void> _startUp() async {
     await ref.read(dailyNotificationServiceProvider).onHomeReady();
     await ref.read(prayerAlarmLaunchServiceProvider).onHomeReady();
+    ref.read(pushServiceProvider).onHomeReady();
 
     // Android drops a permission request made while another dialog is up,
     // and Home's prayer times ask for location on their own — so wait for
@@ -75,10 +65,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (mounted) await showReliabilitySetupSheet(context);
   }
 
+  /// Pull to refresh: the groups list and today's prayers.
+  Future<void> _refresh() async {
+    ref.invalidate(myGroupsProvider);
+    ref.invalidate(prayerLogsProvider);
+    await ref.read(currentPrayerProvider.notifier).refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final seq = RevealSequence(start: const Duration(milliseconds: 140));
-
     return Scaffold(
       backgroundColor: AppColors.surfaceLight,
       body: Stack(
@@ -110,114 +105,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ],
               ),
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(18.w, 12.h, 18.w, 110.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        height: 5.h,
-                        width: 50.w,
-                        decoration: BoxDecoration(
-                          color: AppColors.borderWarm,
-                          borderRadius: BorderRadius.circular(10.r),
+              child: RefreshIndicator(
+                onRefresh: _refresh,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  // Room under the last group for the floating bottom bar.
+                  padding: EdgeInsets.fromLTRB(18.w, 12.h, 18.w, 130.h),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          height: 5.h,
+                          width: 50.w,
+                          decoration: BoxDecoration(
+                            color: AppColors.borderWarm,
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
                         ),
                       ),
-                    ),
-                    SizedBox(height: 22.h),
-                    const ReliabilityBanner(),
-                    _SectionHeader(
-                      title: 'Categories',
-                      onSeeAll: () => _openWithAd('/explore'),
-                      seq: seq,
-                      titleDirection: RevealDirection.bottomStart,
-                      actionDirection: RevealDirection.topEnd,
-                    ),
-                    SizedBox(height: 14.h),
-                    HomeCategoryGrid(
-                      selectedIndex: _selectedCategoryIndex,
-                      onSelected: (index) {
-                        setState(() => _selectedCategoryIndex = index);
-                        context.push(homeCategories[index].route);
-                      },
-                    ),
-                    SizedBox(height: 28.h),
-                    // The day's bayan videos.
-                    HomeVideoSection(
-                      headerBuilder: () => Padding(
-                        padding: EdgeInsets.only(bottom: 14.h),
-                        child: _SectionHeader(
-                          title: 'Bayan of the day',
-                          onSeeAll: () => _openWithAd('/videos'),
-                          seq: seq,
-                          titleDirection: RevealDirection.end,
-                          actionDirection: RevealDirection.bottomEnd,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 20.h),
-                    // const BannerAdWidget(
-                    //   margin: EdgeInsets.symmetric(vertical: 4),
-                    // ),
-                  ],
+                      SizedBox(height: 22.h),
+                      const ReliabilityBanner(),
+                      // Today's five prayers (signed-in users).
+                      const HomePrayerStrip(),
+                      // The groups list: the old Groups tab, now here.
+                      const HomeGroupsSection(),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final VoidCallback onSeeAll;
-  final RevealSequence seq;
-  final RevealDirection titleDirection;
-  final RevealDirection actionDirection;
-
-  const _SectionHeader({
-    required this.title,
-    required this.onSeeAll,
-    required this.seq,
-    required this.titleDirection,
-    required this.actionDirection,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        seq.wrap(
-          Text(
-            title,
-            style: AppTypography.headline.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          direction: titleDirection,
-        ),
-        Pressable(
-          onTap: onSeeAll,
-          scale: AppMotion.pressScaleSmall,
-          child: Text(
-            'See All',
-            style: TextStyle(
-              fontSize: 13.sp,
-              fontWeight: FontWeight.w600,
-              color: AppColors.emeraldInk,
-            ),
-          ),
-        ).slideIn(
-          actionDirection,
-          delay: seq.next(),
-          duration: AppMotion.normal,
-          distance: 16,
-        ),
-      ],
     );
   }
 }

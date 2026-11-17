@@ -19,6 +19,7 @@ import '../providers/profile_providers.dart';
 import '../widgets/delete_account_sheet.dart';
 import '../widgets/guest_benefits_card.dart';
 import '../widgets/log_out_sheet.dart';
+import '../../../push/presentation/providers/push_service.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_shortcut_tile.dart';
 import '../widgets/profile_stats_strip.dart';
@@ -33,6 +34,9 @@ class ProfileScreen extends ConsumerWidget {
     final ok = await showLogOutSheet(context);
     if (ok != true) return;
     HapticFeedback.mediumImpact();
+    // While the session is still valid: stops this phone getting the
+    // account's pushes.
+    await ref.read(pushServiceProvider).unregister();
     await ref.read(authSessionProvider.notifier).signOut();
   }
 
@@ -108,7 +112,7 @@ class ProfileScreen extends ConsumerWidget {
         subtitle: groups.isEmpty
             ? 'Create or join one'
             : '${groups.length} joined · $owned yours',
-        onTap: () => context.go('/groups'),
+        onTap: () => context.go('/'),
       ),
       ProfileShortcutTile(
         icon: Icons.stars_rounded,
@@ -208,7 +212,7 @@ class ProfileScreen extends ConsumerWidget {
                           title: 'Settings',
                           subtitle:
                               'Appearance, prayer alerts, storage and about',
-                          onTap: () => context.go('/settings'),
+                          onTap: () => context.push('/settings'),
                         ),
                         // Only when the server says this account can use it.
                         if (signedIn && ref.watch(specialDaysEligibleProvider))

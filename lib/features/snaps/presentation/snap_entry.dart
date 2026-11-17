@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/widgets/app_toast.dart';
+import '../../auth/presentation/providers/auth_session_provider.dart';
+import '../../groups/presentation/providers/groups_providers.dart';
 import '../domain/snap_availability.dart';
 import 'providers/snap_providers.dart';
 import 'snap_availability_message.dart';
@@ -54,4 +56,29 @@ Future<void> openSnapFlow(
     sentTo == 1 ? 'Snap sent' : 'Snap sent to $sentTo groups',
     icon: Icons.check_circle_rounded,
   );
+}
+
+/// Keeps what the bottom bar's camera button decides from loaded while the bar
+/// is on screen, so a tap is answered at once instead of "still checking".
+/// Watch it from the shell. Its value never changes, so it rebuilds nothing.
+final snapNavReadyProvider = Provider<void>((ref) {
+  if (!ref.watch(authSessionProvider.select((s) => s.isAuthenticated))) return;
+  ref.watch(snapAvailabilityProvider);
+  ref.watch(myGroupsProvider);
+});
+
+/// The camera button in the bottom bar. Guests are sent to sign up first
+/// (snaps go to groups, and groups need an account) and come back to Home;
+/// someone with no groups is told so; otherwise it is [openSnapFlow].
+Future<void> openSnapFromNav(BuildContext context, WidgetRef ref) async {
+  if (!ref.read(authSessionProvider).isAuthenticated) {
+    HapticFeedback.selectionClick();
+    context.push('/signup?redirect=${Uri.encodeQueryComponent('/')}');
+    return;
+  }
+  final groups = ref.read(myGroupsProvider).valueOrNull;
+  final availability = groups != null && groups.isEmpty
+      ? const SnapAvailability.noGroups()
+      : ref.read(snapAvailabilityProvider);
+  await openSnapFlow(context, ref, availability: availability);
 }

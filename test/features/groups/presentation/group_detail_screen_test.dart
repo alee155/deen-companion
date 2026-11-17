@@ -1,3 +1,4 @@
+import 'package:deen_companion/features/groups/presentation/widgets/group_detail_widgets.dart';
 import 'package:deen_companion/features/group_live/presentation/providers/group_live_store.dart';
 import 'package:deen_companion/features/auth/domain/entities/auth_session.dart';
 import 'package:deen_companion/features/auth/presentation/providers/auth_session_provider.dart';
@@ -118,9 +119,13 @@ void main() {
     expect(find.textContaining('Alee Khan'), findsOneWidget);
     expect(find.text('Sara Ahmed'), findsOneWidget);
     expect(find.text('ADMIN'), findsOneWidget);
-    // Each member card shows their real streak, from the board.
-    expect(find.text('4d'), findsOneWidget);
-    expect(find.text('2d'), findsOneWidget);
+    // Each member row shows their real streak, from the board.
+    Finder inRows(String text) => find.descendant(
+      of: find.byType(MemberSnapTile),
+      matching: find.text(text),
+    );
+    expect(inRows('4'), findsOneWidget);
+    expect(inRows('2'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 

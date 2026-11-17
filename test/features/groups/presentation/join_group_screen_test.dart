@@ -71,9 +71,10 @@ Future<GoRouter> _pump(
         path: '/invite/:token',
         builder: (_, s) => JoinGroupScreen(token: s.pathParameters['token']!),
       ),
+      // The groups list lives on Home now.
       GoRoute(
-        path: '/groups',
-        builder: (_, _) => const Scaffold(body: Text('GROUPS TAB')),
+        path: '/',
+        builder: (_, _) => const Scaffold(body: Text('HOME')),
       ),
       GoRoute(
         path: '/groups/:id',

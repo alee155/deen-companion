@@ -10,7 +10,6 @@ import 'package:deen_companion/features/groups/domain/entities/group.dart';
 import 'package:deen_companion/features/groups/domain/entities/group_detail.dart';
 import 'package:deen_companion/features/groups/presentation/providers/groups_providers.dart';
 import 'package:deen_companion/features/groups/presentation/screens/group_detail_screen.dart';
-import 'package:deen_companion/features/groups/presentation/widgets/snap_widgets.dart';
 import 'package:deen_companion/features/groups/presentation/widgets/group_detail_widgets.dart';
 import 'package:deen_companion/features/prayer_logs/domain/group_member_prayers.dart';
 import 'package:deen_companion/features/prayer_logs/domain/prayer_log.dart';
@@ -275,43 +274,20 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  Finder snapIcon(String asset) => find.byWidgetPredicate(
-    (w) =>
-        w is Image &&
-        w.image is AssetImage &&
-        (w.image as AssetImage).assetName == asset,
-  );
-
-  testWidgets('each member has a snap icon, drawn from the app images', (
-    tester,
-  ) async {
+  testWidgets('a member with a new snap says so on their row', (tester) async {
     await _pump(tester);
-    expect(find.byType(SnapBox), findsNWidgets(2), reason: 'one per member');
-    expect(
-      find.descendant(
-        of: find.byType(SnapBox),
-        matching: find.byType(SnapPhoto),
-      ),
-      findsNothing,
-      reason: 'no photo preview on the card any more',
-    );
-    expect(
-      snapIcon(snapPendingAsset).evaluate().length +
-          snapIcon(snapViewedAsset).evaluate().length,
-      2,
-    );
+    // Sara's latest snap (Maghrib) is unopened for Alee, the viewer.
+    expect(find.textContaining('New snap · Maghrib'), findsOneWidget);
+    expect(_labelled('View snap'), findsOneWidget);
+    // No photo preview on the row.
+    expect(find.byType(SnapPhoto), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('a snap to open shows the filled arrow, none the outline', (
+  testWidgets('only someone else\'s snap is offered; your own row is not', (
     tester,
   ) async {
     await _pump(tester);
-    // Sara sent photos, so Alee (the viewer) has one to open on her card; his
-    // own card has nothing to open.
-    expect(snapIcon(snapPendingAsset), findsOneWidget);
-    expect(snapIcon(snapViewedAsset), findsOneWidget);
-
     final aleeRow = find.ancestor(
       of: find.textContaining('Alee Khan'),
       matching: find.byType(MemberSnapTile),
@@ -321,81 +297,111 @@ void main() {
       matching: find.byType(MemberSnapTile),
     );
     expect(
-      find.descendant(of: aleeRow, matching: snapIcon(snapViewedAsset)),
+      find.descendant(of: saraRow, matching: find.byType(MemberSnapStatus)),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: saraRow, matching: snapIcon(snapPendingAsset)),
+      find.descendant(of: aleeRow, matching: find.byType(MemberSnapStatus)),
+      findsNothing,
+      reason: 'you do not open your own snap',
+    );
+    // Without a snap on the row it says what they prayed last.
+    expect(
+      find.descendant(
+        of: aleeRow,
+        matching: find.textContaining('Prayed Dhuhr'),
+      ),
       findsOneWidget,
     );
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('nobody has a snap: every icon is the outlined one', (
-    tester,
-  ) async {
+  testWidgets('nobody has a snap: rows say what was prayed', (tester) async {
     await _pump(tester, feed: () async => _feed(photos: false));
-    expect(snapIcon(snapPendingAsset), findsNothing);
-    expect(snapIcon(snapViewedAsset), findsNWidgets(2));
+    expect(find.byType(MemberSnapStatus), findsNothing);
+    expect(find.textContaining('Prayed Maghrib'), findsOneWidget);
+    expect(find.textContaining('Prayed Dhuhr'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('each card shows prayers today, points and the streak', (
+  Finder streakInRows(String text) => find.descendant(
+    of: find.byType(MemberSnapTile),
+    matching: find.text(text),
+  );
+
+  testWidgets('each row shows the streak and today\'s five bars', (
     tester,
   ) async {
+    final semantics = tester.ensureSemantics();
     await _pump(tester);
-    // Alee logged Fajr + Dhuhr, Sara Asr + Maghrib: 2 prayers, 10 points each.
-    expect(find.text('2/5'), findsNWidgets(2));
-    expect(find.byIcon(Icons.bolt_rounded), findsNWidgets(2));
-    expect(find.text('10'), findsNWidgets(2));
     // Streaks from the board: Alee 4, Sara 2.
-    expect(find.text('4d'), findsOneWidget);
-    expect(find.text('2d'), findsOneWidget);
+    expect(streakInRows('4'), findsOneWidget);
+    expect(streakInRows('2'), findsOneWidget);
     // Flames: the header summary, and one per member.
     expect(find.byIcon(Icons.local_fire_department_rounded), findsNWidgets(3));
+    // Alee logged Fajr + Dhuhr, Sara Asr + Maghrib. With no prayer window
+    // known, nothing is called missed.
+    expect(
+      // (A row is one tappable node, so its parts' labels merge into it.)
+      find.bySemanticsLabel(
+        RegExp(
+          'Today: Fajr logged, Dhuhr logged, Asr not yet, Maghrib not yet, Isha not yet',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(
+        RegExp(
+          'Today: Fajr not yet, Dhuhr not yet, Asr logged, Maghrib logged, Isha not yet',
+        ),
+      ),
+      findsOneWidget,
+    );
+    // The old prayers/points figures are gone from the card.
+    expect(find.text('2/5'), findsNothing);
+    expect(find.byIcon(Icons.bolt_rounded), findsNothing);
+    semantics.dispose();
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('the figures sit under the name on the card', (tester) async {
+  testWidgets('the status line sits under the name on the row', (tester) async {
     await _pump(tester);
     final name = tester.getTopLeft(find.text('Sara Ahmed')).dy;
-    final bolts = [
-      for (final e in find.byIcon(Icons.bolt_rounded).evaluate())
-        tester.getTopLeft(find.byWidget(e.widget)).dy,
-    ];
-    expect(bolts.any((y) => y > name && y - name < 40), isTrue);
+    final status = tester.getTopLeft(find.textContaining('New snap')).dy;
+    expect(status, greaterThan(name));
+    expect(status - name, lessThan(40));
     await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('on a narrow phone nothing overflows', (tester) async {
     await _pump(tester, width: 320);
     expect(tester.takeException(), isNull);
-    expect(find.byIcon(Icons.bolt_rounded), findsNWidgets(2));
+    expect(streakInRows('4'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('each figure shows once its own source has loaded', (
-    tester,
-  ) async {
-    // Feed down: no prayers/points, but the board's streak still shows.
+  testWidgets('each part shows once its own source has loaded', (tester) async {
+    final semantics = tester.ensureSemantics();
+    // Feed down: no bars, but the board's streak still shows.
     await _pump(tester, feed: () async => throw const NetworkFailure());
-    expect(find.text('2/5'), findsNothing);
-    expect(find.byIcon(Icons.bolt_rounded), findsNothing);
-    expect(find.text('4d'), findsOneWidget);
-    expect(find.text('2d'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Today: ')), findsNothing);
+    expect(streakInRows('4'), findsOneWidget);
+    expect(streakInRows('2'), findsOneWidget);
+    semantics.dispose();
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('board down: prayers and points show, the streak does not', (
-    tester,
-  ) async {
+  testWidgets('board down: the bars show, the streak does not', (tester) async {
+    final semantics = tester.ensureSemantics();
     await _pump(
       tester,
       streaks: FakeStreaksRepo()..board = const Error(NetworkFailure()),
     );
-    expect(find.text('2/5'), findsNWidgets(2));
-    expect(find.text('4d'), findsNothing);
+    expect(find.bySemanticsLabel(RegExp('Today: ')), findsNWidgets(2));
+    expect(streakInRows('4'), findsNothing);
     expect(find.text('Goal met today'), findsNothing);
+    semantics.dispose();
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -415,69 +421,65 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
   group('real photos', () {
-    /// The white box on [name]'s card.
+    /// The "New snap" line on a member's row.
     Finder viewPhoto() => _labelled('View snap');
-    Finder noPhoto() => _labelled('No snap');
 
-    testWidgets('others\' boxes are enabled, the viewer\'s own is not', (
+    testWidgets('someone else\'s new snap can be opened, your own cannot', (
       tester,
     ) async {
       await _pump(tester);
       // Sara (someone else) has a photo to open; Alee (me) does not.
       expect(viewPhoto(), findsOneWidget);
-      expect(noPhoto(), findsOneWidget);
+      expect(find.byType(MemberSnapStatus), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('tapping someone else\'s box opens their latest photo', (
+    testWidgets('tapping someone else\'s new snap opens their latest photo', (
       tester,
     ) async {
       await _pump(tester);
-      // The enabled box is Sara's (the viewer's own is disabled).
-      await tester.tap(
-        find.descendant(of: viewPhoto(), matching: find.byType(Image)).first,
-      );
+      // The only "New snap" line is Sara's (the viewer has none of their own).
+      await tester.tap(viewPhoto());
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byTooltip('Close'), findsOneWidget);
-      expect(
-        find.textContaining('Maghrib'),
-        findsOneWidget,
-        reason: 'her latest photo, not the older Asr one',
-      );
+      // The viewer's subtitle names her latest snap, not the older Asr one.
+      expect(find.text('Maghrib · 13 Oct'), findsOneWidget);
+      expect(find.text('Asr · 13 Oct'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
 
     testWidgets('the photo link is refreshed on tap', (tester) async {
       await _pump(tester);
       final before = feedCalls;
-      await tester.tap(
-        find.descendant(of: viewPhoto(), matching: find.byType(Image)).first,
-      );
+      await tester.tap(viewPhoto());
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
       expect(feedCalls, greaterThan(before), reason: 'signed links expire');
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('your own box does nothing when tapped', (tester) async {
+    testWidgets('your own row has nothing to open', (tester) async {
       await _pump(tester);
-      await tester.tap(
-        find.descendant(of: noPhoto(), matching: find.byType(Image)).first,
+      final aleeRow = find.ancestor(
+        of: find.textContaining('Alee Khan'),
+        matching: find.byType(MemberSnapTile),
       );
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(find.byTooltip('Close'), findsNothing);
+      expect(
+        find.descendant(of: aleeRow, matching: _labelled('View snap')),
+        findsNothing,
+      );
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('no photos in the feed: every box is plain', (tester) async {
+    testWidgets('no photos in the feed: nothing to open', (tester) async {
       await _pump(tester, feed: () async => _feed(photos: false));
       expect(viewPhoto(), findsNothing);
-      expect(noPhoto(), findsNWidgets(2));
+      expect(find.byType(MemberSnapStatus), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('feed unavailable: boxes are plain too', (tester) async {
+    testWidgets('feed unavailable: nothing to open either', (tester) async {
       await _pump(tester, feed: () async => throw const NetworkFailure());
       expect(viewPhoto(), findsNothing);
       await tester.pumpWidget(const SizedBox());
@@ -497,15 +499,145 @@ void main() {
           throw const NetworkFailure();
         },
       );
-      await tester.tap(
-        find.descendant(of: viewPhoto(), matching: find.byType(Image)).first,
-      );
+      await tester.tap(viewPhoto());
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byTooltip('Close'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });
   });
+  group('while a prayer is open and a member has not logged it', () {
+    /// Asr is open (about 1h 55m left). Alee (the viewer) has logged Fajr and
+    /// Dhuhr only; Sara's logs are [saraPrayed].
+    List<GroupMemberPrayers> feedWith(List<PrayerName> saraPrayed) => [
+      GroupMemberPrayers(
+        userId: 'admin1',
+        name: 'Alee Khan',
+        role: GroupRole.admin,
+        logs: [
+          _log(PrayerName.fajr, id: 'a1', at: _noon),
+          _log(PrayerName.dhuhr, id: 'a2', at: _noon),
+        ],
+      ),
+      GroupMemberPrayers(
+        userId: 'member1',
+        name: 'Sara Ahmed',
+        role: GroupRole.member,
+        logs: [
+          for (final (i, p) in saraPrayed.indexed)
+            _log(p, id: 's$i', at: _noon),
+        ],
+      ),
+    ];
+
+    final openAsr = [
+      currentPrayerProvider.overrideWith(() => FixedCurrent(openState())),
+    ];
+
+    Finder row(String name) => find.ancestor(
+      of: find.textContaining(name),
+      matching: find.byType(MemberSnapTile),
+    );
+
+    testWidgets('someone who has not sent theirs gets an hourglass and the '
+        'time left', (tester) async {
+      await _pump(
+        tester,
+        overrides: openAsr,
+        feed: () async => feedWith([PrayerName.fajr]),
+      );
+      final sara = row('Sara Ahmed');
+      expect(
+        find.descendant(of: sara, matching: find.textContaining('Asr · 1h')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: sara, matching: find.textContaining('left')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: sara,
+          matching: find.byIcon(Icons.hourglass_bottom_rounded),
+        ),
+        findsOneWidget,
+      );
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('your own row counts down too, without the hourglass', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        overrides: openAsr,
+        feed: () async => feedWith([PrayerName.fajr]),
+      );
+      final me = row('Alee Khan');
+      expect(
+        find.descendant(of: me, matching: find.textContaining('left')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: me,
+          matching: find.byIcon(Icons.hourglass_bottom_rounded),
+        ),
+        findsNothing,
+      );
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a member who has logged the open prayer shows no countdown', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        overrides: openAsr,
+        feed: () async => feedWith([PrayerName.asr]),
+      );
+      expect(
+        find.descendant(
+          of: row('Sara Ahmed'),
+          matching: find.textContaining('left'),
+        ),
+        findsNothing,
+      );
+      expect(find.byIcon(Icons.hourglass_bottom_rounded), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('an earlier prayer with nothing logged shows as missed', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await _pump(
+        tester,
+        overrides: openAsr,
+        feed: () async => feedWith([PrayerName.fajr]),
+      );
+      // Fajr logged, Dhuhr's time has closed unlogged, Asr is open.
+      expect(
+        find.bySemanticsLabel(
+          RegExp(
+            'Today: Fajr logged, Dhuhr missed, Asr not yet, Maghrib not yet, Isha not yet',
+          ),
+        ),
+        findsWidgets,
+      );
+      semantics.dispose();
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('no countdown when the open prayer is not known', (
+      tester,
+    ) async {
+      await _pump(tester, feed: () async => feedWith([PrayerName.fajr]));
+      expect(find.textContaining(' left'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
+
   group('member detail sheet: today\'s prayer circles', () {
     /// Opens a member's sheet (the viewer is the admin, so any member opens).
     Future<void> openSheet(WidgetTester tester, String name) async {
@@ -531,12 +663,16 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('sits above the stats in the sheet', (tester) async {
+    testWidgets('the stats sit above today\'s prayers in the profile', (
+      tester,
+    ) async {
       await _pump(tester);
       await openSheet(tester, 'Sara Ahmed');
       final prayers = tester.getTopLeft(find.text('Today’s prayers')).dy;
       final stats = tester.getTopLeft(find.text('Day streak')).dy;
-      expect(prayers, lessThan(stats));
+      expect(stats, lessThan(prayers));
+      // How many of the five she has logged, beside the heading.
+      expect(find.text('2 of 5'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });
 

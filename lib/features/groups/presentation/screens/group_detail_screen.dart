@@ -11,6 +11,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
 import '../../../auth/presentation/providers/auth_session_provider.dart';
+import '../../../group_live/presentation/providers/realtime_providers.dart';
+import '../../../group_live/presentation/providers/realtime_service.dart';
 import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
 import '../../../prayer_logs/domain/group_member_prayers.dart';
 import '../../../prayer_logs/domain/prayer_log.dart';
@@ -67,6 +69,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   /// non-forced refreshes are skipped.
   Timer? _cooldown;
 
+  /// The live connection while this feed is open, kept so [dispose] can say
+  /// the feed left the screen (a widget's `ref` is not safe there).
+  RealtimeService? _live;
+
   GroupFeedKey get _feedKey => (groupId: widget.groupId, date: null);
 
   @override
@@ -81,6 +87,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
     });
 
     WidgetsBinding.instance.addObserver(this);
+
+    // Tells the server this feed is on screen, so it does not push a snap the
+    // user is already looking at.
+    _live = ref.read(realtimeServiceProvider)?..startViewing(widget.groupId);
 
     // Whether a snap can be sent right now is the server's call; ask again so
     // the button never shows for a prayer that is already logged.
@@ -136,6 +146,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
 
   @override
   void dispose() {
+    _live?.stopViewing(widget.groupId);
     WidgetsBinding.instance.removeObserver(this);
     _cooldown?.cancel();
     _scroll.dispose();
@@ -398,37 +409,12 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               padding: EdgeInsets.fromLTRB(20.w, 24.h, 20.w, 12.h),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.leaderboard_rounded,
-                    size: 18.sp,
-                    color: AppColors.emeraldInk,
-                  ),
-                  SizedBox(width: 8.w),
                   Text(
                     'Members',
                     style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.inkText,
-                    ),
-                  ),
-                  SizedBox(width: 8.w),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 10.w,
-                      vertical: 3.h,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.worshipAccentBg,
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
-                    child: Text(
-                      '${g.memberCount}',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.worshipAccent,
-                      ),
                     ),
                   ),
                   const Spacer(),
@@ -437,60 +423,49 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
               ),
             ),
           ),
-          SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w),
-            sliver: SliverToBoxAdapter(
-              child:
-                  Container(
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(24.r),
-                      border: Border.all(color: AppColors.borderWarm),
-                    ),
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < members.length; i++) ...[
-                          _tile(
-                            g,
-                            members[i],
-                            i + 1,
-                            board,
-                            myId,
-                            isAdmin,
-                            prayersByMember[members[i].userId],
+          SliverToBoxAdapter(
+            child:
+                Column(
+                  children: [
+                    for (var i = 0; i < members.length; i++) ...[
+                      _tile(
+                        g,
+                        members[i],
+                        board,
+                        myId,
+                        isAdmin,
+                        prayersByMember[members[i].userId],
+                      ),
+                      if (i != members.length - 1)
+                        Divider(
+                          height: 1,
+                          indent: 20.w,
+                          endIndent: 20.w,
+                          color: AppColors.borderWarm,
+                        ),
+                    ],
+                    if (members.length == 1) ...[
+                      Divider(height: 1, color: AppColors.borderWarm),
+                      Padding(
+                        padding: EdgeInsets.all(16.w),
+                        child: Text(
+                          'You’re the only one here so far. Share the invite '
+                          'code above to bring others in.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            height: 1.4,
+                            color: AppColors.textSecondary,
                           ),
-                          if (i != members.length - 1)
-                            Divider(
-                              height: 1,
-                              indent: 60.w,
-                              color: AppColors.borderWarm,
-                            ),
-                        ],
-                        if (members.length == 1) ...[
-                          Divider(height: 1, color: AppColors.borderWarm),
-                          Padding(
-                            padding: EdgeInsets.all(16.w),
-                            child: Text(
-                              'You’re the only one here so far. Share the invite '
-                              'code above to bring others in.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                height: 1.4,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ).slideIn(
-                    RevealDirection.bottomEnd,
-                    onVisible: true,
-                    delay: const Duration(milliseconds: 80),
-                  ),
-            ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ).slideIn(
+                  RevealDirection.bottomEnd,
+                  onVisible: true,
+                  delay: const Duration(milliseconds: 80),
+                ),
           ),
           SliverToBoxAdapter(child: SizedBox(height: 110.h)),
         ],
@@ -501,7 +476,6 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   Widget _tile(
     GroupDetail group,
     GroupMember m,
-    int rank,
     GroupStreakBoard? board,
     String? myId,
     bool isAdmin,
@@ -527,14 +501,8 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       member: m,
       snapState: snapState,
       isBlocked: isBlocked,
-      // Everyone can report or block another member, whatever their role.
-      onMore: isMe
-          ? null
-          : () => showUserSafetyActions(context, ref, user: safetyUser),
       streak: streak,
-      prayersToday: prayers?.loggedCount,
-      pointsToday: prayers?.totalPoints,
-      rank: rank,
+      prayers: prayers,
       isMe: isMe,
       onOpenDetails: () async {
         final action = await showMemberDetailSheet(
@@ -542,8 +510,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
           member: m,
           streak: streak,
           pointsToday: prayers?.totalPoints,
+          prayersDone: prayers?.loggedCount,
           isMe: isMe,
           viewerIsAdmin: isAdmin,
+          // Everyone can report or block another member, whatever their role.
+          onMore: isMe
+              ? null
+              : () => showUserSafetyActions(context, ref, user: safetyUser),
           // Today's prayer circles live here, not on the card.
           prayerRow: prayers == null
               ? null

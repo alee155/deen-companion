@@ -137,7 +137,8 @@ class _AllFeaturesScreenState extends ConsumerState<AllFeaturesScreen> {
                 ),
                 SliverToBoxAdapter(
                   child: SizedBox(
-                    height: MediaQuery.of(context).padding.bottom + 24.h,
+                    // Clears the floating bottom navigation bar.
+                    height: MediaQuery.of(context).padding.bottom + 130.h,
                   ),
                 ),
               ],
@@ -146,7 +147,11 @@ class _AllFeaturesScreenState extends ConsumerState<AllFeaturesScreen> {
               top: 0,
               left: 0,
               right: 0,
-              child: PinnedHeroBar(opacity: _bar, title: 'Explore'),
+              child: PinnedHeroBar(
+                opacity: _bar,
+                title: 'Explore',
+                showBack: false,
+              ),
             ),
           ],
         ),

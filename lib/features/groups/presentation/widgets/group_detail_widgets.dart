@@ -1,5 +1,14 @@
+import '../../../prayer_logs/domain/current_prayer.dart';
+import '../../../prayer_logs/domain/group_member_prayers.dart';
 import '../../../prayer_logs/domain/prayer_log.dart';
+import '../../../prayer_logs/presentation/prayer_labels.dart';
+import '../../../prayer_logs/presentation/providers/prayer_logs_providers.dart';
+import '../../domain/member_day_status.dart';
+import 'group_card.dart' show shortAgo;
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -392,12 +401,23 @@ class _HeroTodaySummary extends StatelessWidget {
   }
 }
 
-/// A member's row: who they are and, once known, how today and their streak
-/// are going. Each figure appears only when it has loaded; with none, the row
-/// shows when they joined.
-class MemberSnapTile extends StatelessWidget {
+/// A member's row in the Members list: the picture, the name (with an Admin
+/// badge), one line saying where they are today, and the five prayers as small
+/// bars. On the right, their streak.
+///
+/// The status line is, in this order:
+/// - **blocked**: a "Blocked" tag (their snaps are hidden from the viewer);
+/// - **waiting**: while a prayer's time is open and they have not logged it,
+///   that prayer and the time left until the next one starts, with an
+///   hourglass (the viewer's own row shows the time without the hourglass);
+/// - **a snap**: a new one to open, one already opened, or one that expired;
+/// - **a log without a snap**: what they prayed last;
+/// - nothing yet today, or, before today's feed has loaded, when they joined.
+///
+/// Tapping the row opens the member's profile (where report and block are).
+/// Tapping a new snap opens it.
+class MemberSnapTile extends ConsumerStatefulWidget {
   final GroupMember member;
-  final int rank;
   final bool isMe;
 
   /// Tapping the row opens the member's details, for every member.
@@ -407,19 +427,14 @@ class MemberSnapTile extends StatelessWidget {
   final VoidCallback onOpenSnap;
 
   /// Their latest snap as this viewer sees it (never active on the viewer's
-  /// own card).
+  /// own row).
   final SnapState snapState;
 
-  /// Their streak line (current streak, today's goal), from the board.
+  /// Their streak (current streak, today's goal), from the board.
   final MemberStreak? streak;
 
-  /// Distinct prayers they have logged today, and the points those earned,
-  /// from the group feed. Hidden until the feed has loaded.
-  final int? prayersToday;
-  final int? pointsToday;
-
-  /// Opens the safety menu (report / block). Null on the viewer's own row.
-  final VoidCallback? onMore;
+  /// What they logged today, from the group feed. Null until it has loaded.
+  final GroupMemberPrayers? prayers;
 
   /// The viewer has blocked this member: their snaps are hidden.
   final bool isBlocked;
@@ -427,46 +442,90 @@ class MemberSnapTile extends StatelessWidget {
   const MemberSnapTile({
     super.key,
     required this.member,
-    required this.rank,
     required this.isMe,
     required this.onOpenDetails,
     required this.onOpenSnap,
     this.snapState = SnapState.none,
     this.streak,
-    this.prayersToday,
-    this.pointsToday,
-    this.onMore,
+    this.prayers,
     this.isBlocked = false,
   });
 
   @override
+  ConsumerState<MemberSnapTile> createState() => _MemberSnapTileState();
+}
+
+class _MemberSnapTileState extends ConsumerState<MemberSnapTile> {
+  /// Ticks while this member's countdown is running, so "1h 14m left" stays
+  /// right. Not running for anyone else: most rows have nothing to count.
+  Timer? _timer;
+
+  /// The server's clock minus the phone's, from when the open-prayer answer
+  /// arrived, so the countdown follows the server even if the phone is off.
+  Duration _skew = Duration.zero;
+  CurrentPrayerState? _seen;
+
+  /// The answer a refresh was last asked for, shared by every row so a window
+  /// that closes is refreshed once, not once per member.
+  static CurrentPrayerState? _refreshedFor;
+
+  MemberSnapTile get w => widget;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _tick() {
+    if (!mounted) return;
+    final s = _seen;
+    final boundary = s?.current?.endsAt ?? s?.next?.startsAt;
+    if (s != null &&
+        boundary != null &&
+        !DateTime.now().add(_skew).isBefore(boundary) &&
+        !identical(_refreshedFor, s)) {
+      _refreshedFor = s;
+      ref.read(currentPrayerProvider.notifier).refresh();
+    }
+    setState(() {});
+  }
+
+  void _ensureTimer(bool needed) {
+    if (needed) {
+      _timer ??= Timer.periodic(const Duration(seconds: 15), (_) => _tick());
+    } else if (_timer != null) {
+      _timer!.cancel();
+      _timer = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final streakLine = streak;
-    final hasFigures =
-        prayersToday != null || pointsToday != null || streakLine != null;
+    final window = ref.watch(currentPrayerProvider).valueOrNull;
+    if (!identical(window, _seen)) {
+      _seen = window;
+      _skew = window == null
+          ? Duration.zero
+          : window.now.difference(DateTime.now());
+    }
+    final now = DateTime.now().add(_skew);
+    final day = memberDayStatus(prayers: w.prayers, window: window, now: now);
+    _ensureTimer(day.waitingFor != null);
+    final streakLine = w.streak;
+
     return InkWell(
-      onTap: onOpenDetails,
+      onTap: w.onOpenDetails,
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 11.h),
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 14.h),
         child: Row(
           children: [
-            SizedBox(
-              width: 20.w,
-              child: Text(
-                '$rank',
-                style: TextStyle(
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ),
             MemberAvatar(
-              member: member,
-              size: 44.w,
+              member: w.member,
+              size: 54.w,
               ring: streakLine?.todayQualified ?? false,
             ),
-            SizedBox(width: 12.w),
+            SizedBox(width: 14.w),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,88 +534,272 @@ class MemberSnapTile extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          isMe
-                              ? '${member.displayName} (you)'
-                              : member.displayName,
+                          w.isMe
+                              ? '${w.member.displayName} (You)'
+                              : w.member.displayName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w800,
                             color: AppColors.inkText,
                           ),
                         ),
                       ),
-                      SizedBox(width: 6.w),
-                      RoleBadge(role: member.role),
+                      if (w.member.role == GroupRole.admin) ...[
+                        SizedBox(width: 3.w),
+                        const RoleBadge(role: GroupRole.admin, soft: true),
+                      ],
                     ],
                   ),
-                  SizedBox(height: 3.h),
-                  if (hasFigures || isBlocked)
-                    // A Wrap, so a long name or large text moves a figure to a
-                    // second line instead of overflowing the row.
-                    Wrap(
-                      spacing: 10.w,
-                      runSpacing: 2.h,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (isBlocked) const _BlockedTag(),
-                        if (prayersToday != null)
-                          _Figure(
-                            icon: Icons.check_circle_outline_rounded,
-                            color: AppColors.textMuted,
-                            text: '$prayersToday/5',
-                            label: '$prayersToday of 5 prayers today',
-                          ),
-                        if (pointsToday != null)
-                          _Figure(
-                            icon: Icons.bolt_rounded,
-                            color: AppColors.amber,
-                            text: '$pointsToday',
-                            label: '$pointsToday points today',
-                          ),
-                        if (streakLine != null)
-                          _Figure(
-                            icon: Icons.local_fire_department_rounded,
-                            color: AppColors.amber,
-                            text: '${streakLine.currentStreak}d',
-                            label: '${streakLine.currentStreak} day streak',
-                          ),
-                      ],
-                    )
-                  else
-                    Text(joinedLabel(member.joinedAt), style: _meta),
+                  SizedBox(height: 4.h),
+                  _statusLine(day, now),
+                  if (day.days.isNotEmpty) ...[
+                    SizedBox(height: 7.h),
+                    _DayBars(days: day.days),
+                  ],
                 ],
               ),
             ),
-            SizedBox(width: 8.w),
-            SnapBox(state: snapState, onTap: onOpenSnap),
-            if (onMore != null)
-              IconButton(
-                tooltip: 'More about ${member.displayName}',
-                onPressed: onMore,
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: BoxConstraints.tightFor(width: 34.w, height: 40.h),
-                icon: Icon(
-                  Icons.more_vert_rounded,
-                  size: 20.sp,
-                  color: AppColors.textMuted,
+            if (streakLine != null) ...[
+              SizedBox(width: 8.w),
+              Semantics(
+                label: '${streakLine.currentStreak} day streak',
+                excludeSemantics: true,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.local_fire_department_rounded,
+                      size: 22.sp,
+                      color: AppColors.emeraldInk,
+                    ),
+                    SizedBox(width: 2.w),
+                    Text(
+                      '${streakLine.currentStreak}',
+                      style: TextStyle(
+                        fontSize: 20.sp,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.emeraldInk,
+                      ),
+                    ),
+                  ],
                 ),
-              )
-            else
-              SizedBox(width: 4.w),
+              ),
+            ],
+            SizedBox(width: 4.w),
           ],
         ),
       ),
     );
   }
 
-  TextStyle get _meta =>
-      TextStyle(fontSize: 11.sp, color: AppColors.textSecondary);
+  /// The one line under the name. See the class comment for the order.
+  Widget _statusLine(MemberDayStatus day, DateTime now) {
+    final muted = TextStyle(fontSize: 14.sp, color: AppColors.textSecondary);
+
+    if (w.isBlocked) return const _BlockedTag();
+
+    final waiting = day.waitingFor;
+    if (waiting != null && day.left != null) {
+      return _MemberStatusText(
+        semantics:
+            '${waiting.label}: ${countdown(day.left!)} left to log'
+            '${w.isMe ? '' : ', not logged yet'}',
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                '${waiting.label} · ${countdown(day.left!)} left',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: muted,
+              ),
+            ),
+            // Marks who has not sent theirs yet; the viewer knows their own.
+            if (!w.isMe) ...[
+              SizedBox(width: 5.w),
+              Icon(
+                Icons.hourglass_bottom_rounded,
+                size: 15.sp,
+                color: AppColors.amber,
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    final snapLog = w.prayers?.latestSnapLog(now);
+    if (snapLog != null && w.snapState != SnapState.none) {
+      final what =
+          '${snapLog.prayer.label} · ${shortAgo(now.difference(snapLog.loggedAt))}';
+      return MemberSnapStatus(
+        state: w.snapState,
+        text: what,
+        onTap: w.onOpenSnap,
+      );
+    }
+
+    final logs = w.prayers?.logs ?? const <PrayerLog>[];
+    if (logs.isNotEmpty) {
+      var last = logs.first;
+      for (final l in logs) {
+        if (l.loggedAt.isAfter(last.loggedAt)) last = l;
+      }
+      return Text(
+        'Prayed ${last.prayer.label} · ${shortAgo(now.difference(last.loggedAt))}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: muted,
+      );
+    }
+    if (w.prayers != null) {
+      return Text('No w.prayers yet today', style: muted);
+    }
+    return Text(joinedLabel(w.member.joinedAt), style: muted);
+  }
 }
 
-/// "Blocked", beside a member's name.
+/// A status line with one accessible label.
+class _MemberStatusText extends StatelessWidget {
+  final String semantics;
+  final Widget child;
+  const _MemberStatusText({required this.semantics, required this.child});
+
+  @override
+  Widget build(BuildContext context) =>
+      Semantics(label: semantics, excludeSemantics: true, child: child);
+}
+
+/// A member's latest snap on their row: "New snap · Asr · 2m" (filled square,
+/// bold, tap to open), "Viewed · Asr · 22m" (outlined square), or "Expired".
+/// Only [SnapState.unopened] is tappable.
+class MemberSnapStatus extends StatelessWidget {
+  final SnapState state;
+
+  /// "Asr · 2m".
+  final String text;
+  final VoidCallback? onTap;
+
+  const MemberSnapStatus({
+    super.key,
+    required this.state,
+    required this.text,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = state == SnapState.unopened && onTap != null;
+    final (label, semantics) = switch (state) {
+      SnapState.unopened => ('New snap', 'View snap'),
+      SnapState.opened => ('Viewed', 'Snap already opened'),
+      SnapState.expired => ('Expired', 'Snap expired'),
+      SnapState.none => ('', 'No snap'),
+    };
+    final box = 15.w;
+    final Widget icon = switch (state) {
+      SnapState.unopened => Container(
+        width: box,
+        height: box,
+        decoration: BoxDecoration(
+          color: AppColors.emeraldInk,
+          borderRadius: BorderRadius.circular(4.r),
+        ),
+      ),
+      _ => Container(
+        width: box,
+        height: box,
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.textMuted, width: 1.6),
+          borderRadius: BorderRadius.circular(4.r),
+        ),
+      ),
+    };
+    final style = TextStyle(
+      fontSize: 12.sp,
+      fontWeight: enabled ? FontWeight.w800 : FontWeight.w500,
+      color: enabled ? AppColors.amberDeep : AppColors.textSecondary,
+    );
+
+    return Semantics(
+      button: enabled,
+      enabled: enabled,
+      label: semantics,
+      excludeSemantics: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? onTap : null,
+        child: Opacity(
+          opacity: state == SnapState.expired ? 0.5 : 1,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              icon,
+              SizedBox(width: 4.w),
+              Flexible(
+                child: Text(
+                  '$label · $text',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The five prayers as short bars: green logged, red missed, grey still to
+/// come (or open and not logged yet).
+class _DayBars extends StatelessWidget {
+  final List<DayPrayer> days;
+  const _DayBars({required this.days});
+
+  @override
+  Widget build(BuildContext context) {
+    const names = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    final spoken = [
+      for (final (i, d) in days.indexed)
+        '${names[i]} ${switch (d) {
+          DayPrayer.logged => 'logged',
+          DayPrayer.missed => 'missed',
+          DayPrayer.pending => 'not yet',
+        }}',
+    ].join(', ');
+    return Semantics(
+      label: 'Today: $spoken',
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (i, d) in days.indexed) ...[
+            if (i > 0) SizedBox(width: 6.w),
+            Container(
+              width: 24.w,
+              height: 5.h,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(3.r),
+                color: switch (d) {
+                  DayPrayer.logged => Colors.green,
+                  DayPrayer.missed => AppColors.error,
+                  DayPrayer.pending => AppColors.borderWarm,
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "Blocked", on a member's row.
 class _BlockedTag extends StatelessWidget {
   const _BlockedTag();
 
@@ -576,39 +819,6 @@ class _BlockedTag extends StatelessWidget {
           fontWeight: FontWeight.w800,
           color: AppColors.error,
         ),
-      ),
-    );
-  }
-}
-
-/// A small icon + number on a member's row.
-class _Figure extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String text;
-  final String label;
-  const _Figure({
-    required this.icon,
-    required this.color,
-    required this.text,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: label,
-      excludeSemantics: true,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13.sp, color: color),
-          SizedBox(width: 3.w),
-          Text(
-            text,
-            style: TextStyle(fontSize: 11.sp, color: AppColors.textSecondary),
-          ),
-        ],
       ),
     );
   }

@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/audio_player/presentation/widgets/now_playing_dock.dart';
 import '../../features/profile/presentation/widgets/gender_prompt_sheet.dart';
+import '../../features/snaps/presentation/snap_entry.dart';
+import '../widgets/explore_nav_icon.dart';
 import '../widgets/floating_nav_bar.dart';
 
-/// Shell around the bottom-tab destinations (Home / Favorites / Settings /
-/// Profile).
+/// Shell around the bottom-tab destinations (Home / Explore / Favorites /
+/// Profile), with the camera button in the middle of the bar.
 ///
 /// This widget is built once by the router's StatefulShellRoute and stays
 /// mounted for the lifetime of the tabbed section of the app — only the
@@ -23,13 +25,29 @@ class AppShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
   const AppShell({super.key, required this.navigationShell});
 
+  /// In branch order (see the router). Settings is not a tab: it opens from
+  /// the Profile header.
   static const List<FloatingNavItem> _items = [
-    FloatingNavItem(icon: Icons.home_rounded, label: 'Home'),
-    FloatingNavItem(icon: Icons.favorite_rounded, label: 'Favorites'),
-    FloatingNavItem(icon: Icons.group, label: 'Groups'),
-    FloatingNavItem(icon: Icons.settings_rounded, label: 'Settings'),
-    FloatingNavItem(icon: Icons.person_rounded, label: 'Profile'),
+    FloatingNavItem(
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home_rounded,
+      label: 'Home',
+    ),
+    FloatingNavItem.custom(iconBuilder: _exploreIcon, label: 'Explore'),
+    FloatingNavItem(
+      icon: Icons.favorite_border_rounded,
+      activeIcon: Icons.favorite_rounded,
+      label: 'Favorites',
+    ),
+    FloatingNavItem(
+      icon: Icons.person_outline_rounded,
+      activeIcon: Icons.person_rounded,
+      label: 'Profile',
+    ),
   ];
+
+  static Widget _exploreIcon(Color color, double size) =>
+      ExploreNavIcon(color: color, size: size);
 
   void _onTabTapped(int index) {
     // `initialLocation: true` when re-tapping the already-selected tab pops
@@ -44,6 +62,8 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keeps the camera button's answer (prayer window, groups) loaded.
+    ref.watch(snapNavReadyProvider);
     return Scaffold(
       extendBody: true,
       // Asks once, per app run, for the gender of an account that has none.
@@ -57,6 +77,13 @@ class AppShell extends ConsumerWidget {
             currentIndex: navigationShell.currentIndex,
             onTap: _onTabTapped,
             items: _items,
+            // The camera button the Groups screen used to have: guests go to
+            // sign up, and it says why when a snap can't be sent right now.
+            center: FloatingNavCenter(
+              icon: Icons.photo_camera_outlined,
+              label: 'Send a snap',
+              onTap: () => openSnapFromNav(context, ref),
+            ),
           ),
         ],
       ),
