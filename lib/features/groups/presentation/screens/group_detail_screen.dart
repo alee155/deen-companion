@@ -412,7 +412,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
                   Text(
                     'Members',
                     style: TextStyle(
-                      fontSize: 24.sp,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w800,
                       color: AppColors.inkText,
                     ),

@@ -337,8 +337,9 @@ void main() {
     // Streaks from the board: Alee 4, Sara 2.
     expect(streakInRows('4'), findsOneWidget);
     expect(streakInRows('2'), findsOneWidget);
-    // Flames: the header summary, and one per member.
-    expect(find.byIcon(Icons.local_fire_department_rounded), findsNWidgets(3));
+    // Flames: the header summary is an icon; each member row has a 🔥.
+    expect(find.byIcon(Icons.local_fire_department_rounded), findsOneWidget);
+    expect(find.text('🔥'), findsNWidgets(2));
     // Alee logged Fajr + Dhuhr, Sara Asr + Maghrib. With no prayer window
     // known, nothing is called missed.
     expect(

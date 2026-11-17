@@ -569,11 +569,7 @@ class _MemberSnapTileState extends ConsumerState<MemberSnapTile> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.local_fire_department_rounded,
-                      size: 22.sp,
-                      color: AppColors.emeraldInk,
-                    ),
+                    Text('🔥', style: TextStyle(fontSize: 16.sp)),
                     SizedBox(width: 2.w),
                     Text(
                       '${streakLine.currentStreak}',
