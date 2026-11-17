@@ -46,6 +46,14 @@ class DailyNotificationScheduler {
   /// Payload prefix of those notifications: a tap on one just opens the app.
   static const foreignPayloadPrefix = 'prayer:';
 
+  /// Payload prefix of the banner shown for a group snap while the app is
+  /// open (see PushService): a tap goes to [onSnapTap], not to the daily
+  /// content screen.
+  static const snapPayloadPrefix = 'snap:';
+
+  /// Set by PushService: opens the group whose snap banner was tapped.
+  void Function(String groupId)? onSnapTap;
+
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
@@ -81,7 +89,10 @@ class DailyNotificationScheduler {
         ),
         onDidReceiveNotificationResponse: (response) {
           final payload = response.payload;
-          if (payload != null && !payload.startsWith(foreignPayloadPrefix)) {
+          if (payload == null) return;
+          if (payload.startsWith(snapPayloadPrefix)) {
+            onSnapTap?.call(payload.substring(snapPayloadPrefix.length));
+          } else if (!payload.startsWith(foreignPayloadPrefix)) {
             onTap(payload);
           }
         },
@@ -102,7 +113,9 @@ class DailyNotificationScheduler {
       final details = await _plugin.getNotificationAppLaunchDetails();
       if (details?.didNotificationLaunchApp ?? false) {
         final payload = details?.notificationResponse?.payload;
-        if (payload != null && payload.startsWith(foreignPayloadPrefix)) {
+        if (payload != null &&
+            (payload.startsWith(foreignPayloadPrefix) ||
+                payload.startsWith(snapPayloadPrefix))) {
           return null;
         }
         return payload;

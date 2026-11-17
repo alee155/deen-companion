@@ -76,6 +76,12 @@
         <!-- Flutter embedding -->
         <meta-data android:name="flutterEmbedding" android:value="2" />
 
+        <!-- Push for group snaps: the server targets the "snaps" channel (the
+             app creates it at launch); these are the fallbacks Firebase uses
+             if a push arrives without them. -->
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="snaps" />
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_logo" />
+
         <!-- Let Flutter hand incoming App Links to the router (default on in
              current Flutter; explicit so it can't regress). -->
         <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />

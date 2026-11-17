@@ -311,4 +311,8 @@ class ApiEndpoints {
   static const String myTimezone = '$_deenBase/users/me/timezone';
   static const String myGender = '$_deenBase/users/me/gender';
   static const String myPoints = '$_deenBase/users/me/points';
+
+  /// `PUT {token, platform}` registers this phone for push; `DELETE {token}`
+  /// removes it (at log out).
+  static const String deviceToken = '$_deenBase/notifications/device-token';
 }

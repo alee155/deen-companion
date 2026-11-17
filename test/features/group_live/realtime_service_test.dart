@@ -58,6 +58,11 @@ class FakeSocket implements RealtimeSocket {
 
   void ackAt(int i, Object? ack) => _acks[i](ack);
 
+  Iterable<String> eventsFor(String name) => [
+    for (final e in emitted)
+      if (e.event == name) e.body['groupId'] as String,
+  ];
+
   Iterable<String> get subscribedIds => [
     for (final e in emitted)
       if (e.event == 'group.subscribe') e.body['groupId'] as String,
@@ -154,6 +159,71 @@ void main() {
       expect(h.subscribed, ['g1', 'g2']);
     },
   );
+
+  _run('viewing: announced when the feed opens, retracted when it closes', (
+    h,
+    async,
+  ) {
+    h.start();
+    h.goLive();
+    h.service.startViewing('g1');
+    expect(h.socket.eventsFor('group.viewing'), ['g1']);
+    expect(h.service.isViewing('g1'), isTrue);
+    // Subscribing alone never counts as viewing.
+    h.service.setMemberGroups(['g2']);
+    expect(h.service.isViewing('g2'), isFalse);
+    expect(h.socket.eventsFor('group.viewing'), ['g1']);
+
+    h.service.stopViewing('g1');
+    expect(h.socket.eventsFor('group.stopped_viewing'), ['g1']);
+    expect(h.service.isViewing('g1'), isFalse);
+  });
+
+  _run('viewing: opened before the socket is up, announced on connect', (
+    h,
+    async,
+  ) {
+    h.start();
+    h.service.startViewing('g1');
+    expect(h.socket.emitted, isEmpty);
+    h.socket.serverConnects();
+    expect(h.socket.eventsFor('group.viewing'), ['g1']);
+  });
+
+  _run('viewing: announced again on every reconnect', (h, async) {
+    h.start();
+    h.goLive();
+    h.service.startViewing('g1');
+    h.socket.serverDrops('transport close');
+    h.socket.emitted.clear();
+    h.socket.serverConnects();
+    expect(h.socket.eventsFor('group.viewing'), ['g1']);
+  });
+
+  _run('viewing: retracted when inactive, announced again on resume', (
+    h,
+    async,
+  ) {
+    h.start();
+    h.goLive();
+    h.service.startViewing('g1');
+    h.socket.emitted.clear();
+
+    h.service.didChangeAppLifecycleState(AppLifecycleState.inactive);
+    expect(h.socket.eventsFor('group.stopped_viewing'), ['g1']);
+    // Still remembered: it is announced again when the app is back in front.
+    h.service.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    expect(h.socket.eventsFor('group.viewing'), ['g1']);
+  });
+
+  _run('viewing: sent ahead of the queued subscriptions', (h, async) {
+    h.service.setMemberGroups([for (var i = 0; i < 20; i++) 'g$i']);
+    h.start();
+    h.socket.serverConnects();
+    h.service.startViewing('g3');
+    // Past the 25-a-minute budget the viewing event still goes first.
+    expect(h.socket.eventsFor('group.viewing'), ['g3']);
+  });
 
   _run('no token: it does not connect', (h, async) {
     h.token = null;

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:ui';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,16 +14,20 @@ import 'core/storage/fresh_install_guard.dart';
 import 'core/storage/token_storage.dart';
 import 'core/theme/theme_mode_provider.dart';
 import 'core/utils/logger.dart';
+import 'firebase_options.dart';
 import 'features/ads/presentation/providers/ads_providers.dart';
 import 'features/ads/presentation/providers/app_open_ad_manager.dart';
 import 'features/daily_content/presentation/providers/daily_notification_service.dart';
 import 'features/prayer_dnd/presentation/providers/prayer_dnd_provider.dart';
+import 'features/push/presentation/providers/push_service.dart';
 import 'features/prayer_reminders/presentation/providers/prayer_alarm_launch_service.dart';
 import 'features/prayer_reminders/presentation/providers/reminders_provider.dart';
 
 Future<void> bootstrap() async {
   final bootStart = DateTime.now();
   WidgetsFlutterBinding.ensureInitialized();
+
+  await _initFirebase();
 
   final container = ProviderContainer();
 
@@ -70,6 +76,18 @@ Future<void> bootstrap() async {
   _syncPrayerDnd(container);
   container.read(dailyNotificationServiceProvider).start();
   container.read(prayerAlarmLaunchServiceProvider).start();
+}
+
+Future<void> _initFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+  } catch (error, stackTrace) {
+    // Firebase powers optional services only — never block app start.
+    AppLogger.e('Firebase init failed', error, stackTrace);
+  }
 }
 
 Future<void> _syncPrayerReminders(ProviderContainer container) async {

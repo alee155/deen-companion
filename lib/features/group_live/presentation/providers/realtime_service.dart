@@ -84,6 +84,16 @@ class RealtimeService with WidgetsBindingObserver {
   List<String> _memberOf = const [];
   final Set<String> _forbidden = {};
 
+  /// Groups whose feed screen is open right now. Sent to the server as
+  /// `group.viewing`, which is what stops a push for a snap the user is
+  /// already looking at. Kept apart from [_watched]: subscribing is for live
+  /// numbers and must not suppress pushes.
+  final Set<String> _viewing = {};
+
+  /// The server holds at most this many `group.viewing` per socket.
+  static const _viewingEvent = 'group.viewing';
+  static const _stoppedViewingEvent = 'group.stopped_viewing';
+
   /// Subscribed on the *current* socket. Cleared on every disconnect:
   /// subscriptions do not survive a reconnect.
   final Set<String> _subscribed = {};
@@ -131,12 +141,18 @@ class RealtimeService with WidgetsBindingObserver {
         _closeSocket();
         _setStatus(LiveStatus.offline);
       case AppLifecycleState.resumed:
-        if (_foreground) return;
+        if (_foreground) {
+          // Came back from inactive: the feed on screen is being watched again.
+          _announceViewing();
+          return;
+        }
         _foreground = true;
+        // A new socket announces what is on screen once it is connected.
         unawaited(_connect());
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
-        break;
+        // Not on screen any more as far as pushes go: let them through.
+        _retractViewing();
     }
   }
 
@@ -150,6 +166,7 @@ class RealtimeService with WidgetsBindingObserver {
     _closeSocket();
     _seenEvents.clear();
     _watched.clear();
+    _viewing.clear();
     _setStatus(LiveStatus.offline);
   }
 
@@ -192,6 +209,7 @@ class RealtimeService with WidgetsBindingObserver {
       _setStatus(LiveStatus.live);
       _subscribed.clear();
       _pending.clear();
+      _announceViewing();
       _syncSubscriptions();
     });
     socket.onConnectError((message) {
@@ -268,6 +286,59 @@ class RealtimeService with WidgetsBindingObserver {
     _syncSubscriptions();
   }
 
+  // ── Feed on screen (push suppression) ───────────────────────────────────
+
+  /// Whether the feed of [groupId] is on screen with the app in front. Used to
+  /// skip the in-app banner for a snap the user can already see.
+  bool isViewing(String groupId) => _foreground && _viewing.contains(groupId);
+
+  /// The feed of [groupId] came on screen: the server stops pushing snaps for
+  /// it. Sent again after a reconnect and after the app returns to the front.
+  void startViewing(String groupId) {
+    if (_disposed || !_viewing.add(groupId)) return;
+    if (_foreground) _emitViewing(_viewingEvent, groupId);
+  }
+
+  /// The feed of [groupId] left the screen: pushes for it resume.
+  void stopViewing(String groupId) {
+    if (_disposed || !_viewing.remove(groupId)) return;
+    _emitViewing(_stoppedViewingEvent, groupId);
+  }
+
+  /// Tells the server about every feed on screen. The server forgets them when
+  /// the socket drops, so this follows every (re)connect.
+  void _announceViewing() {
+    if (!_foreground) return;
+    for (final id in _viewing) {
+      _emitViewing(_viewingEvent, id);
+    }
+  }
+
+  /// Tells the server none are on screen (the app went to the background),
+  /// without forgetting which ones to announce when it returns.
+  void _retractViewing() {
+    for (final id in _viewing) {
+      _emitViewing(_stoppedViewingEvent, id);
+    }
+  }
+
+  void _emitViewing(String event, String groupId) {
+    final socket = _socket;
+    if (socket == null || _status != LiveStatus.live) return;
+    // Ahead of the queued subscriptions: this is what keeps a push from
+    // arriving for a screen the user is looking at.
+    _send(urgent: true, () {
+      socket.emitWithAck(event, {'groupId': groupId}, (ack) {
+        if (ack is Map && ack['ok'] == true) return;
+        final error = ack is Map ? ack['error'] : null;
+        FlowLog.log(
+          _tag,
+          '${event.toUpperCase()} REFUSED for group ${FlowLog.mask(groupId)}: $error',
+        );
+      });
+    });
+  }
+
   /// The ids of every group the user is in.
   void setMemberGroups(Iterable<String> groupIds) {
     if (_disposed) return;
@@ -281,6 +352,7 @@ class RealtimeService with WidgetsBindingObserver {
     if (_disposed) return;
     _forbidden.add(groupId);
     _watched.remove(groupId);
+    _viewing.remove(groupId);
     _memberOf = [
       for (final id in _memberOf)
         if (id != groupId) id,
@@ -366,8 +438,12 @@ class RealtimeService with WidgetsBindingObserver {
   // ── Client events, paced ────────────────────────────────────────────────
 
   /// Runs [emit] now if the per-minute budget allows, else a little later.
-  void _send(void Function() emit) {
-    _emitQueue.add(emit);
+  void _send(void Function() emit, {bool urgent = false}) {
+    if (urgent) {
+      _emitQueue.insert(0, emit);
+    } else {
+      _emitQueue.add(emit);
+    }
     _drain();
   }
 
