@@ -20,7 +20,7 @@ const _ring = Colors.white;
 const double _iconSize = 26;
 
 /// How far the centre button rises above the pill.
-const double _lift = 9.5;
+const double _lift = 13.5;
 
 /// Dark floating pill with icon-only tabs and a round action button raised in
 /// the middle. The tabs are split evenly around the button: the first half
@@ -63,13 +63,13 @@ class FloatingNavBar extends StatelessWidget {
         alignment: Alignment.topCenter,
         children: [
           Container(
-            height: 66.h,
+            height: 60.h,
             decoration: BoxDecoration(
-              color: _barColor,
-              borderRadius: BorderRadius.circular(40.r),
+              color: const Color(0xFF1A0F09),
+              borderRadius: BorderRadius.circular(20.r),
               boxShadow: [
                 BoxShadow(
-                  color: _barColor.withValues(alpha: 0.35),
+                  color: Color(0xFF1A0F09).withValues(alpha: 0.35),
                   blurRadius: 24,
                   offset: const Offset(0, 10),
                 ),
