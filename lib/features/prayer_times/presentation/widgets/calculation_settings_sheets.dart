@@ -1,168 +1,84 @@
 import 'package:flutter/material.dart';
-import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_typography.dart';
+import '../../../groups/presentation/widgets/group_sheet_widgets.dart';
 import '../../domain/entities/prayer_calculation_settings.dart';
 import '../providers/prayer_calculation_settings_provider.dart';
 import '../providers/prayer_times_loader.dart';
 
+/// Pick-one sheets for the prayer calculation settings, in the same style as
+/// the app's other sheets: a textured header over a soft body.
 Future<void> showCalculationMethodPicker(BuildContext context, WidgetRef ref) {
   final current = ref.read(prayerCalculationSettingsProvider).method;
 
-  return showModalBottomSheet(
-    sheetAnimationStyle: AppMotion.sheetStyle,
-    context: context,
-    backgroundColor: AppColors.surfaceLight,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-    ),
-    isScrollControlled: true,
-    builder: (context) {
-      return SafeArea(
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 8.h),
-                  child: Text(
-                    'Calculation Method',
-                    style: AppTypography.headline.copyWith(
-                      color: AppColors.inkText,
-                      fontSize: 16.sp,
-                    ),
-                  ),
+  return showGroupSheet<void>(
+    context,
+    (sheetContext) => GroupSheetFrame(
+      icon: Icons.calculate_rounded,
+      title: 'Calculation method',
+      subtitle:
+          'Choose the method your local mosque or authority uses. Times can '
+          'shift by several minutes between methods.',
+      pinHeader: true,
+      child: Consumer(
+        builder: (context, ref, _) {
+          final options =
+              ref.watch(prayerMethodOptionsProvider).valueOrNull ??
+              [
+                for (final m in PrayerCalculationMethod.values)
+                  (method: m, label: m.label),
+              ];
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final option in options) ...[
+                SheetChoiceTile(
+                  title: option.label,
+                  selected: option.method == current,
+                  onTap: () {
+                    ref
+                        .read(prayerCalculationSettingsProvider.notifier)
+                        .setMethod(option.method);
+                    Navigator.of(sheetContext).pop();
+                  },
                 ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20.w),
-                  child: Text(
-                    'Choose the method your local mosque or authority uses. '
-                    'Times can shift by several minutes between methods.',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 8.h),
-                Expanded(
-                  child: Consumer(
-                    builder: (context, ref, _) {
-                      final options =
-                          ref.watch(prayerMethodOptionsProvider).valueOrNull ??
-                          [
-                            for (final m in PrayerCalculationMethod.values)
-                              (method: m, label: m.label),
-                          ];
-                      return ListView.builder(
-                        controller: scrollController,
-                        itemCount: options.length,
-                        itemBuilder: (context, index) {
-                          final method = options[index].method;
-                          final isSelected = method == current;
-                          return ListTile(
-                            title: Text(
-                              options[index].label,
-                              style: AppTypography.bodyLarge.copyWith(
-                                color: AppColors.inkText,
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w400,
-                              ),
-                            ),
-                            trailing: isSelected
-                                ? Icon(
-                                    Icons.check_circle,
-                                    color: AppColors.emeraldInk,
-                                  )
-                                : null,
-                            onTap: () {
-                              ref
-                                  .read(
-                                    prayerCalculationSettingsProvider.notifier,
-                                  )
-                                  .setMethod(method);
-                              Navigator.of(context).pop();
-                            },
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
+                SizedBox(height: 10.h),
               ],
-            );
-          },
-        ),
-      );
-    },
+            ],
+          );
+        },
+      ),
+    ),
   );
 }
 
 Future<void> showAsrSchoolPicker(BuildContext context, WidgetRef ref) {
   final current = ref.read(prayerCalculationSettingsProvider).school;
 
-  return showModalBottomSheet(
-    sheetAnimationStyle: AppMotion.sheetStyle,
-    context: context,
-    backgroundColor: AppColors.surfaceLight,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-    ),
-    builder: (context) {
-      return SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 16.h, 20.w, 8.h),
-              child: Text(
-                'Asr Juristic School',
-                style: AppTypography.headline.copyWith(
-                  color: AppColors.inkText,
-                  fontSize: 16.sp,
-                ),
-              ),
+  return showGroupSheet<void>(
+    context,
+    (sheetContext) => GroupSheetFrame(
+      icon: Icons.wb_twilight_rounded,
+      title: 'Asr juristic school',
+      subtitle: 'Hanafi Asr falls later than Shafi/Maliki/Hanbali Asr.',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final school in AsrSchool.values) ...[
+            SheetChoiceTile(
+              title: school.label,
+              selected: school == current,
+              onTap: () {
+                ref
+                    .read(prayerCalculationSettingsProvider.notifier)
+                    .setSchool(school);
+                Navigator.of(sheetContext).pop();
+              },
             ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Text(
-                'Hanafi Asr falls later than Shafi/Maliki/Hanbali Asr.',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            SizedBox(height: 8.h),
-            for (final school in AsrSchool.values)
-              ListTile(
-                title: Text(
-                  school.label,
-                  style: AppTypography.bodyLarge.copyWith(
-                    color: AppColors.inkText,
-                    fontWeight: school == current
-                        ? FontWeight.w700
-                        : FontWeight.w400,
-                  ),
-                ),
-                trailing: school == current
-                    ? Icon(Icons.check_circle, color: AppColors.emeraldInk)
-                    : null,
-                onTap: () {
-                  ref
-                      .read(prayerCalculationSettingsProvider.notifier)
-                      .setSchool(school);
-                  Navigator.of(context).pop();
-                },
-              ),
-            SizedBox(height: 12.h),
+            SizedBox(height: 10.h),
           ],
-        ),
-      );
-    },
+        ],
+      ),
+    ),
   );
 }

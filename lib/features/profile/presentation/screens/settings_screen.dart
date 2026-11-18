@@ -133,13 +133,12 @@ class SettingsScreen extends ConsumerWidget {
       backgroundColor: AppColors.parchment,
       body: SafeArea(
         bottom: false,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 40.h),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          children: [
+            // Stays put: the way back is always within reach.
+            Padding(
+              padding: EdgeInsets.fromLTRB(18.w, 16.h, 18.w, 8.h),
+              child: Row(
                 children: [
                   // No longer a tab, so it needs a way back.
                   IconButton(
@@ -164,462 +163,473 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ).slideIn(RevealDirection.topStart),
-              SizedBox(height: 12.h),
-
-              const SettingsSectionLabel('APPEARANCE').slideIn(
-                RevealDirection.start,
-                delay: const Duration(milliseconds: 70),
-                distance: 12,
-              ),
-              SizedBox(height: 12.h),
-              SettingsThemeSplit(
-                isDark: themeChoice == AppThemeChoice.automatic
-                    ? null
-                    : themeChoice == AppThemeChoice.dark,
-                onChanged: (dark) => ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setChoice(
-                      dark ? AppThemeChoice.dark : AppThemeChoice.light,
-                    ),
-              ),
-              SizedBox(height: 12.h),
-              SettingsAutoThemeTile(
-                selected: themeChoice == AppThemeChoice.automatic,
-                period: themeChoice == AppThemeChoice.automatic
-                    ? ref.watch(themePeriodProvider)
-                    : null,
-                onTap: () => ref
-                    .read(themeModeNotifierProvider.notifier)
-                    .setChoice(AppThemeChoice.automatic),
-              ),
-              SizedBox(height: 30.h),
-
-              const SettingsSectionLabel('PRAYER TIMES').slideIn(
-                RevealDirection.bottomStart,
-                onVisible: true,
-                duration: AppMotion.normal,
-                distance: 16,
-              ),
-              SizedBox(height: 12.h),
-              SizedBox(
-                height: 158.h,
-                child: Row(
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(18.w, 4.h, 18.w, 40.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child:
-                          SettingsBentoTile(
-                            color: AppColors.inkText,
-                            onTap: () => context.push('/reminders'),
+                    const SettingsSectionLabel('APPEARANCE').slideIn(
+                      RevealDirection.start,
+                      delay: const Duration(milliseconds: 70),
+                      distance: 12,
+                    ),
+                    SizedBox(height: 12.h),
+                    SettingsThemeSplit(
+                      isDark: themeChoice == AppThemeChoice.automatic
+                          ? null
+                          : themeChoice == AppThemeChoice.dark,
+                      onChanged: (dark) => ref
+                          .read(themeModeNotifierProvider.notifier)
+                          .setChoice(
+                            dark ? AppThemeChoice.dark : AppThemeChoice.light,
+                          ),
+                    ),
+                    SizedBox(height: 12.h),
+                    SettingsAutoThemeTile(
+                      selected: themeChoice == AppThemeChoice.automatic,
+                      period: themeChoice == AppThemeChoice.automatic
+                          ? ref.watch(themePeriodProvider)
+                          : null,
+                      onTap: () => ref
+                          .read(themeModeNotifierProvider.notifier)
+                          .setChoice(AppThemeChoice.automatic),
+                    ),
+                    SizedBox(height: 30.h),
+
+                    const SettingsSectionLabel('PRAYER TIMES').slideIn(
+                      RevealDirection.bottomStart,
+                      onVisible: true,
+                      duration: AppMotion.normal,
+                      distance: 16,
+                    ),
+                    SizedBox(height: 12.h),
+                    SizedBox(
+                      height: 158.h,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child:
+                                SettingsBentoTile(
+                                  color: AppColors.inkText,
+                                  onTap: () => context.push('/reminders'),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.notifications_none_rounded,
+                                        color: AppColors.onEmeraldInk
+                                            .withValues(alpha: 0.7),
+                                        size: 24.sp,
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        'Prayer Reminders',
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: AppColors.onEmeraldInk
+                                              .withValues(alpha: 0.6),
+                                        ),
+                                      ),
+                                      SizedBox(height: 4.h),
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            remindersOn ? 'On' : 'Off',
+                                            style: TextStyle(
+                                              fontSize: 32.sp,
+                                              fontWeight: FontWeight.w900,
+                                              color: remindersOn
+                                                  ? AppColors.emeraldInk
+                                                  : AppColors.onEmeraldInk
+                                                        .withValues(alpha: 0.4),
+                                              height: 1.0,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          Icon(
+                                            Icons.arrow_forward_rounded,
+                                            color: AppColors.onEmeraldInk
+                                                .withValues(alpha: 0.6),
+                                            size: 20.sp,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ).slideIn(
+                                  RevealDirection.start,
+                                  onVisible: true,
+                                  distance: 20,
+                                ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child:
+                                SettingsBentoTile(
+                                  color: AppColors.surfaceLight,
+                                  bordered: true,
+                                  onTap: () =>
+                                      showCalculationMethodPicker(context, ref),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Calculation Method',
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8.h),
+                                      Expanded(
+                                        child: Text(
+                                          calcSettings.method.label,
+                                          maxLines: 4,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 15.sp,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.inkText,
+                                            height: 1.25,
+                                          ),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.bottomRight,
+                                        child: Icon(
+                                          Icons.unfold_more_rounded,
+                                          color: AppColors.textMuted,
+                                          size: 20.sp,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ).slideIn(
+                                  RevealDirection.end,
+                                  onVisible: true,
+                                  distance: 20,
+                                  delay: const Duration(milliseconds: 60),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    SettingsBentoTile(
+                      color: AppColors.emeraldInk,
+                      onTap: () => showAsrSchoolPicker(context, ref),
+                      child: Row(
+                        children: [
+                          Expanded(
                             child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  Icons.notifications_none_rounded,
-                                  color: AppColors.onEmeraldInk.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                  size: 24.sp,
-                                ),
-                                const Spacer(),
                                 Text(
-                                  'Prayer Reminders',
+                                  'Asr Juristic School',
                                   style: TextStyle(
                                     fontSize: 12.sp,
                                     color: AppColors.onEmeraldInk.withValues(
-                                      alpha: 0.6,
+                                      alpha: 0.7,
                                     ),
                                   ),
                                 ),
                                 SizedBox(height: 4.h),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      remindersOn ? 'On' : 'Off',
-                                      style: TextStyle(
-                                        fontSize: 32.sp,
-                                        fontWeight: FontWeight.w900,
-                                        color: remindersOn
-                                            ? AppColors.emeraldInk
-                                            : AppColors.onEmeraldInk.withValues(
-                                                alpha: 0.4,
-                                              ),
-                                        height: 1.0,
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Icon(
-                                      Icons.arrow_forward_rounded,
-                                      color: AppColors.onEmeraldInk.withValues(
-                                        alpha: 0.6,
-                                      ),
-                                      size: 20.sp,
-                                    ),
-                                  ],
+                                Text(
+                                  calcSettings.school.label,
+                                  style: TextStyle(
+                                    fontSize: 15.sp,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.onEmeraldInk,
+                                    height: 1.0,
+                                  ),
                                 ),
                               ],
                             ),
-                          ).slideIn(
-                            RevealDirection.start,
-                            onVisible: true,
-                            distance: 20,
                           ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 8.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.onEmeraldInk,
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Text(
+                              'Change',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.emeraldInk,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).slideIn(RevealDirection.bottom, onVisible: true),
+                    SizedBox(height: 12.h),
+                    if (PlatformSupport.prayerDnd) ...[
+                      DndSettingsTile(
+                        onTap: () => context.push('/prayer-dnd'),
+                      ).slideIn(RevealDirection.bottomEnd, onVisible: true),
+                      SizedBox(height: 30.h),
+                    ] else if (PlatformSupport.prayerSilenceGuide) ...[
+                      const PrayerSilenceGuideTile().slideIn(
+                        RevealDirection.bottomEnd,
+                        onVisible: true,
+                      ),
+                      SizedBox(height: 30.h),
+                    ] else
+                      SizedBox(height: 18.h),
+
+                    const SettingsSectionLabel('ISLAMIC CALENDAR').slideIn(
+                      RevealDirection.topStart,
+                      onVisible: true,
+                      duration: AppMotion.normal,
+                      distance: 16,
                     ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child:
-                          SettingsBentoTile(
-                            color: AppColors.surfaceLight,
-                            bordered: true,
-                            onTap: () =>
-                                showCalculationMethodPicker(context, ref),
+                    SizedBox(height: 12.h),
+                    SettingsBentoTile(
+                      color: AppColors.surfaceLight,
+                      bordered: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hijri date adjustment',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.inkText,
+                            ),
+                          ),
+                          SizedBox(height: 14.h),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SettingsOptionChip(
+                                  label: 'Automatic',
+                                  selected: hijriAdjustment == 0,
+                                  onTap: () => ref
+                                      .read(hijriAdjustmentProvider.notifier)
+                                      .setAutomatic(),
+                                ),
+                              ),
+                              SizedBox(width: 10.w),
+                              Expanded(
+                                child: SettingsOptionChip(
+                                  label: 'Pakistan',
+                                  selected: hijriAdjustment == -1,
+                                  onTap: () => ref
+                                      .read(hijriAdjustmentProvider.notifier)
+                                      .setPakistan(),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12.h),
+                          const HijriFineTuneRow(),
+                          SizedBox(height: 14.h),
+                          Text(
+                            'Pakistan uses the moon-sighting announcement, which can '
+                            'differ from the calculated date by a day or two. '
+                            'Fine-tune it to match your local calendar.',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.textSecondary,
+                              height: 1.45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).slideIn(RevealDirection.bottomStart, onVisible: true),
+                    SizedBox(height: 30.h),
+
+                    const SettingsSectionLabel('DAILY CONTENT').slideIn(
+                      RevealDirection.bottomStart,
+                      onVisible: true,
+                      duration: AppMotion.normal,
+                      distance: 16,
+                    ),
+                    SizedBox(height: 12.h),
+                    SettingsBentoTile(
+                      color: Colors.transparent,
+                      bordered: true,
+                      child: Row(
+                        children: [
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Calculation Method',
+                                  'Ayat & Hadith of the Day',
                                   style: TextStyle(
-                                    fontSize: 12.sp,
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.inkText,
+                                  ),
+                                ),
+                                SizedBox(height: 4.h),
+                                Text(
+                                  'A daily notification about 20 minutes after Fajr.',
+                                  style: AppTypography.caption.copyWith(
                                     color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                SizedBox(height: 8.h),
-                                Expanded(
-                                  child: Text(
-                                    calcSettings.method.label,
-                                    maxLines: 4,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 15.sp,
-                                      fontWeight: FontWeight.w800,
-                                      color: AppColors.inkText,
-                                      height: 1.25,
-                                    ),
-                                  ),
-                                ),
-                                Align(
-                                  alignment: Alignment.bottomRight,
-                                  child: Icon(
-                                    Icons.unfold_more_rounded,
-                                    color: AppColors.textMuted,
-                                    size: 20.sp,
                                   ),
                                 ),
                               ],
                             ),
-                          ).slideIn(
-                            RevealDirection.end,
-                            onVisible: true,
-                            distance: 20,
-                            delay: const Duration(milliseconds: 60),
                           ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 12.h),
-              SettingsBentoTile(
-                color: AppColors.emeraldInk,
-                onTap: () => showAsrSchoolPicker(context, ref),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Asr Juristic School',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: AppColors.onEmeraldInk.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            calcSettings.school.label,
-                            style: TextStyle(
-                              fontSize: 15.sp,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.onEmeraldInk,
-                              height: 1.0,
-                            ),
+                          Switch(
+                            value: dailyContentOn,
+                            activeThumbColor: AppColors.emeraldInk,
+                            onChanged: (v) => ref
+                                .read(dailyNotificationEnabledProvider.notifier)
+                                .set(v),
                           ),
                         ],
                       ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 8.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.onEmeraldInk,
-                        borderRadius: BorderRadius.circular(20.r),
-                      ),
-                      child: Text(
-                        'Change',
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.emeraldInk,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ).slideIn(RevealDirection.bottom, onVisible: true),
-              SizedBox(height: 12.h),
-              if (PlatformSupport.prayerDnd) ...[
-                DndSettingsTile(
-                  onTap: () => context.push('/prayer-dnd'),
-                ).slideIn(RevealDirection.bottomEnd, onVisible: true),
-                SizedBox(height: 30.h),
-              ] else if (PlatformSupport.prayerSilenceGuide) ...[
-                const PrayerSilenceGuideTile().slideIn(
-                  RevealDirection.bottomEnd,
-                  onVisible: true,
-                ),
-                SizedBox(height: 30.h),
-              ] else
-                SizedBox(height: 18.h),
+                    ).slideIn(RevealDirection.bottomEnd, onVisible: true),
+                    SizedBox(height: 30.h),
 
-              const SettingsSectionLabel('ISLAMIC CALENDAR').slideIn(
-                RevealDirection.topStart,
-                onVisible: true,
-                duration: AppMotion.normal,
-                distance: 16,
-              ),
-              SizedBox(height: 12.h),
-              SettingsBentoTile(
-                color: AppColors.surfaceLight,
-                bordered: true,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hijri date adjustment',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.inkText,
-                      ),
-                    ),
-                    SizedBox(height: 14.h),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SettingsOptionChip(
-                            label: 'Automatic',
-                            selected: hijriAdjustment == 0,
-                            onTap: () => ref
-                                .read(hijriAdjustmentProvider.notifier)
-                                .setAutomatic(),
-                          ),
-                        ),
-                        SizedBox(width: 10.w),
-                        Expanded(
-                          child: SettingsOptionChip(
-                            label: 'Pakistan',
-                            selected: hijriAdjustment == -1,
-                            onTap: () => ref
-                                .read(hijriAdjustmentProvider.notifier)
-                                .setPakistan(),
-                          ),
-                        ),
-                      ],
+                    const SettingsSectionLabel('SAFETY').slideIn(
+                      RevealDirection.bottomStart,
+                      onVisible: true,
+                      duration: AppMotion.normal,
+                      distance: 16,
                     ),
                     SizedBox(height: 12.h),
-                    const HijriFineTuneRow(),
-                    SizedBox(height: 14.h),
-                    Text(
-                      'Pakistan uses the moon-sighting announcement, which can '
-                      'differ from the calculated date by a day or two. '
-                      'Fine-tune it to match your local calendar.',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ).slideIn(RevealDirection.bottomStart, onVisible: true),
-              SizedBox(height: 30.h),
-
-              const SettingsSectionLabel('DAILY CONTENT').slideIn(
-                RevealDirection.bottomStart,
-                onVisible: true,
-                duration: AppMotion.normal,
-                distance: 16,
-              ),
-              SizedBox(height: 12.h),
-              SettingsBentoTile(
-                color: Colors.transparent,
-                bordered: true,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    SettingsBentoTile(
+                      color: Colors.transparent,
+                      bordered: true,
+                      onTap: () => context.push('/blocked-users'),
+                      child: Row(
                         children: [
-                          Text(
-                            'Ayat & Hadith of the Day',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.inkText,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Blocked users',
+                                  style: TextStyle(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.inkText,
+                                  ),
+                                ),
+                                SizedBox(height: 4.h),
+                                Text(
+                                  blockedCount == 0
+                                      ? 'No one is blocked.'
+                                      : blockedCount == 1
+                                      ? '1 person is blocked.'
+                                      : '$blockedCount people are blocked.',
+                                  style: AppTypography.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            'A daily notification about 20 minutes after Fajr.',
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                          Icon(
+                            Icons.block_rounded,
+                            color: AppColors.textSecondary,
+                            size: 24.sp,
                           ),
                         ],
                       ),
-                    ),
-                    Switch(
-                      value: dailyContentOn,
-                      activeThumbColor: AppColors.emeraldInk,
-                      onChanged: (v) => ref
-                          .read(dailyNotificationEnabledProvider.notifier)
-                          .set(v),
-                    ),
-                  ],
-                ),
-              ).slideIn(RevealDirection.bottomEnd, onVisible: true),
-              SizedBox(height: 30.h),
+                    ).slideIn(RevealDirection.bottomEnd, onVisible: true),
+                    SizedBox(height: 30.h),
 
-              const SettingsSectionLabel('SAFETY').slideIn(
-                RevealDirection.bottomStart,
-                onVisible: true,
-                duration: AppMotion.normal,
-                distance: 16,
-              ),
-              SizedBox(height: 12.h),
-              SettingsBentoTile(
-                color: Colors.transparent,
-                bordered: true,
-                onTap: () => context.push('/blocked-users'),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    const SettingsSectionLabel('DATA & STORAGE').slideIn(
+                      RevealDirection.bottomStart,
+                      onVisible: true,
+                      duration: AppMotion.normal,
+                      distance: 16,
+                    ),
+                    SizedBox(height: 12.h),
+                    SettingsBentoTile(
+                      color: Colors.transparent,
+                      bordered: true,
+                      onTap: () => _confirmClearCache(context, ref),
+                      child: Row(
                         children: [
-                          Text(
-                            'Blocked users',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.inkText,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Clear cached content',
+                                  style: TextStyle(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.inkText,
+                                  ),
+                                ),
+                                SizedBox(height: 4.h),
+                                Text(
+                                  'Favorites & recent activity are kept.',
+                                  style: AppTypography.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            blockedCount == 0
-                                ? 'No one is blocked.'
-                                : blockedCount == 1
-                                ? '1 person is blocked.'
-                                : '$blockedCount people are blocked.',
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                          Icon(
+                            Icons.delete_sweep_outlined,
+                            color: AppColors.textSecondary,
+                            size: 24.sp,
                           ),
                         ],
                       ),
-                    ),
-                    Icon(
-                      Icons.block_rounded,
-                      color: AppColors.textSecondary,
-                      size: 24.sp,
-                    ),
-                  ],
-                ),
-              ).slideIn(RevealDirection.bottomEnd, onVisible: true),
-              SizedBox(height: 30.h),
+                    ).slideIn(RevealDirection.bottomEnd, onVisible: true),
+                    SizedBox(height: 30.h),
 
-              const SettingsSectionLabel('DATA & STORAGE').slideIn(
-                RevealDirection.bottomStart,
-                onVisible: true,
-                duration: AppMotion.normal,
-                distance: 16,
-              ),
-              SizedBox(height: 12.h),
-              SettingsBentoTile(
-                color: Colors.transparent,
-                bordered: true,
-                onTap: () => _confirmClearCache(context, ref),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Clear cached content',
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.inkText,
-                            ),
+                    const SettingsSectionLabel('ABOUT'),
+                    SizedBox(height: 12.h),
+                    SettingsAboutCard(
+                      version: ref
+                          .watch(appDisplayVersionProvider)
+                          .when(
+                            data: (v) => v,
+                            loading: () => '…',
+                            error: (_, _) => '—',
                           ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            'Favorites & recent activity are kept.',
-                            style: AppTypography.caption.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
+                      onPrivacy: () =>
+                          _openLink(context, AppConstants.privacyPolicyUrl),
+                      onTerms: () => _openLink(
+                        context,
+                        AppConstants.termsAndConditionsUrl,
                       ),
+                      onSupport: () =>
+                          _openLink(context, AppConstants.supportUrl),
+                      onDeleteAccount: () =>
+                          _openLink(context, AppConstants.deleteAccountUrl),
                     ),
-                    Icon(
-                      Icons.delete_sweep_outlined,
-                      color: AppColors.textSecondary,
-                      size: 24.sp,
-                    ),
+                    // SizedBox(height: 26.h),
+
+                    // const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
+                    // SizedBox(height: 26.h),
+                    if (kDebugMode) ...[
+                      SizedBox(height: 20.h),
+                      const PrayerAlarmDebugHarness(),
+                      SizedBox(height: 12.h),
+                      const DailyContentDebugPanel(),
+                    ],
                   ],
                 ),
-              ).slideIn(RevealDirection.bottomEnd, onVisible: true),
-              SizedBox(height: 30.h),
-
-              const SettingsSectionLabel('ABOUT'),
-              SizedBox(height: 12.h),
-              SettingsAboutCard(
-                version: ref
-                    .watch(appDisplayVersionProvider)
-                    .when(
-                      data: (v) => v,
-                      loading: () => '…',
-                      error: (_, _) => '—',
-                    ),
-                onPrivacy: () =>
-                    _openLink(context, AppConstants.privacyPolicyUrl),
-                onTerms: () =>
-                    _openLink(context, AppConstants.termsAndConditionsUrl),
-                onSupport: () => _openLink(context, AppConstants.supportUrl),
-                onDeleteAccount: () =>
-                    _openLink(context, AppConstants.deleteAccountUrl),
               ),
-              // SizedBox(height: 26.h),
-
-              // const BannerAdWidget(margin: EdgeInsets.symmetric(vertical: 4)),
-              // SizedBox(height: 26.h),
-              if (kDebugMode) ...[
-                SizedBox(height: 20.h),
-                const PrayerAlarmDebugHarness(),
-                SizedBox(height: 12.h),
-                const DailyContentDebugPanel(),
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

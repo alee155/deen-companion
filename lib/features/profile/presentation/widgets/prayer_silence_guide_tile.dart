@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../groups/presentation/widgets/group_sheet_widgets.dart';
 import '../../../../shared/widgets/islamic_ornaments.dart';
 
 /// iOS counterpart of the Android "Do Not Disturb during prayer" tile.
@@ -112,13 +113,7 @@ class PrayerSilenceGuideTile extends StatelessWidget {
 }
 
 Future<void> showPrayerSilenceGuide(BuildContext context) {
-  return showModalBottomSheet<void>(
-    sheetAnimationStyle: AppMotion.sheetStyle,
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (_) => const _PrayerSilenceGuideSheet(),
-  );
+  return showGroupSheet<void>(context, (_) => const _PrayerSilenceGuideSheet());
 }
 
 class _PrayerSilenceGuideSheet extends StatelessWidget {
@@ -140,98 +135,65 @@ class _PrayerSilenceGuideSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.parchment,
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28.r)),
-      child: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(22.w, 12.h, 22.w, 16.h),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40.w,
-                  height: 4.h,
-                  decoration: BoxDecoration(
-                    color: AppColors.borderWarm,
-                    borderRadius: BorderRadius.circular(2.r),
-                  ),
+    return GroupSheetFrame(
+      icon: Icons.do_not_disturb_on_rounded,
+      title: 'Silence your phone during prayer',
+      subtitle:
+          'Apple doesn’t let apps switch Do Not Disturb on. On iPhone, set a '
+          'Focus once and it does the work.',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < _steps.length; i++)
+            _Step(number: i + 1, title: _steps[i].$1, body: _steps[i].$2),
+          SizedBox(height: 4.h),
+          Container(
+            padding: EdgeInsets.all(12.w),
+            decoration: BoxDecoration(
+              color: AppColors.toolsAccentBg,
+              borderRadius: BorderRadius.circular(14.r),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.alarm_on_rounded,
+                  size: 18.sp,
+                  color: AppColors.toolsAccent,
                 ),
-              ),
-              SizedBox(height: 18.h),
-              Text(
-                'Silence your phone during prayer',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.inkText,
-                ),
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                'Apple doesn’t let apps switch Do Not Disturb on. On iPhone, set '
-                'a Focus once and it does the work.',
-                style: TextStyle(
-                  fontSize: 13.sp,
-                  height: 1.45,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              SizedBox(height: 18.h),
-              for (var i = 0; i < _steps.length; i++)
-                _Step(number: i + 1, title: _steps[i].$1, body: _steps[i].$2),
-              SizedBox(height: 4.h),
-              Container(
-                padding: EdgeInsets.all(12.w),
-                decoration: BoxDecoration(
-                  color: AppColors.toolsAccentBg,
-                  borderRadius: BorderRadius.circular(14.r),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.alarm_on_rounded,
-                      size: 18.sp,
-                      color: AppColors.toolsAccent,
-                    ),
-                    SizedBox(width: 10.w),
-                    Expanded(
-                      child: Text(
-                        'Your prayer alarm still rings during any Focus, so '
-                        'you won’t miss the adhan.',
-                        style: TextStyle(
-                          fontSize: 12.5.sp,
-                          height: 1.4,
-                          color: AppColors.inkText,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 18.h),
-              SizedBox(
-                width: double.infinity,
-                height: 50.h,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.emeraldInk,
-                    foregroundColor: AppColors.onEmeraldInk,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16.r),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Text(
+                    'Your prayer alarm still rings during any Focus, so '
+                    'you won’t miss the adhan.',
+                    style: TextStyle(
+                      fontSize: 12.5.sp,
+                      height: 1.4,
+                      color: AppColors.inkText,
                     ),
                   ),
-                  child: const Text('Got it'),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+          SizedBox(height: 18.h),
+          SizedBox(
+            width: double.infinity,
+            height: 50.h,
+            child: FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.emeraldInk,
+                foregroundColor: AppColors.onEmeraldInk,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
+              ),
+              child: const Text('Got it'),
+            ),
+          ),
+        ],
       ),
     );
   }
