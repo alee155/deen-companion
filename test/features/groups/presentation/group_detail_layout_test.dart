@@ -557,16 +557,13 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.descendant(
-          of: sara,
-          matching: find.byIcon(Icons.hourglass_bottom_rounded),
-        ),
+        find.descendant(of: sara, matching: find.text('⌛')),
         findsOneWidget,
       );
       await tester.pumpWidget(const SizedBox());
     });
 
-    testWidgets('your own row counts down too, without the hourglass', (
+    testWidgets('your own row counts down too, with the hourglass', (
       tester,
     ) async {
       await _pump(
@@ -579,13 +576,7 @@ void main() {
         find.descendant(of: me, matching: find.textContaining('left')),
         findsOneWidget,
       );
-      expect(
-        find.descendant(
-          of: me,
-          matching: find.byIcon(Icons.hourglass_bottom_rounded),
-        ),
-        findsNothing,
-      );
+      expect(find.descendant(of: me, matching: find.text('⌛')), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });
 
@@ -604,7 +595,10 @@ void main() {
         ),
         findsNothing,
       );
-      expect(find.byIcon(Icons.hourglass_bottom_rounded), findsNothing);
+      expect(
+        find.descendant(of: row('Sara Ahmed'), matching: find.text('⌛')),
+        findsNothing,
+      );
       await tester.pumpWidget(const SizedBox());
     });
 

@@ -600,8 +600,8 @@ class _MemberSnapTileState extends ConsumerState<MemberSnapTile> {
     if (waiting != null && day.left != null) {
       return _MemberStatusText(
         semantics:
-            '${waiting.label}: ${countdown(day.left!)} left to log'
-            '${w.isMe ? '' : ', not logged yet'}',
+            '${waiting.label}: ${countdown(day.left!)} left to log, '
+            'not logged yet',
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -610,18 +610,16 @@ class _MemberSnapTileState extends ConsumerState<MemberSnapTile> {
                 '${waiting.label} · ${countdown(day.left!)} left',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: muted,
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w400,
+                  color: Colors.black54,
+                ),
               ),
             ),
-            // Marks who has not sent theirs yet; the viewer knows their own.
-            if (!w.isMe) ...[
-              SizedBox(width: 5.w),
-              Icon(
-                Icons.hourglass_bottom_rounded,
-                size: 15.sp,
-                color: AppColors.amber,
-              ),
-            ],
+            // Marks who has not sent theirs yet, for everyone including you.
+            SizedBox(width: 5.w),
+            const Text('⌛'),
           ],
         ),
       );

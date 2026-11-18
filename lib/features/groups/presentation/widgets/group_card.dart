@@ -117,11 +117,7 @@ class _Trailing extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.local_fire_department_rounded,
-              size: 20.sp,
-              color: AppColors.emeraldInk,
-            ),
+            Text("🔥", style: TextStyle(fontSize: 16.sp)),
             SizedBox(width: 2.w),
             AnimatedCount(
               value: streak,
