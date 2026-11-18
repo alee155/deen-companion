@@ -14,6 +14,9 @@ class GroupSheetFrame extends StatelessWidget {
   final bool destructive;
   final Widget child;
 
+  /// Keeps the header in place and scrolls only [child], for long lists.
+  final bool pinHeader;
+
   const GroupSheetFrame({
     super.key,
     required this.icon,
@@ -21,137 +24,148 @@ class GroupSheetFrame extends StatelessWidget {
     required this.subtitle,
     required this.child,
     this.destructive = false,
+    this.pinHeader = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    // The same gradient the screen headers use, so a sheet follows the look
+    // in every mode (Light, Dark, and each prayer period of Automatic).
+    final base = AppColors.heroGradient;
     final from = destructive
-        ? Color.lerp(AppColors.heroSurface, AppColors.error, 0.62)!
-        : AppColors.heroSurface;
+        ? Color.lerp(base[0], AppColors.error, 0.62)!
+        : base[0];
     final to = destructive
-        ? Color.lerp(AppColors.emeraldInkDark, AppColors.error, 0.35)!
-        : AppColors.emeraldInkDark;
+        ? Color.lerp(base[1], AppColors.error, 0.35)!
+        : base[1];
     final accent = destructive ? Colors.white : AppColors.emeraldInk;
+
+    final header = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [from, to],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GeometricPattern(
+              color: accent.withValues(alpha: 0.09),
+              cell: 48,
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.fromLTRB(20.w, 10.h, 12.w, 18.h),
+            child: Column(
+              children: [
+                Container(
+                  width: 38.w,
+                  height: 4.h,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(2.r),
+                  ),
+                ),
+                SizedBox(height: 14.h),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 52.w,
+                      height: 52.w,
+                      child: CustomPaint(
+                        painter: StarPainter(
+                          fill: accent.withValues(alpha: 0.18),
+                          stroke: accent,
+                          strokeWidth: 1.4,
+                          inner: 0.76,
+                        ),
+                        child: Icon(icon, size: 23.sp, color: accent),
+                      ),
+                    ).slideIn(RevealDirection.start, distance: 14),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child:
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: TextStyle(
+                                  fontSize: 19.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: 2.h),
+                              Text(
+                                subtitle,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  height: 1.35,
+                                  color: AppColors.onHeroSurface.withValues(
+                                    alpha: 0.8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ).slideIn(
+                            RevealDirection.bottomStart,
+                            delay: const Duration(milliseconds: 50),
+                            distance: 10,
+                          ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                      color: Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    final body = Padding(
+      padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 20.h),
+      child: child,
+    );
+    final inset = EdgeInsets.only(
+      bottom: MediaQuery.of(context).viewInsets.bottom,
+    );
+
+    final content = pinHeader
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              header,
+              Flexible(
+                child: SingleChildScrollView(padding: inset, child: body),
+              ),
+            ],
+          )
+        : SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: inset,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [header, body],
+            ),
+          );
 
     return ClipRRect(
       borderRadius: BorderRadius.vertical(top: Radius.circular(30.r)),
       child: ColoredBox(
         color: AppColors.parchment,
-        child: SafeArea(
-          top: false,
-          child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [from, to],
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: GeometricPattern(
-                          color: accent.withValues(alpha: 0.09),
-                          cell: 48,
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(20.w, 10.h, 12.w, 18.h),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 38.w,
-                              height: 4.h,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.35),
-                                borderRadius: BorderRadius.circular(2.r),
-                              ),
-                            ),
-                            SizedBox(height: 14.h),
-                            Row(
-                              children: [
-                                SizedBox(
-                                  width: 52.w,
-                                  height: 52.w,
-                                  child: CustomPaint(
-                                    painter: StarPainter(
-                                      fill: accent.withValues(alpha: 0.18),
-                                      stroke: accent,
-                                      strokeWidth: 1.4,
-                                      inner: 0.76,
-                                    ),
-                                    child: Icon(
-                                      icon,
-                                      size: 23.sp,
-                                      color: accent,
-                                    ),
-                                  ),
-                                ).slideIn(RevealDirection.start, distance: 14),
-                                SizedBox(width: 12.w),
-                                Expanded(
-                                  child:
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            title,
-                                            style: TextStyle(
-                                              fontSize: 19.sp,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                          SizedBox(height: 2.h),
-                                          Text(
-                                            subtitle,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: 12.sp,
-                                              height: 1.35,
-                                              color: AppColors.onHeroSurface
-                                                  .withValues(alpha: 0.8),
-                                            ),
-                                          ),
-                                        ],
-                                      ).slideIn(
-                                        RevealDirection.bottomStart,
-                                        delay: const Duration(milliseconds: 50),
-                                        distance: 10,
-                                      ),
-                                ),
-                                IconButton(
-                                  tooltip: 'Close',
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  icon: const Icon(Icons.close_rounded),
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(20.w, 18.h, 20.w, 20.h),
-                  child: child,
-                ),
-              ],
-            ),
-          ),
-        ),
+        child: SafeArea(top: false, child: content),
       ),
     );
   }
@@ -323,6 +337,97 @@ class SheetSecondaryButton extends StatelessWidget {
           side: BorderSide(color: AppColors.borderWarm, width: 1.4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18.r),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One option in a pick-one sheet: a soft card with a title, an optional
+/// line under it, and a check when it is the current choice.
+class SheetChoiceTile extends StatelessWidget {
+  final String title;
+  final String? description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const SheetChoiceTile({
+    super.key,
+    required this.title,
+    required this.selected,
+    required this.onTap,
+    this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: PressScale(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16.r),
+            onTap: onTap,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 13.h),
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.emeraldInk.withValues(alpha: 0.10)
+                    : AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(
+                  color: selected
+                      ? AppColors.emeraldInk.withValues(alpha: 0.55)
+                      : AppColors.borderWarm,
+                  width: selected ? 1.4 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: selected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            color: AppColors.inkText,
+                          ),
+                        ),
+                        if (description != null) ...[
+                          SizedBox(height: 3.h),
+                          Text(
+                            description!,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              height: 1.4,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 10.w),
+                  Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : Icons.circle_outlined,
+                    size: 22.sp,
+                    color: selected
+                        ? AppColors.emeraldInk
+                        : AppColors.textMuted,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
