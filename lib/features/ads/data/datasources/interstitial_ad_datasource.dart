@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../constants/ad_filter_policy.dart';
+
 import '../../../../core/utils/logger.dart';
 
 /// Talks to the Mobile Ads SDK for interstitial ads and nothing else.
@@ -22,7 +24,7 @@ class InterstitialAdDataSource {
 
     InterstitialAd.load(
       adUnitId: adUnitId,
-      request: const AdRequest(),
+      request: AdFilterPolicy.request(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           debugPrint('[Ads] [Interstitial] onAdLoaded ✅');

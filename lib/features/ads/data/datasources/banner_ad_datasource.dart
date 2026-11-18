@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../constants/ad_filter_policy.dart';
+
 import '../../../../core/utils/logger.dart';
 import '../../domain/entities/banner_ad_handle.dart';
 
@@ -47,7 +49,7 @@ class BannerAdDataSource {
     final bannerAd = BannerAd(
       adUnitId: adUnitId,
       size: size,
-      request: const AdRequest(),
+      request: AdFilterPolicy.request(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           debugPrint('[Ads] [Banner] onAdLoaded ✅');

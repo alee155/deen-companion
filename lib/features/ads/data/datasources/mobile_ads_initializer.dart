@@ -5,6 +5,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import '../../../../core/config/flavor_config.dart';
 import '../../../../core/utils/logger.dart';
+import '../constants/ad_filter_policy.dart';
 
 class MobileAdsInitializer {
   const MobileAdsInitializer();
@@ -29,11 +30,11 @@ class MobileAdsInitializer {
 
   Future<void> _initInternal() async {
     await MobileAds.instance.updateRequestConfiguration(
-      RequestConfiguration(
-        tagForChildDirectedTreatment: TagForChildDirectedTreatment.no,
-        tagForUnderAgeOfConsent: TagForUnderAgeOfConsent.no,
-        maxAdContentRating: MaxAdContentRating.g,
-      ),
+      AdFilterPolicy.requestConfiguration(),
+    );
+    debugPrint(
+      '[Ads] Max ad content rating set to ${AdFilterPolicy.maxRating} '
+      'before the SDK starts',
     );
 
     try {
