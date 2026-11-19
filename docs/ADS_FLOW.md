@@ -151,8 +151,9 @@ Not shown on Home, Quran reading, Groups, Profile, Settings, Zakat.
    for `app-ads.txt`, and for correct reporting).
 
 ### B. Consent (required for EU / UK / CH)
-5. Privacy & messaging → create a **GDPR message** (consent form) and publish
-   it for both apps.
+5. Privacy & messaging → **GDPR message "Deen Companion GDPR"**: created and
+   **published** for both apps (Consent and Do not consent buttons, all GDPR
+   countries, privacy policy URL set on both apps). **Done.**
 6. For iOS: create an **IDFA explainer / ATT message** and publish it.
 7. Make sure the **US state regulations** message is set up if US traffic is
    expected.
@@ -173,25 +174,24 @@ below are the real enforcement layer and **must** be configured.
 
 ## 7. Ad content blocking: AdMob console settings
 
-Where: **AdMob → Blocking controls**. Apply to **both apps** (Android and iOS).
-Changes can take up to ~24 hours to apply.
+Where: **AdMob → Blocking controls**. These are the settings now in place.
 
-| Control | Setting |
+| Control | Setting now in AdMob |
 |---|---|
-| **Sensitive categories** | Switch to **Restricted** (or block individually): **Dating, Sexual & Reproductive Health, Get-Rich-Quick, Drugs & Supplements, Politics, Religion, Gambling & Betting, Alcohol, Weight Loss, Astrology & Occult, Social Casino Games, Lotteries**. |
-| **General categories** | Block: **Dating, Alcohol, Gambling / Casino / Betting, Lingerie / Swimwear / Adult-adjacent, Astrology / Horoscopes, Occult**. Also review: Beauty, Drugs, Weight loss. |
-| **Advertiser URLs** | Add any specific advertiser domains seen in the app that should not appear. |
-| **Ad review center** | **Enable it** (account-level) so individual ads can be reviewed and blocked, and check it weekly, especially in the first weeks after launch. |
-| **Maximum ad content rating** | Set the app-level maximum to **G** (matches what the app already requests in code). |
+| **Ad content rating** | **G** (matches what the app already requests in code). |
+| **Sensitive categories** | **All 11 standard categories blocked**: Cosmetic Procedures and Body Modification, Dating, Drugs and Supplements, Get Rich Quick, Politics, References to Sex, Religion, Sensationalism, Sexual and Reproductive Health, Social Casino Games, Weight Loss. |
+| **General categories** | **5 groups fully blocked (129 sub-categories)**: Apparel, Beauty and Personal Care, Dining and Nightlife, Food and Groceries, Hobbies/Games and Leisure. All other groups are allowed. |
+| **Ad review center** | **On.** Use it after launch to block individual ads. |
+| **Advertiser URLs, App install ads, Ad sources** | Left at defaults. |
 
 Notes:
-- Blocking is by **category and advertiser**, not by country.
+- This is a strict setup. It lowers fill and earnings somewhat. It can be loosened later
+  (for example, unblock Apparel or Food and block only specific sub-categories)
+  once real ad data shows what is being lost.
+- Blocking is by category and advertiser, not by country.
 - No filter is perfect. The Ad review center is how unsuitable ads that slip
-  through are blocked afterwards.
-- Banning more categories lowers fill and earnings slightly. This is expected
-  and acceptable for this audience.
-- Optional: block the **Religion** category entirely if other faiths' ads are
-  not wanted.
+  through are blocked afterwards. Check it every few days after launch.
+- Settings are per app. Confirm the Android and iOS Deen apps both show the same blocks.
 
 ---
 
