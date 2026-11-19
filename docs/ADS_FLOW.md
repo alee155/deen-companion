@@ -178,7 +178,7 @@ Where: **AdMob → Blocking controls**. These are the settings now in place.
 
 | Control | Setting now in AdMob |
 |---|---|
-| **Ad content rating** | **G** (matches what the app already requests in code). |
+| **Ad content rating** | **G**, as the account-wide maximum (matches what the app already requests in code). |
 | **Sensitive categories** | **All 11 standard categories blocked**: Cosmetic Procedures and Body Modification, Dating, Drugs and Supplements, Get Rich Quick, Politics, References to Sex, Religion, Sensationalism, Sexual and Reproductive Health, Social Casino Games, Weight Loss. |
 | **General categories** | **5 groups fully blocked (129 sub-categories)**: Apparel, Beauty and Personal Care, Dining and Nightlife, Food and Groceries, Hobbies/Games and Leisure. All other groups are allowed. |
 | **Ad review center** | **On.** Use it after launch to block individual ads. |
@@ -191,7 +191,9 @@ Notes:
 - Blocking is by category and advertiser, not by country.
 - No filter is perfect. The Ad review center is how unsuitable ads that slip
   through are blocked afterwards. Check it every few days after launch.
-- Settings are per app. Confirm the Android and iOS Deen apps both show the same blocks.
+- These settings are **account-wide** (the content rating page says "Maximum account
+  setting"), so they apply to every app in the AdMob account: Android, iOS and any
+  other app in the account.
 
 ---
 
