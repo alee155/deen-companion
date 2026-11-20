@@ -57,5 +57,6 @@ class SearchResultModel {
     arabic: arabic,
     transliteration: transliteration,
     translation: translation,
+    translationSource: translationSource,
   );
 }

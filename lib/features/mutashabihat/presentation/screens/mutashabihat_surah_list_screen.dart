@@ -8,6 +8,7 @@ import '../../../../shared/widgets/failure_view.dart';
 import '../../../../shared/widgets/seal_number_badge.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../domain/entities/mutashabihat_entry.dart';
+import '../../../quran/presentation/widgets/verse_translation_text.dart';
 import '../providers/mutashabihat_providers.dart';
 import 'mutashabihat_comparison_screen.dart';
 import '../../../../shared/widgets/deen_app_bar.dart';
@@ -157,11 +158,11 @@ class _EntryCard extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: 8.h),
-                  Text(
-                    verse.translation,
+                  VerseTranslationText(
+                    verseKey: verse.verseKey,
+                    english: verse.translation,
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.bodyMedium.copyWith(
+                    englishStyle: AppTypography.bodyMedium.copyWith(
                       color: AppColors.inkText,
                       height: 1.5,
                     ),

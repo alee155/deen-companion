@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/utils/share_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/ornament_divider.dart';
 import '../../../../shared/widgets/seal_number_badge.dart';
+import '../../../quran/presentation/providers/verse_urdu_provider.dart';
+import '../../../quran/presentation/widgets/verse_translation_text.dart';
 import '../../domain/entities/mutashabihat_verse_ref.dart';
 import '../utils/arabic_diff.dart';
 import 'highlighted_arabic_text.dart';
 
-String _shareTextFor(MutashabihatVerseRef verse) => [
+/// [translation] is what the reader is looking at (their language), so what
+/// they copy is what they read.
+String _shareTextFor(MutashabihatVerseRef verse, String translation) => [
   verse.arabic.trim(),
-  verse.translation.trim(),
+  if (translation.trim().isNotEmpty) translation.trim(),
   '— ${verse.surahNameEnglish}, Ayah ${verse.ayah}',
 ].join('\n\n');
 
@@ -21,7 +26,7 @@ String _shareTextFor(MutashabihatVerseRef verse) => [
 /// treatment, the way [JuzVerseTile]'s surah banner marks structural chrome
 /// with the module's green accent while the verse text itself stays in the
 /// brand orange used everywhere Quran text is read.
-class MutashabihatBaseVerseCard extends StatelessWidget {
+class MutashabihatBaseVerseCard extends ConsumerWidget {
   final MutashabihatVerseRef verse;
 
   /// The Arabic of every similar verse in this group — used only to decide
@@ -35,19 +40,27 @@ class MutashabihatBaseVerseCard extends StatelessWidget {
     required this.otherArabic,
   });
 
-  Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: _shareTextFor(verse)));
+  String _shown(WidgetRef ref) =>
+      shownVerseTranslation(ref, verse.verseKey, verse.translation);
+
+  Future<void> _copy(BuildContext context, WidgetRef ref) async {
+    await Clipboard.setData(
+      ClipboardData(text: _shareTextFor(verse, _shown(ref))),
+    );
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Verse copied')));
   }
 
-  Future<void> _share(BuildContext context) =>
-      shareText(context, _shareTextFor(verse), subject: verse.surahNameEnglish);
+  Future<void> _share(BuildContext context, WidgetRef ref) => shareText(
+    context,
+    _shareTextFor(verse, _shown(ref)),
+    subject: verse.surahNameEnglish,
+  );
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = baseDiffTokens(verse.arabic, otherArabic);
 
     return Container(
@@ -91,7 +104,7 @@ class MutashabihatBaseVerseCard extends StatelessWidget {
                 onSelected: (action) => action(),
                 itemBuilder: (context) => [
                   PopupMenuItem(
-                    value: () => _copy(context),
+                    value: () => _copy(context, ref),
                     child: Row(
                       children: [
                         Icon(
@@ -108,7 +121,7 @@ class MutashabihatBaseVerseCard extends StatelessWidget {
                     ),
                   ),
                   PopupMenuItem(
-                    value: () => _share(context),
+                    value: () => _share(context, ref),
                     child: Row(
                       children: [
                         Icon(
@@ -150,9 +163,11 @@ class MutashabihatBaseVerseCard extends StatelessWidget {
             ),
           ),
           SizedBox(height: 12.h),
-          SelectableText(
-            verse.translation,
-            style: AppTypography.bodyLarge.copyWith(
+          VerseTranslationText(
+            verseKey: verse.verseKey,
+            english: verse.translation,
+            selectable: true,
+            englishStyle: AppTypography.bodyLarge.copyWith(
               color: AppColors.inkText,
               height: 1.6,
             ),

@@ -6,18 +6,31 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/providers/reading_preferences_provider.dart';
 import '../../../../shared/widgets/seal_number_badge.dart';
+import '../../../../shared/widgets/translation_unavailable.dart';
 import '../../domain/entities/juz.dart';
 
-String resolveTranslation(JuzVerse verse) =>
-    verse.translations['sahih_international'] ??
-    (verse.translations.values.isEmpty ? '' : verse.translations.values.first);
+/// The verse's translation in [language]. In Urdu this is the Urdu text or,
+/// when the verse has none, an empty string — never the English, which the
+/// reader didn't ask for. (The tile says the Urdu is unavailable.)
+String resolveTranslation(
+  JuzVerse verse, [
+  TranslationLanguage language = TranslationLanguage.english,
+]) {
+  if (language == TranslationLanguage.urdu) {
+    return verse.translations['urdu']?.trim() ?? '';
+  }
+  return verse.translations['sahih_international'] ??
+      (verse.translations.values.isEmpty
+          ? ''
+          : verse.translations.values.first);
+}
 
 /// A short-form share/copy text for a single verse — Arabic, translation,
 /// and a reference line, in that order.
 String _shareTextFor(JuzVerse verse, String translation) {
   return [
     verse.arabic.trim(),
-    translation.trim(),
+    if (translation.trim().isNotEmpty) translation.trim(),
     '— ${verse.surahName}, Ayah ${verse.ayah}',
   ].join('\n\n');
 }
@@ -40,7 +53,11 @@ class JuzVerseTile extends StatelessWidget {
     this.showSurahBanner = false,
   });
 
-  String get _translation => resolveTranslation(verse);
+  String get _translation =>
+      resolveTranslation(verse, preferences.translationLanguage);
+
+  /// True when the text shown is Urdu (right-to-left, Nastaliq).
+  bool get _showingUrdu => preferences.isUrdu && _translation.isNotEmpty;
 
   Future<void> _copy(BuildContext context) async {
     await Clipboard.setData(
@@ -146,16 +163,33 @@ class JuzVerseTile extends StatelessWidget {
             ),
           ),
         ],
+        // Urdu chosen but this verse has none: say so, don't show English.
+        if (preferences.showTranslation &&
+            preferences.isUrdu &&
+            _translation.isEmpty) ...[
+          SizedBox(height: 8.h),
+          const Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TranslationUnavailable(),
+          ),
+        ],
         if (preferences.showTranslation && _translation.isNotEmpty) ...[
           SizedBox(height: 8.h),
           Semantics(
-            label: 'English translation of the verse',
+            label: _showingUrdu
+                ? 'Urdu translation of the verse'
+                : 'English translation of the verse',
             child: SelectableText(
               _translation,
-              textAlign: TextAlign.left,
-              style: preferences.englishStyle.copyWith(
-                color: AppColors.inkText,
-              ),
+              textAlign: _showingUrdu ? TextAlign.right : TextAlign.left,
+              textDirection: _showingUrdu
+                  ? TextDirection.rtl
+                  : TextDirection.ltr,
+              style:
+                  (_showingUrdu
+                          ? preferences.urduStyle
+                          : preferences.englishStyle)
+                      .copyWith(color: AppColors.inkText),
             ),
           ),
         ],

@@ -3,6 +3,7 @@ import 'package:deen_companion/core/cache/hive_cache_store.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/cache/cache_first_stream_notifier.dart';
 import '../../../../core/di/providers.dart';
+import '../../../../shared/providers/reading_preferences_provider.dart';
 import '../../data/datasources/quran_remote_datasource.dart';
 import '../../data/repositories/quran_repository_impl.dart';
 import '../../domain/entities/juz.dart';
@@ -125,7 +126,16 @@ class QuranSearchNotifier extends AsyncNotifier<List<SearchResult>?> {
 
     state = const AsyncLoading();
     final repository = ref.read(quranRepositoryProvider);
-    final result = await repository.search(trimmed);
+    // An Urdu reader typing Urdu can only match Urdu text, so that search
+    // runs against the Urdu translation. Anything else (English words,
+    // transliteration, Arabic) searches as before, and the Urdu text for each
+    // result is shown by the result itself.
+    final urduQuery =
+        ref.read(readingPreferencesProvider).isUrdu &&
+        RegExp(r'[\u0600-\u06FF]').hasMatch(trimmed);
+    final result = urduQuery
+        ? await repository.search(trimmed, translation: 'urdu')
+        : await repository.search(trimmed);
     state = result.when(
       success: (data) => AsyncData(data),
       failure: (failure) => AsyncError(failure, StackTrace.current),

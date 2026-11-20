@@ -9,6 +9,9 @@ class SearchResult extends Equatable {
   final String transliteration;
   final String translation;
 
+  /// Which translation [translation] is (`sahih_international`, `urdu`, ...).
+  final String translationSource;
+
   const SearchResult({
     required this.verseKey,
     required this.surahNumber,
@@ -17,6 +20,7 @@ class SearchResult extends Equatable {
     required this.arabic,
     required this.transliteration,
     required this.translation,
+    this.translationSource = 'sahih_international',
   });
 
   @override

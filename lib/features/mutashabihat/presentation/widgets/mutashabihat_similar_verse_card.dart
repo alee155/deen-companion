@@ -1,18 +1,22 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/utils/share_text.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/seal_number_badge.dart';
+import '../../../quran/presentation/providers/verse_urdu_provider.dart';
+import '../../../quran/presentation/widgets/verse_translation_text.dart';
 import '../../domain/entities/mutashabihat_verse_ref.dart';
 import '../utils/arabic_diff.dart';
 import 'highlighted_arabic_text.dart';
 
-String _shareTextFor(MutashabihatVerseRef verse) => [
+/// [translation] is what the reader is looking at (their language).
+String _shareTextFor(MutashabihatVerseRef verse, String translation) => [
   verse.arabic.trim(),
-  verse.translation.trim(),
+  if (translation.trim().isNotEmpty) translation.trim(),
   '— ${verse.surahNameEnglish}, Ayah ${verse.ayah}',
 ].join('\n\n');
 
@@ -21,7 +25,7 @@ String _shareTextFor(MutashabihatVerseRef verse) => [
 /// translation in ink — with its own words that diverge from the base
 /// picked out (see [HighlightedArabicText]). In quiz mode the text is
 /// blurred behind a tap-to-reveal scrim until the reader checks their guess.
-class MutashabihatSimilarVerseCard extends StatefulWidget {
+class MutashabihatSimilarVerseCard extends ConsumerStatefulWidget {
   final MutashabihatVerseRef verse;
   final String baseArabic;
   final bool startHidden;
@@ -34,12 +38,12 @@ class MutashabihatSimilarVerseCard extends StatefulWidget {
   });
 
   @override
-  State<MutashabihatSimilarVerseCard> createState() =>
+  ConsumerState<MutashabihatSimilarVerseCard> createState() =>
       _MutashabihatSimilarVerseCardState();
 }
 
 class _MutashabihatSimilarVerseCardState
-    extends State<MutashabihatSimilarVerseCard> {
+    extends ConsumerState<MutashabihatSimilarVerseCard> {
   late bool _hidden;
 
   @override
@@ -56,8 +60,16 @@ class _MutashabihatSimilarVerseCardState
     }
   }
 
+  String get _shown => shownVerseTranslation(
+    ref,
+    widget.verse.verseKey,
+    widget.verse.translation,
+  );
+
   Future<void> _copy(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: _shareTextFor(widget.verse)));
+    await Clipboard.setData(
+      ClipboardData(text: _shareTextFor(widget.verse, _shown)),
+    );
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -66,7 +78,7 @@ class _MutashabihatSimilarVerseCardState
 
   Future<void> _share() => shareText(
     context,
-    _shareTextFor(widget.verse),
+    _shareTextFor(widget.verse, _shown),
     subject: widget.verse.surahNameEnglish,
   );
 
@@ -176,9 +188,11 @@ class _MutashabihatSimilarVerseCardState
                   ),
                 ),
                 SizedBox(height: 8.h),
-                SelectableText(
-                  verse.translation,
-                  style: AppTypography.bodyMedium.copyWith(
+                VerseTranslationText(
+                  verseKey: verse.verseKey,
+                  english: verse.translation,
+                  selectable: true,
+                  englishStyle: AppTypography.bodyMedium.copyWith(
                     fontSize: 13.5.sp,
                     color: AppColors.inkText,
                     height: 1.55,
