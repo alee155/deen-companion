@@ -476,6 +476,26 @@ class _ClockText extends StatelessWidget {
 }
 
 /// The user's points in the star frame the Profile avatar uses.
+const double _starInner = 0.8;
+
+/// Clips to the badge's eight-pointed star, matching [StarPainter]'s outline.
+class _StarClipper extends CustomClipper<Path> {
+  final double inner;
+  final double inset;
+  const _StarClipper({required this.inner, required this.inset});
+
+  @override
+  Path getClip(Size size) => eightStarPath(
+    size.center(Offset.zero),
+    size.shortestSide / 2 - inset,
+    inner: inner,
+  );
+
+  @override
+  bool shouldReclip(_StarClipper old) =>
+      old.inner != inner || old.inset != inset;
+}
+
 class _PointsBadge extends ConsumerWidget {
   const _PointsBadge();
 
@@ -497,13 +517,40 @@ class _PointsBadge extends ConsumerWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
+            // The star is filled with the same textured gradient the headers
+            // use, lifted slightly so it reads against the header behind it.
+            ClipPath(
+              clipper: const _StarClipper(inner: _starInner, inset: 1.4),
+              child: SizedBox.square(
+                dimension: frame,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: AppColors.heroGradient,
+                        ),
+                      ),
+                    ),
+                    ColoredBox(color: Colors.white.withValues(alpha: 0.10)),
+                    GeometricPattern(
+                      color: AppColors.goldLight.withValues(alpha: 0.28),
+                      cell: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             CustomPaint(
               size: Size.square(frame),
               painter: StarPainter(
                 fill: Colors.transparent,
                 stroke: AppColors.goldLight,
                 strokeWidth: 1.4,
-                inner: 0.8,
+                inner: _starInner,
               ),
             ),
             Column(
