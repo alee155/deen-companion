@@ -12,6 +12,9 @@ import '../../../../shared/widgets/failure_view.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../domain/daily_content_selector.dart';
+import '../../../../shared/providers/reading_preferences_provider.dart';
+import '../../../hadith/domain/entities/hadith.dart';
+import '../../../hadith/presentation/providers/hadith_urdu_providers.dart';
 import '../providers/daily_content_providers.dart';
 import '../../../../shared/widgets/feature_hero.dart';
 import '../widgets/daily_reading_section.dart';
@@ -62,6 +65,8 @@ class _DailyContentScreenState extends ConsumerState<DailyContentScreen> {
   @override
   Widget build(BuildContext context) {
     final content = ref.watch(dailyContentProvider(_dateKey));
+    final preferences = ref.watch(readingPreferencesProvider);
+    final language = preferences.translationLanguage;
     final date = DailyContentSelector.parseDateKey(_dateKey);
     final subtitle = date == null
         ? 'Your daily reading'
@@ -124,26 +129,21 @@ class _DailyContentScreenState extends ConsumerState<DailyContentScreen> {
                                 '${data.ayah.surahNameArabic} · '
                                 'Ayah ${data.ayah.verseKey}',
                             arabic: data.ayah.arabic,
-                            translation: data.ayah.translation,
-                            onShare: () =>
-                                shareText(context, data.ayah.toShareText()),
+                            translation: data.ayah.translationIn(language),
+                            translationIsUrdu: data.ayah.showsUrduFor(language),
+                            translationStyle: preferences.urduStyle,
+                            missingLanguage: data.ayah.urduMissingFor(language)
+                                ? language
+                                : null,
+                            onShare: () => shareText(
+                              context,
+                              data.ayah.toShareText(language: language),
+                            ),
                           ).slideIn(RevealDirection.bottom, distance: 18),
                           SizedBox(height: 16.h),
-                          DailyReadingSection(
-                            iconAsset: exploreIconAssets['hadith']!,
-                            title: 'Hadith of the Day',
-                            source:
-                                '${data.hadith.collectionName} · '
-                                'Hadith ${data.hadith.hadithNumber}',
-                            arabic: data.hadith.hasArabic
-                                ? data.hadith.arabic
-                                : null,
-                            translation: data.hadith.english,
-                            badge: data.hadith.grade.trim().isEmpty
-                                ? null
-                                : 'Grade: ${data.hadith.grade.trim()}',
-                            onShare: () =>
-                                shareText(context, data.hadith.toShareText()),
+                          _HadithOfTheDay(
+                            hadith: data.hadith,
+                            preferences: preferences,
                           ).slideIn(
                             RevealDirection.bottom,
                             distance: 18,
@@ -187,4 +187,48 @@ class _DailyContentScreenState extends ConsumerState<DailyContentScreen> {
       ),
     ),
   ];
+}
+
+/// The hadith block. English is shown as before. In Urdu it shows the Urdu
+/// text, a spinner while that loads, or — when there is none (the daily pool,
+/// Nawawi's Forty, has no Urdu edition) — a message saying so, never the
+/// English.
+class _HadithOfTheDay extends ConsumerWidget {
+  final Hadith hadith;
+  final ReadingPreferences preferences;
+
+  const _HadithOfTheDay({required this.hadith, required this.preferences});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final key = urduKeyOf(hadith);
+    final urdu = preferences.isUrdu ? ref.watch(hadithUrduProvider(key)) : null;
+    final urduText = urdu?.valueOrNull?.trim() ?? '';
+    final showUrdu = urduText.isNotEmpty;
+    // Urdu chosen, and it has either been confirmed missing or failed to load.
+    final urduMissing = urdu != null && !urdu.isLoading && !showUrdu;
+
+    return DailyReadingSection(
+      iconAsset: exploreIconAssets['hadith']!,
+      title: 'Hadith of the Day',
+      source: '${hadith.collectionName} · Hadith ${hadith.hadithNumber}',
+      arabic: hadith.hasArabic ? hadith.arabic : null,
+      // Urdu chosen: the Urdu or a message, never the English.
+      translation: urdu != null ? urduText : hadith.english,
+      translationIsUrdu: showUrdu,
+      translationStyle: preferences.urduStyle,
+      translationLoading: urdu != null && urdu.isLoading,
+      missingLanguage: urduMissing ? TranslationLanguage.urdu : null,
+      badge: hadith.grade.trim().isEmpty
+          ? null
+          : 'Grade: ${hadith.grade.trim()}',
+      onShare: () => shareText(
+        context,
+        hadith.toShareText(
+          // '' leaves the translation out; null keeps the English.
+          translation: urdu == null ? null : urduText,
+        ),
+      ),
+    );
+  }
 }

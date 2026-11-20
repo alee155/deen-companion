@@ -8,6 +8,7 @@ import '../../../../core/permissions/notification_permission_service.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/utils/flow_log.dart';
 import '../../../../core/utils/logger.dart';
+import '../../../../shared/providers/reading_preferences_provider.dart';
 import '../../../prayer_times/presentation/providers/prayer_times_loader.dart'
     show prayerTimesUpdatedProvider;
 import '../../../prayer_times/presentation/providers/upcoming_prayer_days.dart';
@@ -176,9 +177,15 @@ class DailyNotificationService with WidgetsBindingObserver {
     // steady state: one new day per sync). A failed day just gets the
     // generic wording; the screen fetches on open.
     final repository = ref.read(dailyContentRepositoryProvider);
+    final language = ref.read(readingPreferencesProvider).translationLanguage;
     await Future.wait(
       dayKeys
-          .where((k) => repository.getCached(k) == null)
+          .where((k) {
+            final cached = repository.getCached(k);
+            // Also days cached before Urdu was kept, so an Urdu reader's
+            // notification isn't built from English-only content.
+            return cached == null || !cached.ayah.urduKnown;
+          })
           .map(repository.fetch),
     );
 
@@ -187,8 +194,11 @@ class DailyNotificationService with WidgetsBindingObserver {
         DailyNotificationEntry(
           id: key,
           triggerAt: byDay[key]!,
-          title: config.title,
-          body: DailyNotificationText.preview(repository.getCached(key)),
+          title: config.titleFor(language),
+          body: DailyNotificationText.preview(
+            repository.getCached(key),
+            language: language,
+          ),
         ),
     ];
 
@@ -338,6 +348,12 @@ final dailyNotificationServiceProvider = Provider<DailyNotificationService>((
   });
   // Toggled in Settings.
   ref.listen(dailyNotificationEnabledProvider, (_, _) => service.sync());
+  // The notifications are armed days ahead with their text already written,
+  // so a new translation language means writing them again.
+  ref.listen(
+    readingPreferencesProvider.select((p) => p.translationLanguage),
+    (_, _) => service.sync(),
+  );
   ref.onDispose(service.dispose);
   return service;
 });

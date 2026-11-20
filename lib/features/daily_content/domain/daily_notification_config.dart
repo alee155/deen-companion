@@ -1,3 +1,5 @@
+import '../../../shared/domain/translation_language.dart';
+
 /// Everything about *when* and *how much* the daily notification schedules.
 /// The one place to change timing — nothing else hardcodes it.
 class DailyNotificationConfig {
@@ -11,15 +13,23 @@ class DailyNotificationConfig {
 
   final String title;
 
+  /// The title when the reader has chosen Urdu.
+  final String titleUrdu;
+
   const DailyNotificationConfig({
     required this.offsetAfterFajr,
     required this.windowDays,
     required this.title,
+    required this.titleUrdu,
   });
+
+  String titleFor(TranslationLanguage language) =>
+      language == TranslationLanguage.urdu ? titleUrdu : title;
 
   static const production = DailyNotificationConfig(
     offsetAfterFajr: Duration(minutes: 20),
     windowDays: 7,
     title: 'Ayat & Hadith of the Day',
+    titleUrdu: 'آج کی آیت اور حدیث',
   );
 }

@@ -28,6 +28,8 @@ class DailyContentRemoteSource {
         translation: _stripFootnotes(
           translations['sahih_international'] as String? ?? '',
         ),
+        // Same call, same source as the Juz reader's Urdu.
+        translationUrdu: ((translations['urdu'] as String?) ?? '').trim(),
       );
     } on DioException catch (e) {
       throw ServerException(e.message);

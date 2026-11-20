@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/di/providers.dart';
+import '../../../../shared/providers/reading_preferences_provider.dart';
 import '../../data/daily_content_remote_source.dart';
 import '../../data/daily_content_store.dart';
 import '../../data/daily_notification_scheduler.dart';
@@ -108,7 +109,11 @@ class NotificationHistoryNotifier
   List<DailyNotificationRecord> build() {
     final store = ref.read(dailyContentStoreProvider);
     final repository = ref.read(dailyContentRepositoryProvider);
-    final title = ref.read(dailyNotificationConfigProvider).title;
+    // Watched, so the list rewrites itself when the language is changed.
+    final language = ref.watch(
+      readingPreferencesProvider.select((p) => p.translationLanguage),
+    );
+    final title = ref.read(dailyNotificationConfigProvider).titleFor(language);
     final read = store.readIds();
 
     return store.readDelivered().map((d) {
@@ -117,7 +122,10 @@ class NotificationHistoryNotifier
         dateKey: d.dateKey,
         receivedAt: d.deliveredAt,
         title: title,
-        preview: DailyNotificationText.preview(repository.getCached(d.dateKey)),
+        preview: DailyNotificationText.preview(
+          repository.getCached(d.dateKey),
+          language: language,
+        ),
         read: read.contains(d.id),
         debug: d.debug,
       );

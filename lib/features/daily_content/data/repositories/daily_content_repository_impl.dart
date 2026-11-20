@@ -27,11 +27,15 @@ class DailyContentRepositoryImpl implements DailyContentRepository {
   @override
   Future<Result<DailyContent>> fetch(String dateKey) async {
     final cached = store.readContent(dateKey);
-    if (cached != null) return Success(cached);
+    // Content saved before Urdu was kept has no Urdu text; it is refreshed
+    // once, when online, so switching language doesn't strand today's verse.
+    if (cached != null && cached.ayah.urduKnown) return Success(cached);
 
     final date = DailyContentSelector.parseDateKey(dateKey);
     if (date == null) return const Error(UnexpectedFailure());
-    if (!await networkInfo.isConnected) return const Error(NetworkFailure());
+    if (!await networkInfo.isConnected) {
+      return cached != null ? Success(cached) : const Error(NetworkFailure());
+    }
 
     try {
       final (surah, ayahNumber) = DailyContentSelector.ayahFor(date);
@@ -53,11 +57,14 @@ class DailyContentRepositoryImpl implements DailyContentRepository {
         ),
       );
     } on ServerException catch (e) {
+      if (cached != null) return Success(cached);
       return Error(
         ServerFailure(e.message ?? 'Something went wrong on our end.'),
       );
     } catch (e, st) {
       AppLogger.e('DailyContentRepository: unexpected error', e, st);
+      // Refreshing an older saved day must never cost the reader that day.
+      if (cached != null) return Success(cached);
       return const Error(UnexpectedFailure());
     }
   }

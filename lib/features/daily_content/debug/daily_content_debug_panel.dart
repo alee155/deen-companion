@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../core/error/failures.dart';
 import '../../../core/usecase/usecase.dart';
+import '../../../shared/providers/reading_preferences_provider.dart';
 import '../domain/entities/daily_content.dart';
 import '../../../core/permissions/notification_permission_service.dart';
 import '../../../core/theme/app_colors.dart';
@@ -49,6 +50,7 @@ class _DailyContentDebugPanelState
       final now = DateTime.now();
       final dateKey = DailyContentSelector.dateKey(now);
       final repository = ref.read(dailyContentRepositoryProvider);
+      final language = ref.read(readingPreferencesProvider).translationLanguage;
       // Best-effort preview text; never let a slow network eat the delay.
       await repository
           .fetch(dateKey)
@@ -66,9 +68,12 @@ class _DailyContentDebugPanelState
             DailyNotificationEntry(
               id: id,
               triggerAt: at,
-              title: ref.read(dailyNotificationConfigProvider).title,
+              title: ref
+                  .read(dailyNotificationConfigProvider)
+                  .titleFor(language),
               body: DailyNotificationText.preview(
                 repository.getCached(dateKey),
+                language: language,
               ),
             ),
           );

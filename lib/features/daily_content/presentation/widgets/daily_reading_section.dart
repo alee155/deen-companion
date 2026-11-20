@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/domain/translation_language.dart';
+import '../../../../shared/widgets/translation_unavailable.dart';
 
 /// One reading block (Ayat or Hadith) as a 22px bordered surface — same
 /// card language as Groups and Explore. Header carries the Explore icon,
@@ -14,6 +16,21 @@ class DailyReadingSection extends StatelessWidget {
   final String source;
   final String? arabic;
   final String translation;
+
+  /// The translation is Urdu: set right-to-left, in [translationStyle].
+  final bool translationIsUrdu;
+  final TextStyle? translationStyle;
+
+  /// When set and there is no translation, says that translation isn't
+  /// available (in this language) instead of the generic empty message.
+  final TranslationLanguage? missingLanguage;
+
+  /// Shown instead of the translation while it is still being fetched.
+  final bool translationLoading;
+
+  /// A line above the translation, e.g. "no Urdu for this one, showing the
+  /// English".
+  final String? note;
 
   /// Small pill after the translation (e.g. a hadith's grade).
   final String? badge;
@@ -28,6 +45,11 @@ class DailyReadingSection extends StatelessWidget {
     required this.onShare,
     this.arabic,
     this.badge,
+    this.translationIsUrdu = false,
+    this.translationStyle,
+    this.translationLoading = false,
+    this.missingLanguage,
+    this.note,
   });
 
   @override
@@ -129,6 +151,29 @@ class DailyReadingSection extends StatelessWidget {
             ),
           ],
           SizedBox(height: 14.h),
+          if (note != null && note!.isNotEmpty) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline_rounded,
+                  size: 15.sp,
+                  color: AppColors.textMuted,
+                ),
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: Text(
+                    note!,
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+          ],
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -142,17 +187,48 @@ class DailyReadingSection extends StatelessWidget {
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
-                  child: Text(
-                    hasTranslation
-                        ? translation.trim()
-                        : 'No English translation is available for this entry.',
-                    style: AppTypography.bodyLarge.copyWith(
-                      height: 1.7,
-                      color: hasTranslation
-                          ? AppColors.inkText
-                          : AppColors.textMuted,
-                    ),
-                  ),
+                  child: translationLoading
+                      ? Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: SizedBox(
+                            width: 20.w,
+                            height: 20.w,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        )
+                      : !hasTranslation && missingLanguage != null
+                      ? Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TranslationUnavailable(
+                            language: missingLanguage!,
+                            fontSize: 14.sp,
+                          ),
+                        )
+                      : Text(
+                          hasTranslation
+                              ? translation.trim()
+                              : 'No English translation is available for this entry.',
+                          textAlign: translationIsUrdu
+                              ? TextAlign.right
+                              : TextAlign.start,
+                          textDirection: translationIsUrdu
+                              ? TextDirection.rtl
+                              : null,
+                          style:
+                              (translationIsUrdu && translationStyle != null
+                                      ? translationStyle!
+                                      : AppTypography.bodyLarge.copyWith(
+                                          height: 1.7,
+                                        ))
+                                  .copyWith(
+                                    color: hasTranslation
+                                        ? AppColors.inkText
+                                        : AppColors.textMuted,
+                                  ),
+                        ),
                 ),
               ],
             ),
