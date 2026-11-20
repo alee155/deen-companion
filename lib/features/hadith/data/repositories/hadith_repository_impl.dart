@@ -221,6 +221,27 @@ class HadithRepositoryImpl implements HadithRepository {
   }
 
   @override
+  Future<Result<Hadith?>> findByNumber(String collection, int number) async {
+    if (!await networkInfo.isConnected) return const Error(NetworkFailure());
+    try {
+      final model = await remoteDataSource.getHadithByNumber(
+        collection,
+        number,
+      );
+      return Success(model?.toEntity());
+    } on ServerException catch (e) {
+      return Error(
+        ServerFailure(
+          e.message ?? 'Something went wrong on our end. Try again.',
+        ),
+      );
+    } catch (e, stackTrace) {
+      AppLogger.e('HadithRepository: unexpected error (number)', e, stackTrace);
+      return const Error(UnexpectedFailure());
+    }
+  }
+
+  @override
   Future<Result<List<Hadith>>> search(
     String query, {
     String? collection,

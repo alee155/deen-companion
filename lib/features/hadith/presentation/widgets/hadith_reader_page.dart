@@ -1,5 +1,6 @@
 import 'package:deen_companion/shared/providers/reading_preferences_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/motion/motion.dart';
@@ -10,6 +11,8 @@ import '../../../../shared/widgets/seal_number_badge.dart';
 import '../../domain/entities/hadith.dart';
 import '../../domain/entities/hadith_collection.dart';
 import '../../domain/hadith_grade.dart';
+import '../../../../shared/widgets/translation_unavailable.dart';
+import '../providers/hadith_urdu_providers.dart';
 
 /// One hadith, laid out as a page in the reader.
 ///
@@ -83,10 +86,18 @@ class HadithReaderPage extends StatelessWidget {
                       OrnamentDivider(ruleWidth: 46.w),
                       SizedBox(height: 20.h),
                     ],
-                    _TranslationBlock(
-                      hadith: hadith,
-                      style: preferences.englishStyle,
-                    ),
+                    // English is the original path, untouched. Urdu only
+                    // enters when chosen, and falls back to English.
+                    if (preferences.isUrdu)
+                      _UrduTranslationBlock(
+                        hadith: hadith,
+                        preferences: preferences,
+                      )
+                    else
+                      _TranslationBlock(
+                        hadith: hadith,
+                        style: preferences.englishStyle,
+                      ),
                   ],
 
                   SizedBox(height: 26.h),
@@ -312,6 +323,93 @@ class _TranslationBlock extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The Urdu translation, when Urdu is the chosen language.
+///
+/// While it loads there is a small placeholder. If this hadith has no Urdu the
+/// page says so; if it couldn't be fetched (offline) it says that and offers a
+/// retry. It never falls back to the English, which the reader didn't choose.
+class _UrduTranslationBlock extends ConsumerWidget {
+  final Hadith hadith;
+  final ReadingPreferences preferences;
+
+  const _UrduTranslationBlock({
+    required this.hadith,
+    required this.preferences,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final key = urduKeyOf(hadith);
+    final urdu = ref.watch(hadithUrduProvider(key));
+
+    return urdu.when(
+      loading: () => Padding(
+        padding: EdgeInsets.symmetric(vertical: 18.h),
+        child: Center(
+          child: SizedBox(
+            width: 22.w,
+            height: 22.w,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
+      error: (_, _) =>
+          _message(onRetry: () => ref.invalidate(hadithUrduProvider(key))),
+      data: (text) {
+        if (text.trim().isEmpty) return _message();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.translate_rounded,
+                  size: 13.sp,
+                  color: AppColors.textMuted,
+                ),
+                SizedBox(width: 6.w),
+                Text(
+                  'URDU TRANSLATION',
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.textMuted,
+                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+            Semantics(
+              label: 'Urdu translation of the hadith',
+              child: SelectableText(
+                text,
+                textAlign: TextAlign.right,
+                textDirection: TextDirection.rtl,
+                style: preferences.urduStyle.copyWith(color: AppColors.inkText),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _message({VoidCallback? onRetry}) {
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: AppColors.toolsAccentBg,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: AppColors.borderWarm),
+      ),
+      child: TranslationUnavailable(fontSize: 14.sp, onRetry: onRetry),
     );
   }
 }

@@ -36,6 +36,10 @@ abstract class HadithRepository {
   /// date rolls over. No extra network call on repeat app opens today.
   Future<Result<Hadith>> fetchDailyHadith();
 
+  /// The hadith with this number in [collection]; `Success(null)` when the
+  /// book has no such number.
+  Future<Result<Hadith?>> findByNumber(String collection, int number);
+
   Future<Result<List<Hadith>>> search(
     String query, {
     String? collection,

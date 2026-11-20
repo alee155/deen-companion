@@ -10,6 +10,9 @@ abstract class HadithRemoteDataSource {
   Future<List<HadithCollectionModel>> getCollections();
   Future<HadithListPageModel> getHadithPage(String collection, int page);
   Future<HadithModel> getRandomHadith();
+
+  /// One hadith by its number in a book, or null when the book has none.
+  Future<HadithModel?> getHadithByNumber(String collection, int number);
   Future<List<HadithModel>> search(
     String query, {
     String? collection,
@@ -62,6 +65,22 @@ class HadithRemoteDataSourceImpl implements HadithRemoteDataSource {
       );
       return envelope.data;
     } on DioException catch (e) {
+      throw ServerException(e.message);
+    }
+  }
+
+  @override
+  Future<HadithModel?> getHadithByNumber(String collection, int number) async {
+    try {
+      final response = await dio.get(
+        ApiEndpoints.hadithByNumber(collection, number),
+      );
+      final data =
+          (response.data as Map<String, dynamic>)['data']
+              as Map<String, dynamic>;
+      return HadithModel.fromJson(data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
       throw ServerException(e.message);
     }
   }

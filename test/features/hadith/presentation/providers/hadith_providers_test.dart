@@ -277,8 +277,14 @@ void main() {
     });
 
     test('failure becomes AsyncError(Failure)', () async {
+      // An all-books search asks every book (with a per-book limit); when
+      // every one of them fails, the search has failed.
       when(
-        () => repo.search(any(), collection: any(named: 'collection')),
+        () => repo.search(
+          any(),
+          collection: any(named: 'collection'),
+          limit: any(named: 'limit'),
+        ),
       ).thenAnswer((_) async => const Error(NetworkFailure()));
       await container.read(hadithSearchNotifierProvider.notifier).search('a');
       expect(

@@ -1,23 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/hadith.dart';
+import '../../../../shared/providers/reading_preferences_provider.dart';
 import '../../domain/hadith_grade.dart';
+import '../../domain/hadith_search_excerpt.dart';
+import '../../../../shared/widgets/translation_unavailable.dart';
+import '../providers/hadith_urdu_providers.dart';
 
 /// A hadith in a list — search results, favourites. A *preview*, so the text
 /// is deliberately clipped to three lines here; the full text lives on the
 /// reading screen this tile opens.
-class HadithCardTile extends StatelessWidget {
+class HadithCardTile extends ConsumerWidget {
   final Hadith hadith;
   final VoidCallback onTap;
 
-  const HadithCardTile({super.key, required this.hadith, required this.onTap});
+  /// The words that were searched for. The English preview is then the part of
+  /// the text around the first match, with the words picked out, so a result
+  /// shows why it matched.
+  final List<String> highlight;
+
+  const HadithCardTile({
+    super.key,
+    required this.hadith,
+    required this.onTap,
+    this.highlight = const [],
+  });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 5.h),
       child: PressScale(
@@ -72,16 +87,10 @@ class HadithCardTile extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: 10.h),
-                  if (hadith.hasTranslation)
-                    Text(
-                      hadith.english,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.bodyLarge.copyWith(
-                        color: AppColors.textSecondary,
-                        height: 1.55,
-                      ),
-                    )
+                  if (_urduPreview(ref) case final Widget urdu)
+                    urdu
+                  else if (hadith.hasTranslation)
+                    _englishPreview()
                   else if (hadith.hasArabic)
                     // No translation in the source for this entry — preview the
                     // Arabic rather than showing an empty tile.
@@ -105,6 +114,92 @@ class HadithCardTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Placed here so [HadithCardTile] stays readable: the Urdu preview, or null
+/// when English applies. With Urdu chosen this is never null: it is the Urdu,
+/// a placeholder while it loads, or a message that there is none.
+extension on HadithCardTile {
+  /// The English preview: plain, or — for a search result — the text around
+  /// the match with the searched words picked out.
+  Widget _englishPreview() {
+    final style = AppTypography.bodyLarge.copyWith(
+      color: AppColors.textSecondary,
+      height: 1.55,
+    );
+    if (highlight.isEmpty) {
+      return Text(
+        hadith.english,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      );
+    }
+    final excerpt = HadithSearchExcerpt.around(hadith.english, highlight);
+    return Text.rich(
+      TextSpan(
+        children: [
+          for (final seg in HadithSearchExcerpt.segments(excerpt, highlight))
+            TextSpan(
+              text: seg.text,
+              style: seg.match
+                  ? TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.inkText,
+                      backgroundColor: AppColors.emeraldInk.withValues(
+                        alpha: 0.12,
+                      ),
+                    )
+                  : null,
+            ),
+        ],
+      ),
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
+      style: style,
+    );
+  }
+
+  Widget? _urduPreview(WidgetRef ref) {
+    if (!ref.watch(readingPreferencesProvider.select((p) => p.isUrdu))) {
+      return null;
+    }
+    if (!hasUrduEdition(hadith)) return _unavailable();
+    final urdu = ref.watch(hadithUrduProvider(urduKeyOf(hadith)));
+    if (urdu.isLoading) {
+      // Hold the row's height, never flash the English.
+      return SizedBox(height: 56.h);
+    }
+    if (urdu.hasError) {
+      return Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TranslationUnavailable(
+          fontSize: 14.sp,
+          onRetry: () => ref.invalidate(hadithUrduProvider(urduKeyOf(hadith))),
+        ),
+      );
+    }
+    final text = urdu.valueOrNull?.trim() ?? '';
+    if (text.isEmpty) return _unavailable();
+    return Text(
+      text,
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
+      textDirection: TextDirection.rtl,
+      textAlign: TextAlign.right,
+      style: TextStyle(
+        fontFamily: 'NotoNastaliqUrdu',
+        fontSize: 17.sp,
+        height: 2.0,
+        color: AppColors.textSecondary,
+      ),
+    );
+  }
+
+  Widget _unavailable() => Align(
+    alignment: AlignmentDirectional.centerStart,
+    child: TranslationUnavailable(fontSize: 14.sp),
+  );
 }
 
 class _GradePill extends StatelessWidget {

@@ -205,6 +205,27 @@ class ApiEndpoints {
         .toString();
   }
 
+  // Urdu hadith translations. UmmahAPI serves English only, but it is built
+  // on the open fawazahmed0/hadith-api dataset, which also publishes Urdu
+  // editions as static files — one small file per hadith, numbered the same
+  // way. Not every hadith has one, and nawawi/qudsi/dehlawi have none.
+  static const String _hadithUrduBase =
+      'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions';
+
+  /// Collections that have an Urdu edition in that dataset.
+  static const Set<String> hadithUrduCollections = {
+    'bukhari',
+    'muslim',
+    'abudawud',
+    'tirmidhi',
+    'ibnmajah',
+    'nasai',
+    'malik',
+  };
+
+  static String hadithUrdu(String collection, int number) =>
+      '$_hadithUrduBase/urd-$collection/$number.json';
+
   // ============================================================
   // Deen Companion backend
   // ============================================================

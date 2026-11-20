@@ -16,6 +16,7 @@ import '../../../../shared/widgets/favorite_glass_button.dart';
 import '../../../../shared/widgets/islamic_ornaments.dart';
 import '../../../quran/presentation/widgets/quran_hero.dart';
 import '../../../../shared/widgets/failure_view.dart';
+import '../../../../shared/widgets/pager_controls.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../favorites/domain/entities/favorite_item.dart';
 import '../../../recent_activity/domain/entities/recent_activity_item.dart';
@@ -24,6 +25,7 @@ import '../../domain/entities/hadith.dart';
 import '../../domain/entities/hadith_collection.dart';
 import '../../domain/hadith_cover_assets.dart';
 import '../providers/hadith_providers.dart';
+import '../providers/hadith_urdu_providers.dart';
 
 import '../widgets/hadith_collection_picker_sheet.dart';
 import '../widgets/hadith_reader_page.dart';
@@ -115,15 +117,22 @@ class _HadithReadingScreenState extends ConsumerState<HadithReadingScreen>
   }
 
   Future<void> _copy(Hadith hadith) async {
-    await Clipboard.setData(ClipboardData(text: hadith.toShareText()));
+    await Clipboard.setData(
+      ClipboardData(
+        text: hadith.toShareText(translation: shownUrduFor(ref, hadith)),
+      ),
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Hadith copied, with its reference')),
     );
   }
 
-  Future<void> _share(Hadith hadith) =>
-      shareText(context, hadith.toShareText(), subject: hadith.collectionName);
+  Future<void> _share(Hadith hadith) => shareText(
+    context,
+    hadith.toShareText(translation: shownUrduFor(ref, hadith)),
+    subject: hadith.collectionName,
+  );
 
   /// Switch books without going back to the library first.
   Future<void> _switchCollection() async {
@@ -391,71 +400,13 @@ class _ReaderControls extends StatelessWidget {
       curve: AppMotion.entrance,
       child: !visible
           ? const SizedBox(width: double.infinity)
-          : Container(
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                border: Border(top: BorderSide(color: AppColors.borderWarm)),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _NavButton(
-                    icon: Icons.chevron_left_rounded,
-                    tooltip: 'Previous hadith',
-                    onPressed: onPrevious,
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${page + 1} / $count',
-                        style: AppTypography.titleMedium.copyWith(
-                          color: AppColors.inkText,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 1.h),
-                      Text(
-                        isLoadingMore ? 'Loading more…' : 'Swipe to continue',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                  _NavButton(
-                    icon: Icons.chevron_right_rounded,
-                    tooltip: 'Next hadith',
-                    onPressed: onNext,
-                  ),
-                ],
-              ),
+          : PagerControls(
+              page: page,
+              count: count,
+              isLoadingMore: isLoadingMore,
+              onPrevious: onPrevious,
+              onNext: onNext,
             ),
-    );
-  }
-}
-
-class _NavButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onPressed;
-
-  const _NavButton({required this.icon, required this.tooltip, this.onPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onPressed,
-      tooltip: tooltip,
-      iconSize: 26.sp,
-      // Comfortably past the 44dp minimum touch target.
-      constraints: BoxConstraints(minWidth: 52.w, minHeight: 48.h),
-      style: IconButton.styleFrom(
-        foregroundColor: AppColors.inkText,
-        disabledForegroundColor: AppColors.borderWarm,
-      ),
-      icon: Icon(icon),
     );
   }
 }

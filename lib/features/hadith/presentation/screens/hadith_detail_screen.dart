@@ -7,13 +7,16 @@ import '../../../../core/utils/share_text.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
-import '../../../../shared/widgets/deen_app_bar.dart';
+import '../../../../shared/widgets/favorite_glass_button.dart';
+import '../../../../shared/widgets/islamic_ornaments.dart';
+import '../../../quran/presentation/widgets/quran_hero.dart';
+import '../../domain/hadith_cover_assets.dart';
 import '../../../favorites/domain/entities/favorite_item.dart';
-import '../../../favorites/presentation/widgets/favorite_button.dart';
 import '../../../recent_activity/domain/entities/recent_activity_item.dart';
 import '../../../recent_activity/presentation/providers/recent_activity_providers.dart';
 import '../../domain/entities/hadith.dart';
 import '../providers/hadith_providers.dart';
+import '../providers/hadith_urdu_providers.dart';
 import '../../../../shared/providers/reading_preferences_provider.dart';
 import '../widgets/hadith_reader_page.dart';
 import '../../../../shared/widgets/reader_settings_sheet.dart';
@@ -59,7 +62,13 @@ class _HadithDetailScreenState extends ConsumerState<HadithDetailScreen> {
   }
 
   Future<void> _copy() async {
-    await Clipboard.setData(ClipboardData(text: widget.hadith.toShareText()));
+    await Clipboard.setData(
+      ClipboardData(
+        text: widget.hadith.toShareText(
+          translation: shownUrduFor(ref, widget.hadith),
+        ),
+      ),
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Hadith copied, with its reference')),
@@ -68,7 +77,7 @@ class _HadithDetailScreenState extends ConsumerState<HadithDetailScreen> {
 
   Future<void> _share() => shareText(
     context,
-    widget.hadith.toShareText(),
+    widget.hadith.toShareText(translation: shownUrduFor(ref, widget.hadith)),
     subject: widget.hadith.collectionName,
   );
 
@@ -82,72 +91,81 @@ class _HadithDetailScreenState extends ConsumerState<HadithDetailScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
-      appBar: DeenAppBar(
-        title: collection?.name ?? hadith.collectionName,
-        subtitle: 'Hadith ${hadith.hadithNumber}',
-        actions: [
-          FavoriteButton(
-            size: 20,
-            item: FavoriteItem(
-              id: FavoriteItem.buildId(FavoriteContentType.hadith, hadith.id),
-              type: FavoriteContentType.hadith,
-              referenceId: hadith.id,
-              title: '${hadith.collectionName} · Hadith ${hadith.hadithNumber}',
-              subtitle: hadith.english,
-              route: '/hadith/read/${hadith.collection}',
-              savedAt: DateTime.now(),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Reading settings',
-            icon: const Icon(Icons.text_fields_rounded),
-            onPressed: () => showReaderSettingsSheet(context),
-          ),
-          IconButton(
-            tooltip: 'Copy hadith',
-            icon: const Icon(Icons.copy_rounded),
-            onPressed: _copy,
-          ),
-          IconButton(
-            tooltip: 'Share hadith',
-            icon: const Icon(Icons.ios_share_rounded),
-            onPressed: _share,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: HadithReaderPage(
-              hadith: hadith,
-              collection: collection,
-              preferences: preferences,
-            ).appear(),
-          ),
-          // From a single hadith, the obvious next step is the book it came
-          // from — otherwise this screen is a dead end.
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 12.h),
-              child:
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () =>
-                          context.push('/hadith/read/${hadith.collection}'),
-                      icon: const Icon(Icons.auto_stories_rounded, size: 18),
-                      label: Text(
-                        'Read ${collection?.name ?? hadith.collectionName}',
-                      ),
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Column(
+          children: [
+            QuranHero(
+              arabicTitle: collection?.arabicName ?? 'الحديث',
+              subtitle:
+                  '${collection?.name ?? hadith.collectionName} · Hadith '
+                  '${hadith.hadithNumber}',
+              backgroundAsset: HadithCoverAssets.forKey(hadith.collection),
+              actions: [
+                FavoriteGlassButton(
+                  item: FavoriteItem(
+                    id: FavoriteItem.buildId(
+                      FavoriteContentType.hadith,
+                      hadith.id,
                     ),
-                  ).slideIn(
-                    RevealDirection.bottom,
-                    delay: const Duration(milliseconds: 200),
+                    type: FavoriteContentType.hadith,
+                    referenceId: hadith.id,
+                    title:
+                        '${hadith.collectionName} · Hadith ${hadith.hadithNumber}',
+                    subtitle: hadith.english,
+                    route: '/hadith/read/${hadith.collection}',
+                    savedAt: DateTime.now(),
                   ),
+                ),
+                GlassIconButton(
+                  icon: Icons.text_fields_rounded,
+                  tooltip: 'Reading settings',
+                  onPressed: () => showReaderSettingsSheet(context),
+                ),
+                GlassIconButton(
+                  icon: Icons.copy_rounded,
+                  tooltip: 'Copy hadith',
+                  onPressed: _copy,
+                ),
+                GlassIconButton(
+                  icon: Icons.ios_share_rounded,
+                  tooltip: 'Share hadith',
+                  onPressed: _share,
+                ),
+              ],
             ),
-          ),
-        ],
+            Expanded(
+              child: HadithReaderPage(
+                hadith: hadith,
+                collection: collection,
+                preferences: preferences,
+              ).appear(),
+            ),
+            // From a single hadith, the obvious next step is the book it came
+            // from — otherwise this screen is a dead end.
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 12.h),
+                child:
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () =>
+                            context.push('/hadith/read/${hadith.collection}'),
+                        icon: const Icon(Icons.auto_stories_rounded, size: 18),
+                        label: Text(
+                          'Read ${collection?.name ?? hadith.collectionName}',
+                        ),
+                      ),
+                    ).slideIn(
+                      RevealDirection.bottom,
+                      delay: const Duration(milliseconds: 200),
+                    ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -30,10 +30,19 @@ class Hadith {
 
   /// Plain-text form used for Copy and Share, with attribution so a pasted
   /// hadith never loses its reference.
-  String toShareText() {
+  ///
+  /// [translation] replaces the English when the reader is showing another
+  /// language, so what is copied is what was read. Null keeps the English; an
+  /// empty string leaves the translation out (Urdu was chosen but there is
+  /// none — the English is not substituted).
+  String toShareText({String? translation}) {
+    final shown = translation?.trim();
     final parts = <String>[
       if (hasArabic) arabic.trim(),
-      if (hasTranslation) english.trim(),
+      if (shown != null) ...[
+        if (shown.isNotEmpty) shown,
+      ] else if (hasTranslation)
+        english.trim(),
       '— $collectionName, Hadith $hadithNumber'
           '${grade.trim().isEmpty ? '' : ' (${grade.trim()})'}',
     ];
