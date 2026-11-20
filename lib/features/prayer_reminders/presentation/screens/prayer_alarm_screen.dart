@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
 import '../../../../core/router/app_routes.dart';
+import '../../../../shared/providers/reading_preferences_provider.dart';
 import '../../data/prayer_alarm_channel.dart';
 import '../../domain/prayer_alarm_launch.dart';
 
@@ -37,6 +38,11 @@ class _PrayerAlarmScreenState extends ConsumerState<PrayerAlarmScreen>
   static const _verseTranslation =
       'Indeed, prayer has been decreed upon the believers a decree of '
       'specified times.';
+  // The same clause of 4:103 in Urdu (Maududi, the Urdu translation the rest
+  // of the app uses). Fixed text rather than fetched: this screen has to work
+  // the moment an alarm rings, with no network.
+  static const _verseTranslationUrdu =
+      'نماز در حقیقت ایسا فرض ہے جو پابندی وقت کے ساتھ اہل ایمان پر لازم کیا گیا ہے';
   static const _verseReference = 'Qur’an 4:103';
 
   late final _entrance = AnimationController(
@@ -278,6 +284,9 @@ class _PrayerAlarmScreenState extends ConsumerState<PrayerAlarmScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isUrdu = ref.watch(
+      readingPreferencesProvider.select((p) => p.isUrdu),
+    );
     final launch = widget.launch;
     final time = DateFormat('h:mm a').format(launch.time);
 
@@ -374,13 +383,21 @@ class _PrayerAlarmScreenState extends ConsumerState<PrayerAlarmScreen>
                                       ),
                                     ),
                                     const SizedBox(height: 10),
-                                    const Text(
-                                      _verseTranslation,
+                                    Text(
+                                      isUrdu
+                                          ? _verseTranslationUrdu
+                                          : _verseTranslation,
                                       textAlign: TextAlign.center,
+                                      textDirection: isUrdu
+                                          ? TextDirection.rtl
+                                          : null,
                                       style: TextStyle(
+                                        fontFamily: isUrdu
+                                            ? 'NotoNastaliqUrdu'
+                                            : null,
                                         color: _onHero,
-                                        fontSize: 14,
-                                        height: 1.3,
+                                        fontSize: isUrdu ? 16 : 14,
+                                        height: isUrdu ? 2.0 : 1.3,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
