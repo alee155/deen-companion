@@ -8,6 +8,7 @@ import '../../../../core/theme/app_motion.dart';
 import '../../domain/entities/dua.dart';
 import '../../domain/entities/duas_bundle.dart';
 import '../providers/dua_providers.dart';
+import '../providers/dua_urdu_providers.dart';
 import '../widgets/dua_common.dart';
 
 class DuaSearchScreen extends ConsumerStatefulWidget {
@@ -46,8 +47,8 @@ class _DuaSearchScreenState extends ConsumerState<DuaSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final searchState = ref.watch(duaSearchNotifierProvider);
-    final bundleAsync = ref.watch(duasBundleNotifierProvider);
+    final searchState = ref.watch(localizedDuaSearchProvider);
+    final bundleAsync = ref.watch(localizedDuasBundleProvider);
     final idle =
         _activeCategoryFilter == null &&
         searchState.value == null &&
@@ -202,11 +203,21 @@ class _DuaSearchScreenState extends ConsumerState<DuaSearchScreen> {
                             SizedBox(width: 6.w),
                             Text(
                               c.name,
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
-                                color: st.accent,
-                              ),
+                              textDirection: c.urdu ? TextDirection.rtl : null,
+                              style: c.urdu
+                                  ? urduDuaStyle(
+                                      TextStyle(
+                                        fontSize: 13.sp,
+                                        fontWeight: FontWeight.w600,
+                                        color: st.accent,
+                                      ),
+                                      height: 1.7,
+                                    )
+                                  : TextStyle(
+                                      fontSize: 12.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: st.accent,
+                                    ),
                             ),
                           ],
                         ),

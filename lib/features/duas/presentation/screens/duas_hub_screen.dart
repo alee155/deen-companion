@@ -13,6 +13,7 @@ import '../../domain/entities/dua.dart';
 import '../../domain/entities/dua_category.dart';
 import '../../domain/entities/duas_bundle.dart';
 import '../providers/dua_providers.dart';
+import '../providers/dua_urdu_providers.dart';
 import '../widgets/dua_common.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
 
@@ -62,7 +63,7 @@ class _DuasHubScreenState extends ConsumerState<DuasHubScreen> {
 
     DuaCategory? cat;
     for (final c in b.categories) {
-      final k = '${c.id} ${c.name}'.toLowerCase();
+      final k = '${c.id} ${c.englishName}'.toLowerCase();
       if (keys.any(k.contains)) {
         cat = c;
         break;
@@ -81,7 +82,7 @@ class _DuasHubScreenState extends ConsumerState<DuasHubScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bundleAsync = ref.watch(duasBundleNotifierProvider);
+    final bundleAsync = ref.watch(localizedDuasBundleProvider);
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
@@ -409,8 +410,8 @@ class _DuasHubScreenState extends ConsumerState<DuasHubScreen> {
               ),
             ),
             SizedBox(height: 8.h),
-            Text(
-              d.title,
+            DuaTitleText(
+              dua: d,
               style: TextStyle(
                 fontSize: 15.sp,
                 fontWeight: FontWeight.w700,
@@ -422,10 +423,9 @@ class _DuasHubScreenState extends ConsumerState<DuasHubScreen> {
               onVisible: true,
             ),
             SizedBox(height: 4.h),
-            Text(
-              d.translation,
+            DuaTranslationText(
+              dua: d,
               maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 13.sp,
                 height: 1.5,
@@ -459,10 +459,9 @@ class _DuasHubScreenState extends ConsumerState<DuasHubScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              d.title,
+            DuaTitleText(
+              dua: d,
               maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 13.sp,
                 fontWeight: FontWeight.w700,
@@ -556,10 +555,11 @@ class _DuasHubScreenState extends ConsumerState<DuasHubScreen> {
                         ],
                       ),
                       const Spacer(),
-                      Text(
+                      DuaLangText(
                         c.name,
+                        urdu: c.urdu,
+                        urduHeight: 1.7,
                         maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 15.sp,
                           fontWeight: FontWeight.w700,
@@ -568,10 +568,11 @@ class _DuasHubScreenState extends ConsumerState<DuasHubScreen> {
                         ),
                       ),
                       SizedBox(height: 4.h),
-                      Text(
+                      DuaLangText(
                         c.description,
+                        urdu: c.urdu,
+                        urduHeight: 1.9,
                         maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 11.sp,
                           height: 1.35,

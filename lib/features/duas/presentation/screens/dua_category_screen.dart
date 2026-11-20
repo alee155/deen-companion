@@ -7,7 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../shared/widgets/islamic_ornaments.dart';
 import '../../domain/entities/dua_category.dart';
-import '../providers/dua_providers.dart';
+import '../providers/dua_urdu_providers.dart';
 import '../widgets/dua_common.dart';
 import '../../../../shared/widgets/pinned_hero_bar.dart';
 
@@ -44,10 +44,16 @@ class _DuaCategoryScreenState extends ConsumerState<DuaCategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final category = widget.category;
-    final st = DuaCategoryStyle.of(category);
     // Filters the already-cached bundle — no network call happens here.
-    final bundleAsync = ref.watch(duasBundleNotifierProvider);
+    final bundleAsync = ref.watch(localizedDuasBundleProvider);
+    // The category as the reader's language has it: the one passed in may have
+    // been made before the language was changed.
+    final category =
+        bundleAsync.valueOrNull?.categories
+            .where((c) => c.id == widget.category.id)
+            .firstOrNull ??
+        widget.category;
+    final st = DuaCategoryStyle.of(category);
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
@@ -190,8 +196,10 @@ class _DuaCategoryScreenState extends ConsumerState<DuaCategoryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      DuaLangText(
                         c.name,
+                        urdu: c.urdu,
+                        urduHeight: 1.7,
                         style: TextStyle(
                           fontSize: 24.sp,
                           fontWeight: FontWeight.w700,
@@ -200,8 +208,10 @@ class _DuaCategoryScreenState extends ConsumerState<DuaCategoryScreen> {
                         ),
                       ).slideIn(RevealDirection.top, delay: seq.next()),
                       SizedBox(height: 6.h),
-                      Text(
+                      DuaLangText(
                         c.description,
+                        urdu: c.urdu,
+                        urduHeight: 1.9,
                         style: TextStyle(
                           fontSize: 13.sp,
                           height: 1.45,

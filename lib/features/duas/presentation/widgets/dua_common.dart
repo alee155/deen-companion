@@ -3,6 +3,7 @@ import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/islamic_ornaments.dart';
+import '../../../../shared/widgets/translation_unavailable.dart';
 import '../../../favorites/domain/entities/favorite_item.dart';
 import '../../../favorites/presentation/widgets/favorite_button.dart';
 import '../../domain/entities/dua.dart';
@@ -10,6 +11,143 @@ import '../../domain/entities/dua_category.dart';
 import '../screens/dua_reader_screen.dart';
 
 const kDuaArabicFont = 'AmiriQuran';
+const kDuaUrduFont = 'NotoNastaliqUrdu';
+
+/// [base] drawn in Urdu: the Nastaliq face, with the extra line height its tall
+/// strokes need.
+TextStyle urduDuaStyle(TextStyle base, {double height = 2.0}) =>
+    base.copyWith(fontFamily: kDuaUrduFont, height: height, letterSpacing: 0);
+
+/// Text in the reader's language: Urdu is set right to left in Nastaliq and
+/// takes the full width so it sits on the right; anything else is plain.
+class DuaLangText extends StatelessWidget {
+  final String text;
+  final bool urdu;
+  final TextStyle style;
+  final int? maxLines;
+  final double urduHeight;
+  final TextAlign? align;
+
+  const DuaLangText(
+    this.text, {
+    super.key,
+    required this.urdu,
+    required this.style,
+    this.maxLines,
+    this.urduHeight = 1.9,
+    this.align,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final overflow = maxLines == null ? null : TextOverflow.ellipsis;
+    if (!urdu) {
+      return Text(
+        text,
+        maxLines: maxLines,
+        overflow: overflow,
+        textAlign: align,
+        style: style,
+      );
+    }
+    return SizedBox(
+      width: double.infinity,
+      child: Text(
+        text,
+        maxLines: maxLines,
+        overflow: overflow,
+        textDirection: TextDirection.rtl,
+        textAlign: align ?? TextAlign.right,
+        style: urduDuaStyle(style, height: urduHeight),
+      ),
+    );
+  }
+}
+
+/// A dua's title in the reader's language: Urdu is set right to left in
+/// Nastaliq, English as before.
+class DuaTitleText extends StatelessWidget {
+  final Dua dua;
+  final TextStyle style;
+  final int? maxLines;
+  final TextAlign? align;
+
+  const DuaTitleText({
+    super.key,
+    required this.dua,
+    required this.style,
+    this.maxLines,
+    this.align,
+  });
+
+  @override
+  Widget build(BuildContext context) => DuaLangText(
+    dua.title,
+    urdu: dua.urdu,
+    style: style,
+    maxLines: maxLines,
+    align: align,
+  );
+}
+
+/// A dua's translation in the reader's language. With Urdu chosen and no Urdu
+/// for this dua it says so, in place of the translation, and never shows the
+/// English.
+class DuaTranslationText extends StatelessWidget {
+  final Dua dua;
+  final TextStyle style;
+  final int? maxLines;
+  final bool selectable;
+
+  const DuaTranslationText({
+    super.key,
+    required this.dua,
+    required this.style,
+    this.maxLines,
+    this.selectable = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (dua.urdu && dua.translation.isEmpty) {
+      return Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TranslationUnavailable(fontSize: style.fontSize),
+      );
+    }
+    final overflow = maxLines == null ? null : TextOverflow.ellipsis;
+    if (!dua.urdu) {
+      return selectable
+          ? SelectableText(dua.translation, maxLines: maxLines, style: style)
+          : Text(
+              dua.translation,
+              maxLines: maxLines,
+              overflow: overflow,
+              style: style,
+            );
+    }
+    final urduStyle = urduDuaStyle(style, height: 2.1);
+    return SizedBox(
+      width: double.infinity,
+      child: selectable
+          ? SelectableText(
+              dua.translation,
+              maxLines: maxLines,
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.right,
+              style: urduStyle,
+            )
+          : Text(
+              dua.translation,
+              maxLines: maxLines,
+              overflow: overflow,
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.right,
+              style: urduStyle,
+            ),
+    );
+  }
+}
 
 /// Icon + tint for a category, inferred from its id/name so new categories
 /// from the API still get something sensible.
@@ -64,7 +202,8 @@ class DuaCategoryStyle {
   ];
 
   static DuaCategoryStyle of(DuaCategory c) {
-    final key = '${c.id} ${c.name}'.toLowerCase();
+    // The English name, so a category looks the same in every language.
+    final key = '${c.id} ${c.englishName}'.toLowerCase();
     var icon = Icons.pan_tool_alt_rounded;
     for (final k in _keywords) {
       if (k.$1.any(key.contains)) {
@@ -87,8 +226,10 @@ FavoriteItem duaFavoriteItem(Dua d) => FavoriteItem(
   id: FavoriteItem.buildId(FavoriteContentType.dua, '${d.id}'),
   type: FavoriteContentType.dua,
   referenceId: '${d.id}',
-  title: d.title,
-  subtitle: d.translation,
+  // The English, whatever is shown: Favorites follow the language by looking
+  // the dua up, so what is saved must not depend on it.
+  title: d.englishTitle,
+  subtitle: d.englishTranslation,
   route: '/duas',
   savedAt: DateTime.now(),
 );
@@ -152,10 +293,9 @@ class DuaPreviewCard extends StatelessWidget {
                     ),
                     SizedBox(width: 12.w),
                     Expanded(
-                      child: Text(
-                        dua.title,
+                      child: DuaTitleText(
+                        dua: dua,
                         maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 15.sp,
                           fontWeight: FontWeight.w700,
@@ -192,10 +332,9 @@ class DuaPreviewCard extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 10.h),
-                Text(
-                  dua.translation,
+                DuaTranslationText(
+                  dua: dua,
                   maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 13.sp,
                     height: 1.5,

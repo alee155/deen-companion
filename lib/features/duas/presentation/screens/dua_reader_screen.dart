@@ -68,16 +68,24 @@ class _DuaReaderScreenState extends ConsumerState<DuaReaderScreen>
             id: RecentActivityItem.buildId(RecentActivityType.dua, '${d.id}'),
             type: RecentActivityType.dua,
             referenceId: '${d.id}',
-            title: d.title,
-            subtitle: d.translation,
+            // The English, whatever is shown: the row follows the language.
+            title: d.englishTitle,
+            subtitle: d.englishTranslation,
             route: '/duas',
             viewedAt: DateTime.now(),
           ),
         );
   }
 
-  String _text(Dua d) =>
-      '${d.title}\n\n${d.arabic}\n\n${d.transliteration}\n\n${d.translation}\n\n— ${d.source}';
+  /// What is copied and shared is what is on the screen: in Urdu, the Urdu —
+  /// and nothing where there is no Urdu translation, never the English.
+  String _text(Dua d) => [
+    d.title,
+    d.arabic,
+    d.transliteration,
+    if (d.translation.trim().isNotEmpty) d.translation,
+    '— ${d.source}',
+  ].join('\n\n');
 
   void _copy(Dua d) {
     Clipboard.setData(ClipboardData(text: _text(d)));
@@ -333,9 +341,9 @@ class _DuaReaderScreenState extends ConsumerState<DuaReaderScreen>
       padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 20.h),
       child: Column(
         children: [
-          Text(
-            d.title,
-            textAlign: TextAlign.center,
+          DuaTitleText(
+            dua: d,
+            align: TextAlign.center,
             style: TextStyle(
               fontSize: 20.sp,
               fontWeight: FontWeight.w700,
@@ -403,9 +411,24 @@ class _DuaReaderScreenState extends ConsumerState<DuaReaderScreen>
               color: AppColors.duasAccent,
             ),
           ],
-          if (_showTranslation && d.translation.isNotEmpty) ...[
+          if (_showTranslation && (d.translation.isNotEmpty || d.urdu)) ...[
             SizedBox(height: 12.h),
-            _textBlock('TRANSLATION', d.translation, 15.sp * scale),
+            _textBlock(
+              'TRANSLATION',
+              d.translation,
+              15.sp * scale,
+              // In Urdu: right to left in Nastaliq, or a message when there
+              // is no Urdu translation for this dua.
+              body: d.urdu
+                  ? DuaTranslationText(
+                      dua: d,
+                      style: TextStyle(
+                        fontSize: 15.sp * scale,
+                        color: AppColors.inkText,
+                      ),
+                    )
+                  : null,
+            ),
           ],
 
           // ── Source ──
@@ -582,6 +605,7 @@ class _DuaReaderScreenState extends ConsumerState<DuaReaderScreen>
     double size, {
     bool italic = false,
     Color? color,
+    Widget? body,
   }) {
     return Container(
       width: double.infinity,
@@ -604,15 +628,16 @@ class _DuaReaderScreenState extends ConsumerState<DuaReaderScreen>
             ),
           ),
           SizedBox(height: 8.h),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: size,
-              height: 1.65,
-              fontStyle: italic ? FontStyle.italic : FontStyle.normal,
-              color: color ?? AppColors.inkText,
-            ),
-          ),
+          body ??
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: size,
+                  height: 1.65,
+                  fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+                  color: color ?? AppColors.inkText,
+                ),
+              ),
         ],
       ),
     );
