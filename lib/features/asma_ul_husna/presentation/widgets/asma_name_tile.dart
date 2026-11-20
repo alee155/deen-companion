@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/urdu_aware_text.dart';
 import '../../domain/entities/asma_name.dart';
 import 'asma_ornaments.dart';
 
@@ -138,10 +139,11 @@ class AsmaNameRow extends StatelessWidget {
                         ),
                       ),
                       SizedBox(height: 2.h),
-                      Text(
+                      UrduAwareText(
                         name.english,
+                        urdu: name.urdu,
                         maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        urduHeight: 1.8,
                         style: TextStyle(
                           fontSize: 12.sp,
                           color: AppColors.textSecondary,

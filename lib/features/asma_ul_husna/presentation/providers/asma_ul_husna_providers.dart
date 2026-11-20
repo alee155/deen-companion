@@ -5,6 +5,9 @@ import '../../../../core/cache/cache_first_stream_notifier.dart';
 import '../../../../core/di/providers.dart';
 import '../../data/datasources/asma_ul_husna_remote_datasource.dart';
 import '../../data/repositories/asma_ul_husna_repository_impl.dart';
+import '../../../../shared/domain/urdu_search.dart';
+import 'asma_urdu_providers.dart';
+import '../../domain/asma_urdu_texts.dart';
 import '../../domain/entities/asma_daily.dart';
 import '../../domain/entities/asma_name.dart';
 import '../../domain/repositories/asma_ul_husna_repository.dart';
@@ -58,6 +61,22 @@ class AsmaSearchNotifier extends AsyncNotifier<List<AsmaName>?> {
   @override
   FutureOr<List<AsmaName>?> build() => null;
 
+  Future<void> _searchUrdu(String query) async {
+    final texts = await ref
+        .read(asmaUrduTextsProvider.future)
+        .catchError((_) => AsmaUrduTexts.empty);
+    final all = await ref.read(asmaRepositoryProvider).fetchAndCacheAllNames();
+    state = all.when(
+      success: (names) {
+        final byNumber = {for (final n in names) n.number: n};
+        return AsyncData([
+          for (final number in texts.search(query)) ?byNumber[number],
+        ]);
+      },
+      failure: (f) => AsyncError(f, StackTrace.current),
+    );
+  }
+
   Future<void> search(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) {
@@ -65,6 +84,12 @@ class AsmaSearchNotifier extends AsyncNotifier<List<AsmaName>?> {
       return;
     }
     state = const AsyncLoading();
+    // The source only reads English. Urdu is searched in the Urdu that ships
+    // with the app, whichever language is shown.
+    if (hasUrduScript(trimmed)) {
+      await _searchUrdu(trimmed);
+      return;
+    }
     final result = await ref.read(asmaRepositoryProvider).search(trimmed);
     state = result.when(
       success: (d) => AsyncData(d),

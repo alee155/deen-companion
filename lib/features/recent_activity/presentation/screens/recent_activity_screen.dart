@@ -7,6 +7,11 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../audio_player/presentation/widgets/now_playing_dock.dart';
+import '../../../../shared/widgets/saved_localized_text.dart';
+import '../../../asma_ul_husna/presentation/providers/asma_urdu_providers.dart';
+import '../../../duas/presentation/widgets/saved_dua_text.dart';
+import '../../../islamic_names/presentation/providers/islamic_names_providers.dart';
+import '../../../hadith/presentation/widgets/hadith_preview_text.dart';
 import '../../../quran/presentation/widgets/quran_hero.dart';
 import '../../domain/entities/recent_activity_item.dart';
 import '../providers/recent_activity_providers.dart';
@@ -161,27 +166,72 @@ class _RecentTile extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14.sp,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.inkText,
+                      if (item.type == RecentActivityType.dua)
+                        SavedDuaTitle(
+                          duaId: item.referenceId,
+                          text: item.title,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.inkText,
+                          ),
+                        )
+                      else
+                        SavedLocalizedText(
+                          text: item.title,
+                          isTitle: true,
+                          urduHeight: 1.9,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.inkText,
+                          ),
+                          lookup: switch (item.type) {
+                            RecentActivityType.asmaName =>
+                              savedAsmaEpithetProvider(item.referenceId),
+                            RecentActivityType.islamicName =>
+                              savedIslamicNameNameProvider(item.referenceId),
+                            _ => null,
+                          },
                         ),
-                      ),
                       if (item.subtitle != null) ...[
                         SizedBox(height: 2.h),
-                        Text(
-                          item.subtitle!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: AppColors.textSecondary,
+                        if (item.type == RecentActivityType.dua)
+                          SavedDuaPreview(
+                            duaId: item.referenceId,
+                            text: item.subtitle!,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: AppColors.textSecondary,
+                            ),
+                          )
+                        else if (item.type == RecentActivityType.asmaName ||
+                            item.type == RecentActivityType.islamicName)
+                          SavedLocalizedText(
+                            text: item.subtitle!,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: AppColors.textSecondary,
+                            ),
+                            lookup: item.type == RecentActivityType.asmaName
+                                ? savedAsmaMeaningProvider(item.referenceId)
+                                : savedIslamicNameMeaningProvider(
+                                    item.referenceId,
+                                  ),
+                          )
+                        else
+                          HadithPreviewText(
+                            text: item.subtitle!,
+                            // A single hadith (opened from search) keeps its id;
+                            // a "Reading" entry keeps only the collection key.
+                            hadithId: item.type == RecentActivityType.hadith
+                                ? item.referenceId
+                                : null,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                        ),
                       ],
                     ],
                   ),

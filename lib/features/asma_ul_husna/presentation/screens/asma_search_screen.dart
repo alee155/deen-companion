@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/asma_ul_husna_providers.dart';
+import '../providers/asma_urdu_providers.dart';
 import '../screens/asma_detail_screen.dart';
 import '../widgets/asma_name_tile.dart';
 import '../../../../shared/widgets/deen_app_bar.dart';
@@ -19,7 +20,7 @@ class _AsmaSearchScreenState extends ConsumerState<AsmaSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final searchState = ref.watch(asmaSearchNotifierProvider);
+    final searchState = ref.watch(localizedAsmaSearchProvider);
 
     return Scaffold(
       backgroundColor: AppColors.parchment,

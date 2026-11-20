@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/urdu_aware_text.dart';
 
 Future<Set<String>?> showOriginFilterSheet(
   BuildContext context, {
   required List<String> allOrigins,
   required Set<String> initiallySelected,
+
+  /// What to show for an origin (the filter itself works on [allOrigins]'s
+  /// own values), e.g. its Urdu name. Defaults to the origin as it is.
+  String Function(String origin)? labelOf,
+  bool urdu = false,
 }) {
   return showModalBottomSheet<Set<String>>(
     context: context,
@@ -18,6 +24,8 @@ Future<Set<String>?> showOriginFilterSheet(
     builder: (context) => _OriginFilterContent(
       allOrigins: allOrigins,
       initiallySelected: initiallySelected,
+      labelOf: labelOf ?? (o) => o,
+      urdu: urdu,
     ),
   );
 }
@@ -25,9 +33,13 @@ Future<Set<String>?> showOriginFilterSheet(
 class _OriginFilterContent extends StatefulWidget {
   final List<String> allOrigins;
   final Set<String> initiallySelected;
+  final String Function(String origin) labelOf;
+  final bool urdu;
   const _OriginFilterContent({
     required this.allOrigins,
     required this.initiallySelected,
+    required this.labelOf,
+    required this.urdu,
   });
 
   @override
@@ -76,7 +88,19 @@ class _OriginFilterContentState extends State<_OriginFilterContent> {
                   return CheckboxListTile(
                     value: _selected.contains(origin),
                     activeColor: AppColors.emeraldInk,
-                    title: Text(origin),
+                    title: Text(
+                      widget.labelOf(origin),
+                      textDirection: widget.urdu ? TextDirection.rtl : null,
+                      style: widget.urdu
+                          ? urduTextStyle(
+                              TextStyle(
+                                fontSize: 15.sp,
+                                color: AppColors.inkText,
+                              ),
+                              height: 1.9,
+                            )
+                          : null,
+                    ),
                     onChanged: (checked) => setState(() {
                       if (checked ?? false) {
                         _selected.add(origin);

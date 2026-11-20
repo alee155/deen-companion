@@ -7,8 +7,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
 import '../../../../shared/widgets/shimmer_box.dart';
 import '../../../../shared/widgets/warm_gradient_scaffold.dart';
+import '../../../../shared/widgets/urdu_aware_text.dart';
+import '../providers/asma_urdu_providers.dart';
 import '../../domain/entities/asma_name.dart';
-import '../providers/asma_ul_husna_providers.dart';
 import '../widgets/asma_name_tile.dart';
 import '../widgets/asma_ornaments.dart';
 import 'asma_daily_practice_screen.dart';
@@ -74,7 +75,7 @@ class _AsmaHubScreenState extends ConsumerState<AsmaHubScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final namesAsync = ref.watch(asmaAllNamesNotifierProvider);
+    final namesAsync = ref.watch(localizedAsmaNamesProvider);
     final today = DateTime.now().weekday; // 1 = Monday … 7 = Sunday
 
     return Scaffold(
@@ -352,8 +353,10 @@ class _AsmaHubScreenState extends ConsumerState<AsmaHubScreen> {
                       color: AppColors.onHeroSurface,
                     ),
                   ).slideIn(RevealDirection.end, delay: seq.next()),
-                  Text(
+                  UrduAwareText(
                     name.english,
+                    urdu: name.urdu,
+                    urduHeight: 1.8,
                     style: TextStyle(
                       fontSize: 13.sp,
                       color: AppColors.onHeroSurface.withValues(alpha: 0.75),

@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_motion.dart';
+import '../../../../shared/providers/reading_preferences_provider.dart';
+import '../../../../shared/widgets/urdu_aware_text.dart';
+import '../../domain/asma_urdu_texts.dart';
 import '../../domain/entities/asma_daily.dart';
-import '../providers/asma_ul_husna_providers.dart';
+import '../providers/asma_urdu_providers.dart';
 import '../widgets/asma_ornaments.dart';
 
 class AsmaDailyPracticeScreen extends ConsumerStatefulWidget {
@@ -105,9 +108,13 @@ class _AsmaDailyPracticeScreenState
     );
   }
 
+  /// Urdu chosen: the day names and the notes are Urdu too.
+  bool get _urdu =>
+      ref.watch(readingPreferencesProvider.select((p) => p.isUrdu));
+
   @override
   Widget build(BuildContext context) {
-    final dailyAsync = ref.watch(asmaDailyNotifierProvider(_selectedDay));
+    final dailyAsync = ref.watch(localizedAsmaDailyProvider(_selectedDay));
 
     return Scaffold(
       backgroundColor: AppColors.heroSurface,
@@ -198,11 +205,20 @@ class _AsmaDailyPracticeScreenState
                 SizedBox(height: 2.h),
                 Text(
                   daily?.dayName ?? _dayLabels[_selectedDay - 1],
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.onHeroSurface,
-                  ),
+                  style: _urdu
+                      ? urduTextStyle(
+                          TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.onHeroSurface,
+                          ),
+                          height: 1.7,
+                        )
+                      : TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.onHeroSurface,
+                        ),
                 ),
               ],
             ),
@@ -241,14 +257,18 @@ class _AsmaDailyPracticeScreenState
               ),
               child: Column(
                 children: [
-                  Text(
-                    _dayLabels[i],
-                    style: TextStyle(
-                      fontSize: 11.sp,
-                      fontWeight: FontWeight.w700,
-                      color: selected
-                          ? AppColors.heroSurface
-                          : AppColors.onHeroSurface.withValues(alpha: 0.75),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _urdu ? AsmaUrduTexts.shortDayNames[i] : _dayLabels[i],
+                      style: TextStyle(
+                        fontSize: 11.sp,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: _urdu ? kUrduFontFamily : null,
+                        color: selected
+                            ? AppColors.heroSurface
+                            : AppColors.onHeroSurface.withValues(alpha: 0.75),
+                      ),
                     ),
                   ),
                   SizedBox(height: 4.h),
@@ -453,8 +473,11 @@ class _AsmaDailyPracticeScreenState
                   delay: const Duration(milliseconds: 80),
                 ),
                 SizedBox(height: 2.h),
-                Text(
+                UrduAwareText(
                   name.english,
+                  urdu: name.urdu,
+                  align: TextAlign.center,
+                  urduHeight: 1.8,
                   style: TextStyle(
                     fontSize: 14.sp,
                     color: AppColors.goldLight,
@@ -467,14 +490,21 @@ class _AsmaDailyPracticeScreenState
                 SizedBox(height: 10.h),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 32.w),
-                  child: Text(
-                    name.meaning,
+                  child: UrduAwareText(
+                    // In Urdu with no Urdu meaning: say so, never the English.
+                    name.urdu && name.meaning.trim().isEmpty
+                        ? 'Urdu translation is not available'
+                        : name.meaning,
+                    urdu: name.urdu && name.meaning.trim().isNotEmpty,
                     maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
+                    align: TextAlign.center,
+                    urduHeight: 2.0,
                     style: TextStyle(
                       fontSize: 12.sp,
                       height: 1.55,
+                      fontStyle: name.urdu && name.meaning.trim().isEmpty
+                          ? FontStyle.italic
+                          : null,
                       color: AppColors.onHeroSurface.withValues(alpha: 0.7),
                     ),
                   ),
@@ -674,9 +704,11 @@ class _AsmaDailyPracticeScreenState
               color: AppColors.onHeroSurface.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(18.r),
             ),
-            child: Text(
+            child: UrduAwareText(
               daily.weeklyCompletion,
-              textAlign: TextAlign.center,
+              urdu: _urdu,
+              align: TextAlign.center,
+              urduHeight: 2.0,
               style: TextStyle(
                 fontSize: 13.sp,
                 height: 1.5,

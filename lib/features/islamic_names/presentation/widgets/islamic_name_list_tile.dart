@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:deen_companion/core/motion/motion.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/urdu_aware_text.dart';
 import '../../domain/entities/islamic_name.dart';
 
 /// One name as a bordered card (same construction as the Group cards): a
@@ -67,11 +68,23 @@ class IslamicNameListTile extends StatelessWidget {
                               name.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15.sp,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.inkText,
-                              ),
+                              textDirection: name.urdu
+                                  ? TextDirection.rtl
+                                  : null,
+                              style: name.urdu
+                                  ? urduTextStyle(
+                                      TextStyle(
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.inkText,
+                                      ),
+                                      height: 1.8,
+                                    )
+                                  : TextStyle(
+                                      fontSize: 15.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.inkText,
+                                    ),
                             ),
                           ),
                           SizedBox(width: 8.w),
@@ -87,15 +100,19 @@ class IslamicNameListTile extends StatelessWidget {
                         ],
                       ),
                       SizedBox(height: 3.h),
-                      Text(
-                        name.meaning,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: AppColors.textSecondary,
+                      // In Urdu with no Urdu meaning: nothing here, the detail
+                      // says so (a list row has no room for a message).
+                      if (!name.urdu || name.meaning.isNotEmpty)
+                        UrduAwareText(
+                          name.meaning,
+                          urdu: name.urdu,
+                          maxLines: 1,
+                          urduHeight: 1.9,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
-                      ),
                       if (name.origin.isNotEmpty) ...[
                         SizedBox(height: 6.h),
                         Container(
@@ -118,11 +135,23 @@ class IslamicNameListTile extends StatelessWidget {
                               SizedBox(width: 4.w),
                               Text(
                                 name.origin,
-                                style: TextStyle(
-                                  fontSize: 10.5.sp,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.worshipAccent,
-                                ),
+                                textDirection: name.urdu
+                                    ? TextDirection.rtl
+                                    : null,
+                                style: name.urdu
+                                    ? urduTextStyle(
+                                        TextStyle(
+                                          fontSize: 11.sp,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.worshipAccent,
+                                        ),
+                                        height: 1.7,
+                                      )
+                                    : TextStyle(
+                                        fontSize: 10.5.sp,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.worshipAccent,
+                                      ),
                               ),
                             ],
                           ),

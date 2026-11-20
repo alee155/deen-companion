@@ -65,7 +65,7 @@ class _IslamicNamesHubScreenState extends ConsumerState<IslamicNamesHubScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final namesAsync = ref.watch(islamicNamesNotifierProvider);
+    final namesAsync = ref.watch(localizedIslamicNamesProvider);
     final all = namesAsync.valueOrNull;
 
     return Scaffold(
@@ -224,7 +224,8 @@ class _IslamicNamesHubScreenState extends ConsumerState<IslamicNamesHubScreen> {
                         color: AppColors.inkText,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Search by name or meaning…',
+                        hintText:
+                            'Search by name or meaning (English or Urdu)…',
                         hintStyle: TextStyle(
                           fontSize: 14.sp,
                           color: AppColors.textMuted,
@@ -251,6 +252,15 @@ class _IslamicNamesHubScreenState extends ConsumerState<IslamicNamesHubScreen> {
                         context,
                         allOrigins: origins,
                         initiallySelected: _originFilters,
+                        // The filter keeps the source's English origin; the
+                        // sheet shows it in the reader's language.
+                        labelOf: (o) =>
+                            {
+                              for (final n in allNames)
+                                n.englishOrigin: n.origin,
+                            }[o] ??
+                            o,
+                        urdu: allNames.any((n) => n.urdu),
                       );
                       if (result != null) {
                         setState(() => _originFilters = result);

@@ -12,6 +12,8 @@ import '../../../../shared/widgets/feature_hero.dart';
 import '../../../../shared/widgets/islamic_ornaments.dart';
 import '../../../favorites/domain/entities/favorite_item.dart';
 import '../../../favorites/presentation/providers/favorites_providers.dart';
+import '../../../../shared/widgets/translation_unavailable.dart';
+import '../../../../shared/widgets/urdu_aware_text.dart';
 import '../../domain/entities/islamic_name.dart';
 
 /// A name's full detail — hero, quick facts, meaning, root letters, a note,
@@ -50,8 +52,10 @@ class _IslamicNameDetailScreenState
     id: FavoriteItem.buildId(FavoriteContentType.islamicName, '${name.id}'),
     type: FavoriteContentType.islamicName,
     referenceId: '${name.id}',
-    title: name.name,
-    subtitle: name.meaning,
+    // The English, whatever is shown: Favorites look the name up by id to show
+    // it in the reader's language.
+    title: name.englishName,
+    subtitle: name.englishMeaning,
     route: '/islamic-names',
     savedAt: DateTime.now(),
   );
@@ -99,9 +103,12 @@ class _IslamicNameDetailScreenState
   }
 
   void _share() {
+    // What is shared is what is on the screen: in Urdu, the Urdu, and no meaning
+    // where there is no Urdu one, never the English.
+    final meaning = name.meaning.trim().isEmpty ? '' : ' — ${name.meaning}';
     shareText(
       context,
-      '${name.name} (${name.arabic}) — ${name.meaning}.\n'
+      '${name.name} (${name.arabic})$meaning.\n'
       'Discover more Islamic names in Deen Companion.',
     );
   }
@@ -151,6 +158,7 @@ class _IslamicNameDetailScreenState
                                   value: name.origin.isEmpty
                                       ? '—'
                                       : name.origin,
+                                  urdu: name.urdu,
                                 ).slideIn(
                                   RevealDirection.bottom,
                                   delay: const Duration(milliseconds: 60),
@@ -177,14 +185,18 @@ class _IslamicNameDetailScreenState
                       _Section(
                         icon: Icons.lightbulb_outline_rounded,
                         title: 'Meaning',
-                        child: Text(
-                          name.meaning,
-                          style: TextStyle(
-                            fontSize: 15.sp,
-                            height: 1.55,
-                            color: AppColors.inkText,
-                          ),
-                        ),
+                        child: name.urdu && name.meaning.trim().isEmpty
+                            ? TranslationUnavailable(fontSize: 14.sp)
+                            : UrduAwareText(
+                                name.meaning,
+                                urdu: name.urdu,
+                                urduHeight: 2.0,
+                                style: TextStyle(
+                                  fontSize: 15.sp,
+                                  height: 1.55,
+                                  color: AppColors.inkText,
+                                ),
+                              ),
                       ).slideIn(RevealDirection.bottom, onVisible: true),
                       if (rootLetters.isNotEmpty) ...[
                         SizedBox(height: 14.h),
@@ -228,19 +240,23 @@ class _IslamicNameDetailScreenState
                           ),
                         ).slideIn(RevealDirection.bottom, onVisible: true),
                       ],
-                      if (name.note.isNotEmpty) ...[
+                      if (name.hasNote) ...[
                         SizedBox(height: 14.h),
                         _Section(
                           icon: Icons.auto_stories_rounded,
                           title: 'Good to know',
-                          child: Text(
-                            name.note,
-                            style: TextStyle(
-                              fontSize: 13.5.sp,
-                              height: 1.6,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
+                          child: name.urdu && name.note.trim().isEmpty
+                              ? TranslationUnavailable(fontSize: 13.sp)
+                              : UrduAwareText(
+                                  name.note,
+                                  urdu: name.urdu,
+                                  urduHeight: 2.0,
+                                  style: TextStyle(
+                                    fontSize: 13.5.sp,
+                                    height: 1.6,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
                         ).slideIn(RevealDirection.bottom, onVisible: true),
                       ],
                       SizedBox(height: 18.h),
@@ -387,11 +403,21 @@ class _IslamicNameDetailScreenState
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 17.sp,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
+                        textDirection: name.urdu ? TextDirection.rtl : null,
+                        style: name.urdu
+                            ? urduTextStyle(
+                                TextStyle(
+                                  fontSize: 17.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                                height: 1.6,
+                              )
+                            : TextStyle(
+                                fontSize: 17.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
                       ),
                     ),
                   ),
@@ -498,29 +524,38 @@ class _IslamicNameDetailScreenState
                   Text(
                     name.name,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Georgia',
-                      fontSize: 32.sp,
-                      letterSpacing: 0.5,
-                      color: Colors.white,
-                      height: 1.15,
-                    ),
+                    textDirection: name.urdu ? TextDirection.rtl : null,
+                    style: name.urdu
+                        ? urduTextStyle(
+                            TextStyle(fontSize: 32.sp, color: Colors.white),
+                            height: 1.7,
+                          )
+                        : TextStyle(
+                            fontFamily: 'Georgia',
+                            fontSize: 32.sp,
+                            letterSpacing: 0.5,
+                            color: Colors.white,
+                            height: 1.15,
+                          ),
                   ).slideIn(
                     RevealDirection.bottom,
                     delay: const Duration(milliseconds: 160),
                   ),
                   SizedBox(height: 8.h),
-                  Text(
-                    name.meaning,
-                    textAlign: TextAlign.center,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13.5.sp,
-                      height: 1.45,
-                      color: AppColors.onHeroSurface.withValues(alpha: 0.8),
-                    ),
-                  ).appear(delay: const Duration(milliseconds: 240)),
+                  // In Urdu with no Urdu meaning the Meaning card below says so.
+                  if (!name.urdu || name.meaning.isNotEmpty)
+                    UrduAwareText(
+                      name.meaning,
+                      urdu: name.urdu,
+                      align: TextAlign.center,
+                      maxLines: 3,
+                      urduHeight: 2.0,
+                      style: TextStyle(
+                        fontSize: 13.5.sp,
+                        height: 1.45,
+                        color: AppColors.onHeroSurface.withValues(alpha: 0.8),
+                      ),
+                    ).appear(delay: const Duration(milliseconds: 240)),
                   SizedBox(height: 14.h),
                   FeatureHeroChip(
                     _isMale ? Icons.male_rounded : Icons.female_rounded,
@@ -593,11 +628,13 @@ class _FactChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final bool urdu;
 
   const _FactChip({
     required this.icon,
     required this.label,
     required this.value,
+    this.urdu = false,
   });
 
   @override
@@ -616,11 +653,21 @@ class _FactChip extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w800,
-            color: AppColors.inkText,
-          ),
+          textDirection: urdu ? TextDirection.rtl : null,
+          style: urdu
+              ? urduTextStyle(
+                  TextStyle(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.inkText,
+                  ),
+                  height: 1.8,
+                )
+              : TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.inkText,
+                ),
         ),
         SizedBox(height: 2.h),
         Text(
@@ -671,11 +718,21 @@ class _MoreNameCard extends StatelessWidget {
                       name.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.inkText,
-                      ),
+                      textDirection: name.urdu ? TextDirection.rtl : null,
+                      style: name.urdu
+                          ? urduTextStyle(
+                              TextStyle(
+                                fontSize: 15.sp,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.inkText,
+                              ),
+                              height: 1.7,
+                            )
+                          : TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.inkText,
+                            ),
                     ),
                   ),
                   Text(
@@ -690,16 +747,18 @@ class _MoreNameCard extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 6.h),
-              Text(
-                name.meaning,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11.5.sp,
-                  height: 1.35,
-                  color: AppColors.textSecondary,
+              if (!name.urdu || name.meaning.isNotEmpty)
+                UrduAwareText(
+                  name.meaning,
+                  urdu: name.urdu,
+                  maxLines: 3,
+                  urduHeight: 1.9,
+                  style: TextStyle(
+                    fontSize: 11.5.sp,
+                    height: 1.35,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
             ],
           ),
         ),

@@ -3,6 +3,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/motion/motion.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/saved_localized_text.dart';
+import '../../../asma_ul_husna/presentation/providers/asma_urdu_providers.dart';
+import '../../../duas/presentation/widgets/saved_dua_text.dart';
+import '../../../islamic_names/presentation/providers/islamic_names_providers.dart';
+import '../../../hadith/presentation/widgets/hadith_preview_text.dart';
 import '../../domain/entities/favorite_item.dart';
 
 /// One favorite as a card: category badge, title, subtitle, when it was saved.
@@ -41,6 +46,39 @@ class _FavoriteRowState extends State<FavoriteRow> {
     setState(() => _removing = true);
     await Future.delayed(context.motion.duration(AppMotion.normal));
     if (mounted) widget.onRemove();
+  }
+
+  /// A dua's title follows the reader's language; every other row keeps its
+  /// saved title.
+  Widget _title(FavoriteItem item) {
+    final style = TextStyle(
+      fontSize: 15.sp,
+      fontWeight: FontWeight.w700,
+      color: AppColors.inkText,
+    );
+    if (item.type == FavoriteContentType.dua) {
+      return SavedDuaTitle(
+        duaId: item.referenceId,
+        text: item.title,
+        style: style,
+      );
+    }
+    // The Names of Allah and Islamic names look their Urdu up by id too.
+    return SavedLocalizedText(
+      text: item.title,
+      style: style,
+      isTitle: true,
+      urduHeight: 1.9,
+      lookup: switch (item.type) {
+        FavoriteContentType.asmaName => savedAsmaEpithetProvider(
+          item.referenceId,
+        ),
+        FavoriteContentType.islamicName => savedIslamicNameNameProvider(
+          item.referenceId,
+        ),
+        _ => null,
+      },
+    );
   }
 
   @override
@@ -92,26 +130,47 @@ class _FavoriteRowState extends State<FavoriteRow> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              item.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 15.sp,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.inkText,
-                              ),
-                            ),
+                            _title(item),
                             if (item.subtitle != null) ...[
                               SizedBox(height: 3.h),
-                              Text(
-                                item.subtitle!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.caption.copyWith(
-                                  color: AppColors.textSecondary,
+                              if (item.type == FavoriteContentType.dua)
+                                SavedDuaPreview(
+                                  duaId: item.referenceId,
+                                  text: item.subtitle!,
+                                  style: AppTypography.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                )
+                              else if (item.type ==
+                                      FavoriteContentType.asmaName ||
+                                  item.type == FavoriteContentType.islamicName)
+                                SavedLocalizedText(
+                                  text: item.subtitle!,
+                                  style: AppTypography.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  lookup:
+                                      item.type == FavoriteContentType.asmaName
+                                      ? savedAsmaMeaningProvider(
+                                          item.referenceId,
+                                        )
+                                      : savedIslamicNameMeaningProvider(
+                                          item.referenceId,
+                                        ),
+                                )
+                              else
+                                HadithPreviewText(
+                                  text: item.subtitle!,
+                                  // Only a hadith row carries a saved
+                                  // translation snippet to swap for Urdu.
+                                  hadithId:
+                                      item.type == FavoriteContentType.hadith
+                                      ? item.referenceId
+                                      : null,
+                                  style: AppTypography.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
-                              ),
                             ],
                             SizedBox(height: 4.h),
                             Text(
