@@ -65,6 +65,7 @@ flutter:
     - assets/images/
     - assets/images/hadith_covers/
     - assets/audio/
+    - assets/data/
     - assets/images/icons/
 
   fonts:
@@ -78,6 +79,12 @@ flutter:
     - family: AmiriQuran
       fonts:
         - asset: assets/fonts/AmiriQuran-Regular.ttf
+    # Urdu translations. Nastaliq is the script Urdu readers expect; the
+    # file is a variable font, used at its default (regular) weight.
+    # Licence: SIL Open Font License 1.1 (NotoNastaliqUrdu-OFL.txt).
+    - family: NotoNastaliqUrdu
+      fonts:
+        - asset: assets/fonts/NotoNastaliqUrdu-Variable.ttf
   
 
 flutter_launcher_icons:

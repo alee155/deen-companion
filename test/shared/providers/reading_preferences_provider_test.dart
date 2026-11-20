@@ -135,4 +135,40 @@ void main() {
       expect(storage.get<bool>(box, 'reader_show_arabic'), isTrue);
     });
   });
+
+  group('Translation language', () {
+    test('defaults to English and is not part of isDefault', () {
+      const p = ReadingPreferences();
+      expect(p.translationLanguage, TranslationLanguage.english);
+      expect(p.isUrdu, isFalse);
+      expect(
+        const ReadingPreferences(
+          translationLanguage: TranslationLanguage.urdu,
+        ).isDefault,
+        isTrue,
+        reason: 'language is a Settings choice, not a reader tweak',
+      );
+    });
+
+    test('unknown or missing stored value falls back to English', () {
+      expect(TranslationLanguage.parse(null), TranslationLanguage.english);
+      expect(TranslationLanguage.parse('klingon'), TranslationLanguage.english);
+      expect(TranslationLanguage.parse('urdu'), TranslationLanguage.urdu);
+    });
+
+    test('is saved, restored, and survives a text-size reset', () async {
+      final c = make();
+      final n = c.read(readingPreferencesProvider.notifier);
+      await n.setTranslationLanguage(TranslationLanguage.urdu);
+      expect(storage.get<String>(box, 'reader_translation_language'), 'urdu');
+
+      await n.setArabicScale(1.5);
+      await n.reset();
+      expect(c.read(readingPreferencesProvider).isUrdu, isTrue);
+      expect(c.read(readingPreferencesProvider).arabicScale, 1.0);
+
+      // A fresh container reads it back from storage.
+      expect(make().read(readingPreferencesProvider).isUrdu, isTrue);
+    });
+  });
 }

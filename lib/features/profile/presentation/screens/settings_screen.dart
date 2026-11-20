@@ -13,6 +13,7 @@ import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
+import '../../../../shared/providers/reading_preferences_provider.dart';
 import '../../../islamic_calendar/presentation/providers/hijri_adjustment_provider.dart';
 import '../../../islamic_calendar/presentation/widgets/hijri_fine_tune_row.dart';
 import '../../../daily_content/debug/daily_content_debug_panel.dart';
@@ -128,6 +129,9 @@ class SettingsScreen extends ConsumerWidget {
     final blockedCount = ref.watch(blockedUserIdsProvider).length;
     final hijriAdjustment = ref.watch(hijriAdjustmentProvider);
     final dailyContentOn = ref.watch(dailyNotificationEnabledProvider);
+    final translationLanguage = ref.watch(
+      readingPreferencesProvider.select((p) => p.translationLanguage),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.parchment,
@@ -197,6 +201,69 @@ class SettingsScreen extends ConsumerWidget {
                           .read(themeModeNotifierProvider.notifier)
                           .setChoice(AppThemeChoice.automatic),
                     ),
+                    SizedBox(height: 30.h),
+
+                    const SettingsSectionLabel('READING').slideIn(
+                      RevealDirection.start,
+                      onVisible: true,
+                      duration: AppMotion.normal,
+                      distance: 12,
+                    ),
+                    SizedBox(height: 12.h),
+                    SettingsBentoTile(
+                      color: AppColors.surfaceLight,
+                      bordered: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Translation language',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.inkText,
+                            ),
+                          ),
+                          SizedBox(height: 14.h),
+                          Row(
+                            children: [
+                              for (final language in TranslationLanguage.values)
+                                Expanded(
+                                  child: Padding(
+                                    padding: EdgeInsetsDirectional.only(
+                                      end:
+                                          language ==
+                                              TranslationLanguage.values.last
+                                          ? 0
+                                          : 10.w,
+                                    ),
+                                    child: SettingsOptionChip(
+                                      label: language.label,
+                                      selected: translationLanguage == language,
+                                      onTap: () => ref
+                                          .read(
+                                            readingPreferencesProvider.notifier,
+                                          )
+                                          .setTranslationLanguage(language),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          SizedBox(height: 14.h),
+                          Text(
+                            'Used for every verse, hadith and dua translation: the '
+                            'readers, the daily verse and its notification, '
+                            'search, Mutashabihat and Duas. Where there is no '
+                            'Urdu translation, it says so.',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.textSecondary,
+                              height: 1.45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).slideIn(RevealDirection.bottomStart, onVisible: true),
                     SizedBox(height: 30.h),
 
                     const SettingsSectionLabel('PRAYER TIMES').slideIn(
